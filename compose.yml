@@ -1,0 +1,7 @@
+services:
+  promptinel_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
