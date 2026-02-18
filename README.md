@@ -1,11 +1,18 @@
-# 🛡️Promptinel
+# Promptinel
 
 [![CI](https://github.com/CunningFatalist/promptinel/actions/workflows/ci.yml/badge.svg)](https://github.com/CunningFatalist/promptinel/actions/workflows/ci.yml)
 
 **Promptinel** is a deterministic security scanner for machine-interpreted natural language.
 
+<p align="center">
+  <img width="320" 
+       src="./docs/image/logo.png" 
+       alt='The Promptinel logo is a shield consisting of paper with placeholder texts representing prompts.' 
+  />
+</p>
+
 It statically analyzes prompts *before an LLM or agent executes them* and detects instructions that could cause
-unintended external actions — such as data exfiltration, tool misuse, or environment manipulation.
+unintended external actions, such as data exfiltration, tool misuse, or environment manipulation.
 
 Promptinel treats prompts as executable artifacts.
 
@@ -187,14 +194,14 @@ policy:
 
 ### Environment (Agent Capabilities)
 
-Risk depends on what the agent can do. The same prompt may be safe or critical 
+Risk depends on what the agent can do. The same prompt may be safe or critical
 depending on your environment.
 
 **Promptinel assumes maximum capability unless configured otherwise.**
 
-By default, Promptinel assumes your agent can run system commands, access your 
-file system, and make outbound network requests. Promptinel also assumes your 
-runtime environment has sensitive data available and that the agent could retrieve it. 
+By default, Promptinel assumes your agent can run system commands, access your
+file system, and make outbound network requests. Promptinel also assumes your
+runtime environment has sensitive data available and that the agent could retrieve it.
 
 ```yaml
 environment:
@@ -209,15 +216,15 @@ environment:
 The trust model defines how Promptinel treats different input sources during analysis.
 There are three levels:
 
-1. `trusted` 
-  – Fully controlled by you. No automatic severity escalation.
-2. `untrusted` 
-  – External but static content. Findings may be escalated.
-3. `tainted` 
-  – Dynamically influenced input (e.g. user data). Findings are treated conservatively.
+1. `trusted`
+   – Fully controlled by you. No automatic severity escalation.
+2. `untrusted`
+   – External but static content. Findings may be escalated.
+3. `tainted`
+   – Dynamically influenced input (e.g. user data). Findings are treated conservatively.
 
 This matters, because LLMs cannot reliably distinguish between instructions and data.
-If user- (or otherwise externally) controlled content is embedded into a prompt template, 
+If user- (or otherwise externally) controlled content is embedded into a prompt template,
 it may override instructions or introduce hidden behavior. Trust boundaries allow Promptinel
 to escalate findings.
 
@@ -230,7 +237,7 @@ trust:
 
 ### Scopes
 
-Adjust severity based on location.
+You may adjust severity based on location.
 
 ```yaml
 scopes:
@@ -241,7 +248,9 @@ scopes:
     severity: low
 ```
 
-### Built-in Rules
+### Built-In Rules
+
+Use `promptinel rules list` to see all available rules. You can enable or disable rules and adjust their severity.
 
 ```yaml
 rules:
@@ -252,7 +261,9 @@ rules:
     severity: medium
 ```
 
-Regex rules for simple constraints.
+### Custom Rules
+
+Promptinel allows custom regex rules for simple constraints.
 
 ```yaml
 custom-rules:
@@ -284,12 +295,12 @@ Policy: FAIL
 
 Promptinel is designed to be deterministic, offline, reproducible, CI- and agent-friendly,
 and to provide a simple, extensible configuration model. It is also designed with a focus
-on minimal false positives, and to be conservative in its assumptions about the environment 
+on minimal false positives, and to be conservative in its assumptions about the environment
 and trust model.
 
-Non-goals for Promptinel include runtime monitoring, LLM, moderation, content filtering, 
-or subjective safety assessments. It is not designed to be a comprehensive security solution, 
-but rather a simple, focused tool to catch common prompt-based attack vectors before they are 
+Non-goals for Promptinel include runtime monitoring, LLM, moderation, content filtering,
+or subjective safety assessments. It is not designed to be a comprehensive security solution,
+but rather a simple, focused tool to catch common prompt-based attack vectors before they are
 executed.
 
 Promptinel assumes the LLM will faithfully execute instructions. Furthermore, no one can build
@@ -298,7 +309,7 @@ any prompts you can download from the internet in `vim` or another text editor w
 you "invisible" characters. Don't trust online sources. Don't trust Markdown readers. Don't trust LLMs.
 You don't have to be paranoid, but you should be aware of the risks and take reasonable precautions.
 
-Intended Promptinel use cases include pre-commit hooks, CI pipelines, prompt marketplaces, 
+Intended Promptinel use cases include pre-commit hooks, CI pipelines, prompt marketplaces,
 and local development environments.
 
 ---
@@ -325,7 +336,12 @@ However, I quickly realized that Promptinel should be far more than a quick-and-
 It has the potential to save many systems, and thereby people, from bad actors.
 
 And that's what Promptinel is: a simple, offline, deterministic, reproducible CLI tool to scan prompt files
-for security issues before they are consumed by an LLM or agent. 
+for security issues before they are consumed by an LLM or agent.
 
 Stay safe, and happy coding! ✌️
 
+---
+
+## Image Credits
+
+The logo was created with ChatGPT and refined with Nano Banana.

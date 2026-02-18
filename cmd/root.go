@@ -14,10 +14,12 @@ var Version = "development"
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "promptinel",
-	Short: "Promptinel is a security-focused static analysis tool for LLM prompts.",
-	Long: `Promptinel is a security-focused static analysis tool for LLM prompts. 
-It detects prompt injection, hidden Unicode messages, malicious 
-instructions, and unsafe template usage.`,
+	Short: "Promptinel is a deterministic security scanner for machine-interpreted natural language.",
+	Long: `Promptinel is a deterministic security scanner for machine-interpreted natural language. 
+It statically analyzes prompts before an LLM or agent executes them and detects instructions that could cause
+unintended external actions, such as data exfiltration, tool misuse, or environment manipulation.
+
+Promptinel treats prompts as executable artifacts.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		versionFlag, err := cmd.Flags().GetBool("version")
 		util.ExitOnError("error reading version flag", err)
