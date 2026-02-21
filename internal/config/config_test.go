@@ -10,16 +10,25 @@ import (
 )
 
 func Test_Config_Severity_IsValid(t *testing.T) {
-	assert.True(t, SeverityLow.IsValid())
-	assert.True(t, SeverityMedium.IsValid())
-	assert.True(t, SeverityHigh.IsValid())
-	assert.False(t, Severity("invalid").IsValid())
+	low := SeverityLow
+	medium := SeverityMedium
+	high := SeverityHigh
+	invalid := Severity("invalid")
+
+	assert.True(t, low.IsValid())
+	assert.True(t, medium.IsValid())
+	assert.True(t, high.IsValid())
+	assert.False(t, invalid.IsValid())
 }
 
 func Test_Config_Severity_String(t *testing.T) {
-	assert.Equal(t, "low", SeverityLow.String())
-	assert.Equal(t, "medium", SeverityMedium.String())
-	assert.Equal(t, "high", SeverityHigh.String())
+	low := SeverityLow
+	medium := SeverityMedium
+	high := SeverityHigh
+
+	assert.Equal(t, "low", low.String())
+	assert.Equal(t, "medium", medium.String())
+	assert.Equal(t, "high", high.String())
 }
 
 func Test_Config_Severity_MarshalYAML(t *testing.T) {
@@ -82,16 +91,25 @@ func Test_Config_Severity_UnmarshalYAML_Error(t *testing.T) {
 }
 
 func Test_Config_TrustLevel_IsValid(t *testing.T) {
-	assert.True(t, TrustLevelTrusted.IsValid())
-	assert.True(t, TrustLevelUntrusted.IsValid())
-	assert.True(t, TrustLevelTainted.IsValid())
-	assert.False(t, TrustLevel("invalid").IsValid())
+	trusted := TrustLevelTrusted
+	untrusted := TrustLevelUntrusted
+	tainted := TrustLevelTainted
+	invalid := TrustLevel("invalid")
+
+	assert.True(t, trusted.IsValid())
+	assert.True(t, untrusted.IsValid())
+	assert.True(t, tainted.IsValid())
+	assert.False(t, invalid.IsValid())
 }
 
 func Test_Config_TrustLevel_String(t *testing.T) {
-	assert.Equal(t, "trusted", TrustLevelTrusted.String())
-	assert.Equal(t, "untrusted", TrustLevelUntrusted.String())
-	assert.Equal(t, "tainted", TrustLevelTainted.String())
+	trusted := TrustLevelTrusted
+	untrusted := TrustLevelUntrusted
+	tainted := TrustLevelTainted
+
+	assert.Equal(t, "trusted", trusted.String())
+	assert.Equal(t, "untrusted", untrusted.String())
+	assert.Equal(t, "tainted", tainted.String())
 }
 
 func Test_Config_TrustLevel_MarshalYAML(t *testing.T) {
@@ -154,32 +172,31 @@ func Test_Config_TrustLevel_UnmarshalYAML_Error(t *testing.T) {
 }
 
 func Test_Config_DefaultConfig(t *testing.T) {
-	config := DefaultConfig()
+	cfg := DefaultConfig()
 
-	assert.Equal(t, SeverityHigh, config.Policy.FailOn)
-	assert.Equal(t, SeverityMedium, config.Policy.WarnOn)
-	assert.Equal(t, SeverityLow, config.Policy.IgnoreOn)
+	assert.Equal(t, SeverityHigh, cfg.Policy.FailOn)
+	assert.Equal(t, SeverityMedium, cfg.Policy.WarnOn)
 
-	assert.True(t, config.Environment.CanExecuteShell)
-	assert.True(t, config.Environment.CanAccessFilesystem)
-	assert.True(t, config.Environment.CanAccessNetwork)
-	assert.True(t, config.Environment.HasSecrets)
+	assert.True(t, cfg.Environment.CanExecuteShell)
+	assert.True(t, cfg.Environment.CanAccessFilesystem)
+	assert.True(t, cfg.Environment.CanAccessNetwork)
+	assert.True(t, cfg.Environment.HasSecrets)
 
-	assert.Equal(t, TrustLevelTrusted, config.Trust.LocalFiles)
-	assert.Equal(t, TrustLevelUntrusted, config.Trust.RemoteIncludes)
-	assert.Equal(t, TrustLevelTainted, config.Trust.UserInputPlaceholders)
+	assert.Equal(t, TrustLevelTrusted, cfg.Trust.LocalFiles)
+	assert.Equal(t, TrustLevelUntrusted, cfg.Trust.RemoteIncludes)
+	assert.Equal(t, TrustLevelTainted, cfg.Trust.UserInputPlaceholders)
 
-	assert.Empty(t, config.Scopes)
-	assert.Empty(t, config.Rules)
-	assert.Empty(t, config.CustomRules)
+	assert.Empty(t, cfg.Scopes)
+	assert.Empty(t, cfg.Rules)
+	assert.Empty(t, cfg.CustomRules)
 }
 
 func Test_Config_Load_NoConfigFile(t *testing.T) {
-	config, err := Load("")
+	cfg, err := Load("")
 	require.NoError(t, err)
-	require.NotNil(t, config)
+	require.NotNil(t, cfg)
 
-	assert.Equal(t, DefaultConfig(), config)
+	assert.Equal(t, DefaultConfig(), cfg)
 }
 
 func Test_Config_Load_ValidConfigFile(t *testing.T) {
@@ -190,7 +207,6 @@ func Test_Config_Load_ValidConfigFile(t *testing.T) {
 policy:
   fail-on: high
   warn-on: medium
-  ignore-on: low
 
 environment:
   can_execute_shell: false
@@ -224,40 +240,40 @@ custom-rules:
 	err := os.WriteFile(configPath, []byte(configContent), 0o644)
 	require.NoError(t, err)
 
-	config, err := Load(configPath)
+	cfg, err := Load(configPath)
 	require.NoError(t, err)
-	require.NotNil(t, config)
+	require.NotNil(t, cfg)
 
-	assert.Equal(t, SeverityHigh, config.Policy.FailOn)
-	assert.Equal(t, SeverityMedium, config.Policy.WarnOn)
-	assert.Equal(t, SeverityLow, config.Policy.IgnoreOn)
+	assert.Equal(t, SeverityHigh, cfg.Policy.FailOn)
+	assert.Equal(t, SeverityMedium, cfg.Policy.WarnOn)
 
-	assert.False(t, config.Environment.CanExecuteShell)
-	assert.False(t, config.Environment.CanAccessFilesystem)
-	assert.False(t, config.Environment.CanAccessNetwork)
-	assert.False(t, config.Environment.HasSecrets)
+	assert.False(t, cfg.Environment.CanExecuteShell)
+	assert.False(t, cfg.Environment.CanAccessFilesystem)
+	assert.False(t, cfg.Environment.CanAccessNetwork)
+	assert.False(t, cfg.Environment.HasSecrets)
 
-	assert.Equal(t, TrustLevelUntrusted, config.Trust.LocalFiles)
-	assert.Equal(t, TrustLevelTainted, config.Trust.RemoteIncludes)
-	assert.Equal(t, TrustLevelTrusted, config.Trust.UserInputPlaceholders)
+	assert.Equal(t, TrustLevelUntrusted, cfg.Trust.LocalFiles)
+	assert.Equal(t, TrustLevelTainted, cfg.Trust.RemoteIncludes)
+	assert.Equal(t, TrustLevelTrusted, cfg.Trust.UserInputPlaceholders)
 
-	require.Len(t, config.Scopes, 2)
-	assert.Equal(t, "agents/**", config.Scopes[0].Path)
-	assert.Equal(t, SeverityHigh, config.Scopes[0].Severity)
-	assert.Equal(t, "docs/**", config.Scopes[1].Path)
-	assert.Equal(t, SeverityLow, config.Scopes[1].Severity)
+	require.Len(t, cfg.Scopes, 2)
+	assert.Equal(t, "agents/**", cfg.Scopes[0].Path)
+	assert.Equal(t, SeverityHigh, cfg.Scopes[0].Severity)
+	assert.Equal(t, "docs/**", cfg.Scopes[1].Path)
+	assert.Equal(t, SeverityLow, cfg.Scopes[1].Severity)
 
-	require.Len(t, config.Rules, 2)
-	assert.Equal(t, "no-zero-width", config.Rules[0].ID)
-	assert.True(t, config.Rules[0].Enabled)
-	assert.Equal(t, "no-shell-commands", config.Rules[1].ID)
-	assert.Equal(t, SeverityHigh, config.Rules[1].Severity)
+	require.Len(t, cfg.Rules, 2)
+	assert.Equal(t, "no-zero-width", cfg.Rules[0].ID)
+	require.NotNil(t, cfg.Rules[0].Enabled)
+	assert.True(t, *cfg.Rules[0].Enabled)
+	assert.Equal(t, "no-shell-commands", cfg.Rules[1].ID)
+	assert.Equal(t, SeverityHigh, cfg.Rules[1].Severity)
 
-	require.Len(t, config.CustomRules, 1)
-	assert.Equal(t, "test-rule", config.CustomRules[0].ID)
-	assert.Equal(t, "test.*pattern", config.CustomRules[0].Pattern)
-	assert.Equal(t, SeverityMedium, config.CustomRules[0].Severity)
-	assert.Equal(t, "Test rule message", config.CustomRules[0].Message)
+	require.Len(t, cfg.CustomRules, 1)
+	assert.Equal(t, "test-rule", cfg.CustomRules[0].ID)
+	assert.Equal(t, "test.*pattern", cfg.CustomRules[0].Pattern)
+	assert.Equal(t, SeverityMedium, cfg.CustomRules[0].Severity)
+	assert.Equal(t, "Test rule message", cfg.CustomRules[0].Message)
 }
 
 func Test_Config_Load_InvalidYAML(t *testing.T) {
@@ -333,10 +349,10 @@ policy:
 	err := os.WriteFile(configPath, []byte(configContent), 0o644)
 	require.NoError(t, err)
 
-	config, err := LoadFromPath(configPath)
+	cfg, err := LoadFromPath(configPath)
 	require.NoError(t, err)
-	require.NotNil(t, config)
-	assert.Equal(t, SeverityMedium, config.Policy.FailOn)
+	require.NotNil(t, cfg)
+	assert.Equal(t, SeverityMedium, cfg.Policy.FailOn)
 }
 
 func Test_Config_LoadFromPath_Directory(t *testing.T) {
@@ -346,195 +362,229 @@ func Test_Config_LoadFromPath_Directory(t *testing.T) {
 	configContent := `
 policy:
   fail-on: low
+  warn-on: low
 `
 	err := os.WriteFile(configPath, []byte(configContent), 0o644)
 	require.NoError(t, err)
 
-	config, err := LoadFromPath(tmpDir)
+	cfg, err := LoadFromPath(tmpDir)
 	require.NoError(t, err)
-	require.NotNil(t, config)
-	assert.Equal(t, SeverityLow, config.Policy.FailOn)
+	require.NotNil(t, cfg)
+	assert.Equal(t, SeverityLow, cfg.Policy.FailOn)
 }
 
 func Test_Config_Validate_Valid(t *testing.T) {
-	config := DefaultConfig()
-	assert.NoError(t, config.Validate())
+	cfg := DefaultConfig()
+	assert.NoError(t, cfg.Validate())
 }
 
 func Test_Config_Validate_InvalidFailOn(t *testing.T) {
-	config := DefaultConfig()
-	config.Policy.FailOn = "invalid"
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Policy.FailOn = "invalid"
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid policy.fail-on severity")
 }
 
 func Test_Config_Validate_InvalidWarnOn(t *testing.T) {
-	config := DefaultConfig()
-	config.Policy.WarnOn = "invalid"
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Policy.WarnOn = "invalid"
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid policy.warn-on severity")
 }
 
-func Test_Config_Validate_InvalidIgnoreOn(t *testing.T) {
-	config := DefaultConfig()
-	config.Policy.IgnoreOn = "invalid"
-	err := config.Validate()
+func Test_Config_Validate_InvalidPolicyOrdering_FailBelowWarn(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Policy.FailOn = SeverityMedium
+	cfg.Policy.WarnOn = SeverityHigh
+	err := cfg.Validate()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid policy.ignore-on severity")
+	assert.Contains(t, err.Error(), "invalid policy severity ordering")
 }
 
 func Test_Config_Validate_InvalidLocalFiles(t *testing.T) {
-	config := DefaultConfig()
-	config.Trust.LocalFiles = "invalid"
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Trust.LocalFiles = "invalid"
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid trust.local-files level")
 }
 
 func Test_Config_Validate_InvalidRemoteIncludes(t *testing.T) {
-	config := DefaultConfig()
-	config.Trust.RemoteIncludes = "invalid"
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Trust.RemoteIncludes = "invalid"
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid trust.remote-includes level")
 }
 
 func Test_Config_Validate_InvalidUserInputPlaceholders(t *testing.T) {
-	config := DefaultConfig()
-	config.Trust.UserInputPlaceholders = "invalid"
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Trust.UserInputPlaceholders = "invalid"
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid trust.user-input-placeholders level")
 }
 
 func Test_Config_Validate_InvalidScopeSeverity(t *testing.T) {
-	config := DefaultConfig()
-	config.Scopes = []Scope{{Path: "test/**", Severity: "invalid"}}
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Scopes = []Scope{{Path: "test/**", Severity: "invalid"}}
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid severity for scope")
 }
 
 func Test_Config_Validate_InvalidScopeGlobPattern(t *testing.T) {
-	config := DefaultConfig()
-	config.Scopes = []Scope{{Path: "test[", Severity: SeverityLow}}
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Scopes = []Scope{{Path: "test[", Severity: SeverityLow}}
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid glob pattern for scope")
 }
 
 func Test_Config_Validate_EmptyRuleID(t *testing.T) {
-	config := DefaultConfig()
-	config.Rules = []Rule{{ID: ""}}
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Rules = []Rule{{ID: ""}}
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "has empty id")
 }
 
 func Test_Config_Validate_RuleWithEmptySeverity(t *testing.T) {
-	config := DefaultConfig()
-	config.Rules = []Rule{{ID: "test-rule", Severity: ""}}
-	assert.NoError(t, config.Validate())
+	cfg := DefaultConfig()
+	cfg.Rules = []Rule{{ID: "test-rule", Severity: ""}}
+	assert.NoError(t, cfg.Validate())
 }
 
 func Test_Config_Validate_RuleWithValidSeverity(t *testing.T) {
-	config := DefaultConfig()
-	config.Rules = []Rule{{ID: "test-rule", Severity: SeverityHigh}}
-	assert.NoError(t, config.Validate())
+	cfg := DefaultConfig()
+	cfg.Rules = []Rule{{ID: "test-rule", Severity: SeverityHigh}}
+	assert.NoError(t, cfg.Validate())
 }
 
 func Test_Config_Validate_InvalidRuleSeverity(t *testing.T) {
-	config := DefaultConfig()
-	config.Rules = []Rule{{ID: "test-rule", Severity: "invalid"}}
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.Rules = []Rule{{ID: "test-rule", Severity: "invalid"}}
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid severity for rule")
 }
 
+func Test_Config_Validate_DuplicateRuleID(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Rules = []Rule{
+		{ID: "duplicate-rule", Severity: SeverityLow},
+		{ID: "duplicate-rule", Severity: SeverityHigh},
+	}
+
+	err := cfg.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "duplicate rule id")
+}
+
 func Test_Config_Validate_EmptyCustomRuleID(t *testing.T) {
-	config := DefaultConfig()
-	config.CustomRules = []CustomRule{{ID: "", Pattern: "test"}}
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.CustomRules = []CustomRule{{ID: "", Pattern: "test"}}
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "has empty id")
 }
 
 func Test_Config_Validate_EmptyCustomRulePattern(t *testing.T) {
-	config := DefaultConfig()
-	config.CustomRules = []CustomRule{{ID: "test-rule", Pattern: ""}}
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.CustomRules = []CustomRule{{ID: "test-rule", Pattern: ""}}
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "has empty pattern")
 }
 
 func Test_Config_Validate_InvalidCustomRuleSeverity(t *testing.T) {
-	config := DefaultConfig()
-	config.CustomRules = []CustomRule{{ID: "test-rule", Pattern: "test", Severity: "invalid"}}
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.CustomRules = []CustomRule{{ID: "test-rule", Pattern: "test", Severity: "invalid"}}
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid severity for custom-rule")
 }
 
 func Test_Config_Validate_InvalidCustomRulePattern(t *testing.T) {
-	config := DefaultConfig()
-	config.CustomRules = []CustomRule{{ID: "test-rule", Pattern: "[invalid(regex", Severity: SeverityMedium}}
-	err := config.Validate()
+	cfg := DefaultConfig()
+	cfg.CustomRules = []CustomRule{{ID: "test-rule", Pattern: "[invalid(regex", Severity: SeverityMedium}}
+	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid regex pattern for custom-rule")
 }
 
-func Test_Config_GetRuleByID(t *testing.T) {
-	config := DefaultConfig()
-	config.Rules = []Rule{
-		{ID: "rule-1", Enabled: true},
-		{ID: "rule-2", Enabled: false},
+func Test_Config_Validate_DuplicateCustomRuleID(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.CustomRules = []CustomRule{
+		{ID: "duplicate-custom-rule", Pattern: "first", Severity: SeverityLow},
+		{ID: "duplicate-custom-rule", Pattern: "second", Severity: SeverityMedium},
 	}
 
-	rule := config.GetRuleByID("rule-1")
+	err := cfg.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "duplicate custom-rule id")
+}
+
+func Test_Config_GetRuleByID(t *testing.T) {
+	cfg := DefaultConfig()
+	enabled := true
+	disabled := false
+	cfg.Rules = []Rule{
+		{ID: "rule-1", Enabled: &enabled},
+		{ID: "rule-2", Enabled: &disabled},
+	}
+
+	rule := cfg.GetRuleByID("rule-1")
 	require.NotNil(t, rule)
 	assert.Equal(t, "rule-1", rule.ID)
-	assert.True(t, rule.Enabled)
+	require.NotNil(t, rule.Enabled)
+	assert.True(t, *rule.Enabled)
 
-	rule = config.GetRuleByID("rule-2")
+	rule = cfg.GetRuleByID("rule-2")
 	require.NotNil(t, rule)
-	assert.False(t, rule.Enabled)
+	require.NotNil(t, rule.Enabled)
+	assert.False(t, *rule.Enabled)
 
-	rule = config.GetRuleByID("non-existent")
+	rule = cfg.GetRuleByID("non-existent")
 	assert.Nil(t, rule)
 }
 
 func Test_Config_GetCustomRuleByID(t *testing.T) {
-	config := DefaultConfig()
-	config.CustomRules = []CustomRule{
+	cfg := DefaultConfig()
+	cfg.CustomRules = []CustomRule{
 		{ID: "custom-1", Pattern: "pattern1"},
 		{ID: "custom-2", Pattern: "pattern2"},
 	}
 
-	rule := config.GetCustomRuleByID("custom-1")
+	rule := cfg.GetCustomRuleByID("custom-1")
 	require.NotNil(t, rule)
 	assert.Equal(t, "pattern1", rule.Pattern)
 
-	rule = config.GetCustomRuleByID("non-existent")
+	rule = cfg.GetCustomRuleByID("non-existent")
 	assert.Nil(t, rule)
 }
 
 func Test_Config_GetScopeForPath(t *testing.T) {
-	config := DefaultConfig()
-	config.Scopes = []Scope{
+	cfg := DefaultConfig()
+	cfg.Scopes = []Scope{
 		{Path: "agents/**", Severity: SeverityHigh},
 		{Path: "docs/**", Severity: SeverityLow},
 	}
 
-	scope := config.GetScopeForPath("agents/test.md")
+	scope := cfg.GetScopeForPath("agents/test.md")
 	require.NotNil(t, scope)
 	assert.Equal(t, SeverityHigh, scope.Severity)
 
-	scope = config.GetScopeForPath("docs/readme.md")
+	scope = cfg.GetScopeForPath("docs/readme.md")
 	require.NotNil(t, scope)
 	assert.Equal(t, SeverityLow, scope.Severity)
 
-	scope = config.GetScopeForPath("other/file.md")
+	scope = cfg.GetScopeForPath("agents/nested/test.md")
+	require.NotNil(t, scope)
+	assert.Equal(t, SeverityHigh, scope.Severity)
+
+	scope = cfg.GetScopeForPath("other/file.md")
 	assert.Nil(t, scope)
 }

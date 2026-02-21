@@ -28,17 +28,26 @@ Promptinel is in early development and many features are still missing.
 
 _TODO_
 
+### Build from Source
+
+```bash
+# Build inside the development container (required for release version metadata)
+export BUILD_VERSION=x.x.x && make build
+```
+
+`BUILD_VERSION` is required for `make build`; the binary is written to `build/promptinel`.
+
 ---
 
 ## Usage
 
-### Print version
+### Print Version
 
 ```bash
 promptinel --version
 ```
 
-### Scan prompts
+### Scan Prompts
 
 ```bash
 # Scan all files in the prompts/ directory with default rules
@@ -54,7 +63,7 @@ promptinel scan --include "*.md" prompts/
 promptinel scan --exclude "*.yaml" prompts/
 ```
 
-### Sanitize prompts
+### Sanitize Prompts
 
 This command is restricted to safe transformations, e.g. removing invisible characters etc.
 
@@ -75,17 +84,17 @@ promptinel sanitize --include "*.md" --apply prompts/
 promptinel sanitize --exclude "*.yaml" --apply prompts/
 ```
 
-### Viewing and explaining rules
+### Viewing and Explaining Rules
 
 ```bash
 # List all available rules
 promptinel rules list
 
-# Explain the no-shell-commands rule
-promptinel rules describe no-shell-commands
+# Explain the no-unsafe-templates rule
+promptinel rules describe no-unsafe-templates
 ```
 
-### Baseline (for CI adoption)
+### Baseline for CI Adoption
 
 ```bash
 # Create a baseline file with current findings (e.g. to ignore existing issues in CI)
@@ -95,9 +104,35 @@ promptinel baseline create
 promptinel baseline update
 ```
 
+### Globbing
+
+Promptinel uses glob patterns for:
+
+- `scan --include`
+- `scan --exclude`
+- `sanitize --include`
+- `sanitize --exclude`
+- `scopes[].path` in `.promptinel.yaml`
+
+#### Supported Pattern Behavior
+
+- `*` matches any sequence of characters inside one path segment
+- `?` matches exactly one character inside one path segment
+- `[abc]` matches one character from a set
+- `**` matches recursively across directory boundaries
+
+#### Examples
+
+```text
+*.md            # Markdown files by basename
+docs/*.md       # Markdown files directly under docs/
+docs/**         # All files under docs/ recursively
+agents/**/prod* # Any file/dir starting with "prod" at any depth under agents/
+```
+
 ---
 
-## Exit codes
+## Exit Codes
 
 | Code | Meaning                            |
 |------|------------------------------------|
@@ -117,7 +152,6 @@ Promptinel uses a `.promptinel.yaml` file for configuration. Here is an example:
 policy:
   fail-on: high
   warn-on: medium
-  ignore-on: low
 
 environment:
   can_execute_shell: true
@@ -146,15 +180,6 @@ scopes:
 rules:
   - id: no-zero-width
     enabled: true
-
-  - id: no-instruction-override
-    severity: high
-
-  - id: no-shell-commands
-    severity: high
-
-  - id: no-secret-exfiltration
-    severity: high
 
   - id: no-unsafe-templates
     severity: medium
@@ -189,10 +214,11 @@ Your policy settings define enforcement behavior.
 policy:
   fail-on: high
   warn-on: medium
-  ignore-on: low
 ```
 
-### Environment (Agent Capabilities)
+`fail-on` must be greater than or equal to `warn-on`.
+
+### Environment
 
 Risk depends on what the agent can do. The same prompt may be safe or critical
 depending on your environment.
@@ -202,6 +228,10 @@ depending on your environment.
 By default, Promptinel assumes your agent can run system commands, access your
 file system, and make outbound network requests. Promptinel also assumes your
 runtime environment has sensitive data available and that the agent could retrieve it.
+
+> [!TIP]
+> The environment setting defines in which environment the scanned prompts will be consumed.
+> It does not define Promptinel's own runtime environment.
 
 ```yaml
 environment:
@@ -238,6 +268,7 @@ trust:
 ### Scopes
 
 You may adjust severity based on location.
+The `path` field uses the same glob semantics as the guide above.
 
 ```yaml
 scopes:
@@ -345,3 +376,32 @@ Stay safe, and happy coding! ✌️
 ## Image Credits
 
 The logo was created with ChatGPT and refined with Nano Banana.
+
+---
+
+## Contributing to Promptinel
+
+### General Conventions
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org) for commit messages and
+pull request titles.
+
+## Development Conventions
+
+When implementing Cobra commands in `cmd/*`:
+
+- use `Run` (not `RunE`) for command handlers
+- keep core command logic in helper functions that return `error`
+- call `util.ExitOnCommandError(...)` directly from `Run` (without `if err != nil`) to centralize process exits
+- return `exitcode.Error` from helper logic when a command needs a specific non-zero exit code
+
+### Testing Scope
+
+- Tests in `cmd` packages must only cover command behavior
+  (argument validation, flag handling, output, and exit behavior).
+- Algorithmic or reusable logic must not be tested through `cmd`;
+  it must live in `internal/...` packages and be tested there.
+- Use the general test naming format `Test_PackageName_Functionality_OptionalModifier`
+  (for example, `Test_Config_Validation` or `Test_Config_Validation_InvalidInput`).
+- Use `cmd` test names in the format `Test_Cmd_CommandName_WhatItDoes` (for example,
+  `Test_Cmd_RootCommand_PrintsReleaseVersion`).

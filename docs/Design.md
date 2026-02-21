@@ -200,19 +200,71 @@ Tokenization enables:
 
 ---
 
-# 5. Rule Engine
+# 5. Analysis Levels and Phases
+
+Promptinel evaluates rules in explicit analysis levels. This keeps evaluation
+deterministic while allowing gradually deeper checks.
+
+The levels are:
+
+1. Document level
+    - Whole-file checks across normalized content.
+    - Examples: invisible character detection, coarse regex matching.
+2. Segment level
+    - Structural-zone checks on each segment.
+    - Examples: code-block-specific or template-block-specific checks.
+3. Token level
+    - Lexical checks over tokenized segments.
+    - Examples: shell operator patterns, URL command combinations.
+4. Flow level (optional, future extension)
+    - Intra-document propagation checks, e.g. placeholder origin tracking.
+    - Enabled when richer context analysis is needed.
+5. Policy level
+    - Final severity and enforcement decision from context and findings.
+
+Phase order is fixed:
+
+File Discovery -> Normalization -> Segmentation -> Tokenization ->
+Document Checks -> Segment Checks -> Token Checks -> Flow Checks ->
+Severity Resolution -> Reporting
+
+Each phase is pure, deterministic, and independently testable.
+
+---
+
+# 6. Rule Engine
 
 Rules are pure functions.
 
 ```
 
 type Rule interface {
-ID() string
-DefaultSeverity() Severity
-Apply(ctx RuleContext, segment Segment, tokens []Token) []Finding
+Metadata() Metadata
+}
+
+type DocumentRule interface {
+CheckDocument(ctx RuleContext, doc DocumentView) []Finding
+}
+
+type SegmentRule interface {
+CheckSegment(ctx RuleContext, segment Segment) []Finding
+}
+
+type TokenRule interface {
+CheckTokens(ctx RuleContext, segment Segment, tokens []Token) []Finding
+}
+
+type FlowRule interface {
+CheckFlow(ctx RuleContext, doc AnalyzedDocument) []Finding
 }
 
 ```
+
+Rules can implement one or more phase interfaces.
+The engine dispatches only the methods a rule supports.
+
+This capability-based model avoids forcing every rule to implement no-op
+methods while still supporting phase checks in a consistent pipeline.
 
 Rules must:
 
@@ -240,7 +292,7 @@ rules []Rule
 
 ---
 
-# 6. Analysis Context
+# 7. Analysis Context
 
 Every rule executes with contextual information:
 
@@ -262,7 +314,7 @@ Context allows:
 
 ---
 
-# 7. Severity Resolution
+# 8. Severity Resolution
 
 Final severity is computed dynamically.
 
@@ -290,7 +342,7 @@ This prevents naive static severity assignments.
 
 ---
 
-# 8. Findings
+# 9. Findings
 
 ```
 
@@ -308,7 +360,7 @@ Findings must be stable and reproducible.
 
 ---
 
-# 9. Reporting Layer
+# 10. Reporting Layer
 
 Responsibilities:
 
@@ -331,7 +383,7 @@ Exit codes:
 
 ---
 
-# 10. Baseline Support
+# 11. Baseline Support
 
 Baseline stores accepted findings.
 
@@ -346,7 +398,7 @@ Baseline must be stable across runs.
 
 ---
 
-# 11. Sanitization Flow
+# 12. Sanitization Flow
 
 Sanitize reuses:
 
@@ -362,7 +414,7 @@ Sanitization must:
 
 ---
 
-# 12. Future Extensions
+# 13. Future Extensions
 
 The architecture allows:
 
@@ -390,7 +442,9 @@ Promptinel is static analysis for prompt artifacts.
 
 Promptinel is structured as a deterministic static analysis engine:
 
-Filesystem → Normalize → Segment → Tokenize → Evaluate Rules → Resolve Severity → Report
+Filesystem -> Normalize -> Segment -> Tokenize ->
+Evaluate Document/Segment/Token/Flow Checks ->
+Resolve Severity -> Report
 
 Each layer is pure, testable, and independent.
 

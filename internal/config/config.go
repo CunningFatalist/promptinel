@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/CunningFatalist/promptinel/internal/pathmatch"
 	"github.com/spf13/viper"
 )
 
@@ -38,9 +39,8 @@ type TrustLevel string
 
 // Policy defines the enforcement behavior for findings.
 type Policy struct {
-	FailOn   Severity `mapstructure:"fail-on"`
-	WarnOn   Severity `mapstructure:"warn-on"`
-	IgnoreOn Severity `mapstructure:"ignore-on"`
+	FailOn Severity `mapstructure:"fail-on"`
+	WarnOn Severity `mapstructure:"warn-on"`
 }
 
 // Environment defines the capabilities of the agent runtime.
@@ -67,7 +67,7 @@ type Scope struct {
 // Rule defines a built-in security rule configuration.
 type Rule struct {
 	ID       string   `mapstructure:"id"`
-	Enabled  bool     `mapstructure:"enabled"`
+	Enabled  *bool    `mapstructure:"enabled"`
 	Severity Severity `mapstructure:"severity"`
 }
 
@@ -93,9 +93,8 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Policy: Policy{
-			FailOn:   SeverityHigh,
-			WarnOn:   SeverityMedium,
-			IgnoreOn: SeverityLow,
+			FailOn: SeverityHigh,
+			WarnOn: SeverityMedium,
 		},
 		Environment: Environment{
 			CanExecuteShell:     true,
@@ -118,10 +117,10 @@ func DefaultConfig() *Config {
 // If configFile is empty, it searches for .promptinel.yaml in the current directory and $HOME.
 // Returns default config if no config file is found.
 func Load(configFile string) (*Config, error) {
-	config := DefaultConfig()
+	cfg := DefaultConfig()
 	v := viper.New()
 
-	setDefaults(v, config)
+	setDefaults(v, cfg)
 
 	if configFile != "" {
 		v.SetConfigFile(configFile)
@@ -134,20 +133,20 @@ func Load(configFile string) (*Config, error) {
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			return config, nil
+			return cfg, nil
 		}
 		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
-	if err := v.Unmarshal(config); err != nil {
+	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
-	if err := config.Validate(); err != nil {
+	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	return config, nil
+	return cfg, nil
 }
 
 // LoadFromPath loads configuration from a file or directory path.
@@ -166,28 +165,31 @@ func LoadFromPath(path string) (*Config, error) {
 }
 
 // setDefaults applies default values to the viper instance.
-func setDefaults(v *viper.Viper, config *Config) {
-	v.SetDefault("policy.fail-on", config.Policy.FailOn)
-	v.SetDefault("policy.warn-on", config.Policy.WarnOn)
-	v.SetDefault("policy.ignore-on", config.Policy.IgnoreOn)
+func setDefaults(v *viper.Viper, cfg *Config) {
+	v.SetDefault("policy.fail-on", cfg.Policy.FailOn)
+	v.SetDefault("policy.warn-on", cfg.Policy.WarnOn)
 
-	v.SetDefault("environment.can_execute_shell", config.Environment.CanExecuteShell)
-	v.SetDefault("environment.can_access_filesystem", config.Environment.CanAccessFilesystem)
-	v.SetDefault("environment.can_access_network", config.Environment.CanAccessNetwork)
-	v.SetDefault("environment.has_secrets", config.Environment.HasSecrets)
+	v.SetDefault("environment.can_execute_shell", cfg.Environment.CanExecuteShell)
+	v.SetDefault("environment.can_access_filesystem", cfg.Environment.CanAccessFilesystem)
+	v.SetDefault("environment.can_access_network", cfg.Environment.CanAccessNetwork)
+	v.SetDefault("environment.has_secrets", cfg.Environment.HasSecrets)
 
-	v.SetDefault("trust.local-files", config.Trust.LocalFiles)
-	v.SetDefault("trust.remote-includes", config.Trust.RemoteIncludes)
-	v.SetDefault("trust.user-input-placeholders", config.Trust.UserInputPlaceholders)
+	v.SetDefault("trust.local-files", cfg.Trust.LocalFiles)
+	v.SetDefault("trust.remote-includes", cfg.Trust.RemoteIncludes)
+	v.SetDefault("trust.user-input-placeholders", cfg.Trust.UserInputPlaceholders)
 
-	v.SetDefault("scopes", config.Scopes)
-	v.SetDefault("rules", config.Rules)
-	v.SetDefault("custom-rules", config.CustomRules)
+	v.SetDefault("scopes", cfg.Scopes)
+	v.SetDefault("rules", cfg.Rules)
+	v.SetDefault("custom-rules", cfg.CustomRules)
 }
 
 // IsValid returns true if the severity is a valid value.
-func (s Severity) IsValid() bool {
-	switch s {
+func (s *Severity) IsValid() bool {
+	if s == nil {
+		return false
+	}
+
+	switch *s {
 	case SeverityLow, SeverityMedium, SeverityHigh:
 		return true
 	default:
@@ -196,13 +198,21 @@ func (s Severity) IsValid() bool {
 }
 
 // String returns the string representation of the severity.
-func (s Severity) String() string {
-	return string(s)
+func (s *Severity) String() string {
+	if s == nil {
+		return ""
+	}
+
+	return string(*s)
 }
 
 // MarshalYAML implements yaml.Marshaler for Severity.
-func (s Severity) MarshalYAML() (interface{}, error) {
-	return string(s), nil
+func (s *Severity) MarshalYAML() (interface{}, error) {
+	if s == nil {
+		return "", nil
+	}
+
+	return string(*s), nil
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Severity.
@@ -216,8 +226,12 @@ func (s *Severity) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // IsValid returns true if the trust level is a valid value.
-func (t TrustLevel) IsValid() bool {
-	switch t {
+func (t *TrustLevel) IsValid() bool {
+	if t == nil {
+		return false
+	}
+
+	switch *t {
 	case TrustLevelTrusted, TrustLevelUntrusted, TrustLevelTainted:
 		return true
 	default:
@@ -226,13 +240,21 @@ func (t TrustLevel) IsValid() bool {
 }
 
 // String returns the string representation of the trust level.
-func (t TrustLevel) String() string {
-	return string(t)
+func (t *TrustLevel) String() string {
+	if t == nil {
+		return ""
+	}
+
+	return string(*t)
 }
 
 // MarshalYAML implements yaml.Marshaler for TrustLevel.
-func (t TrustLevel) MarshalYAML() (interface{}, error) {
-	return string(t), nil
+func (t *TrustLevel) MarshalYAML() (interface{}, error) {
+	if t == nil {
+		return "", nil
+	}
+
+	return string(*t), nil
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for TrustLevel.
@@ -253,8 +275,8 @@ func (c *Config) Validate() error {
 	if !c.Policy.WarnOn.IsValid() {
 		return fmt.Errorf("invalid policy.warn-on severity: %s", c.Policy.WarnOn)
 	}
-	if !c.Policy.IgnoreOn.IsValid() {
-		return fmt.Errorf("invalid policy.ignore-on severity: %s", c.Policy.IgnoreOn)
+	if policySeverityRank(c.Policy.FailOn) < policySeverityRank(c.Policy.WarnOn) {
+		return fmt.Errorf("invalid policy severity ordering: fail-on (%s) must be greater than or equal to warn-on (%s)", c.Policy.FailOn, c.Policy.WarnOn)
 	}
 
 	if !c.Trust.LocalFiles.IsValid() {
@@ -284,6 +306,9 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("invalid severity for rule[%d]: %s", i, rule.Severity)
 		}
 	}
+	if err := validateUniqueRuleIDs(c.Rules); err != nil {
+		return err
+	}
 
 	for i, rule := range c.CustomRules {
 		if rule.ID == "" {
@@ -299,8 +324,44 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("invalid severity for custom-rule[%d]: %s", i, rule.Severity)
 		}
 	}
+	if err := validateUniqueCustomRuleIDs(c.CustomRules); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+func validateUniqueRuleIDs(rules []Rule) error {
+	seenRuleIDs := make(map[string]int, len(rules))
+	for i, rule := range rules {
+		if previousIndex, exists := seenRuleIDs[rule.ID]; exists {
+			return fmt.Errorf("duplicate rule id %q at rules[%d] (already defined at rules[%d])", rule.ID, i, previousIndex)
+		}
+		seenRuleIDs[rule.ID] = i
+	}
+	return nil
+}
+
+func validateUniqueCustomRuleIDs(customRules []CustomRule) error {
+	seenRuleIDs := make(map[string]int, len(customRules))
+	for i, customRule := range customRules {
+		if previousIndex, exists := seenRuleIDs[customRule.ID]; exists {
+			return fmt.Errorf("duplicate custom-rule id %q at custom-rules[%d] (already defined at custom-rules[%d])", customRule.ID, i, previousIndex)
+		}
+		seenRuleIDs[customRule.ID] = i
+	}
+	return nil
+}
+
+func policySeverityRank(severity Severity) int {
+	switch severity {
+	case SeverityHigh:
+		return 3
+	case SeverityMedium:
+		return 2
+	default:
+		return 1
+	}
 }
 
 // GetRuleByID returns the rule with the given ID, or nil if not found.
@@ -326,8 +387,7 @@ func (c *Config) GetCustomRuleByID(id string) *CustomRule {
 // GetScopeForPath returns the scope matching the given path, or nil if no match.
 func (c *Config) GetScopeForPath(path string) *Scope {
 	for i := range c.Scopes {
-		matched, err := filepath.Match(c.Scopes[i].Path, path)
-		if err == nil && matched {
+		if pathmatch.Match(c.Scopes[i].Path, path) {
 			return &c.Scopes[i]
 		}
 	}

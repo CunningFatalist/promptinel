@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/spf13/cobra"
 )
 
+const DevelopmentVersion = "development"
+
 // Version is the current version of the application, set at build time.
-var Version = "development"
+var Version = DevelopmentVersion
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -24,7 +25,7 @@ Promptinel treats prompts as executable artifacts.`,
 		versionFlag, err := cmd.Flags().GetBool("version")
 		util.ExitOnError("error reading version flag", err)
 
-		if versionFlag && Version == "development" {
+		if versionFlag && Version == DevelopmentVersion {
 			fmt.Println(Version)
 		} else if versionFlag {
 			fmt.Printf("v%s\n", Version)
@@ -35,10 +36,7 @@ Promptinel treats prompts as executable artifacts.`,
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
+	util.ExitOnCommandError("command execution failed", rootCmd.Execute())
 }
 
 func init() {

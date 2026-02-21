@@ -9,13 +9,19 @@ You can find relevant information about this project in the following files:
 
 ## Language
 
-You **must** use English as the primary language for all code, comments, 
+You **must** use English as the primary language for all code, comments,
 and documentation.
+
+## Commit and PR Convention
+
+- This project uses [Conventional Commits](https://www.conventionalcommits.org/).
+- Pull request titles must follow the same format as Conventional Commits, for example:
+  `feat(config): add versioning support`.
 
 ## Commands
 
 - Always make sure to run `go mod tidy` after adding new dependencies
-- Use `go run main.go` to run the application locally. 
+- Use `go run main.go` to run the application locally.
   Prefer this over `make run`
 - Use `make test` to run all tests with coverage
 - Use `make lint` to check code quality with `golangci-lint`
@@ -38,6 +44,7 @@ Your task is considered complete when:
 - Code is vetted
 - Code is documented
 - Documentation is updated
+- Test coverage is above 85% for new code
 
 ## General Philosophy
 
@@ -54,13 +61,18 @@ Your task is considered complete when:
 - Use interfaces to decouple components
 - Use context for cancellation and timeouts
 - Use existing code if it fits the purpose
-- Have a look at the existing codebase to 
+- Have a look at the existing codebase to
   understand the project structure and conventions
 
 ## Code Style Guidelines
 
 - **Imports**: Use goimports formatting, group stdlib, external, internal packages
 - **Naming**: Standard Go conventions - `PascalCase` for exported, `camelCase` for unexported
+- **Test Names**: This project uses a `Test_PackageName_Functionality_OptionalModifier` format
+  for test function names (e.g., `Test_Config_Validation` or `Test_Config_Validation_InvalidInput`).
+  For `cmd` tests, use `Test_Cmd_CommandName_WhatItDoes` (e.g., `Test_Cmd_RootCommand_PrintsReleaseVersion`).
+- **Testing Boundaries**: `cmd` tests must cover only command behavior (args, flags, output, exit behavior). Move
+  algorithmic or reusable logic into `internal/...` packages and test it there.
 - **Types**: Prefer explicit types, use type aliases for clarity (e.g., `type AgentName string`)
 - **Error handling**: Return errors explicitly, use `fmt.Errorf` for wrapping
 - **Context**: Always pass `context.Context` as first parameter for operations
@@ -69,3 +81,6 @@ Your task is considered complete when:
 - **Constants**: Use typed constants with iota for enums, group in const blocks
 - **JSON tags**: Use `snake_case` for JSON field names
 - **File permissions**: Use octal notation (`0o755`, `0o644`) for file permissions
+- **Cobra commands**: Use `Run` (not `RunE`) for `cmd/*` handlers. Put command logic in helper functions that return
+  `error`, then call `util.ExitOnCommandError(...)` directly from `Run` (without `if err != nil` guards) so process exit
+  codes are centralized and `exitcode.Error` values map to the correct code.

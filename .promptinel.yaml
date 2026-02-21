@@ -1,7 +1,6 @@
 policy:
   fail-on: high
   warn-on: medium
-  ignore-on: low
 
 environment:
   can_execute_shell: true
