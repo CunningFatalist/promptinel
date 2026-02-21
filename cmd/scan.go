@@ -8,14 +8,15 @@ import (
 
 // scanCmd represents the scan command
 var scanCmd = &cobra.Command{
-	Use:   "scan",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Use:   "scan [path ...]",
+	Short: "Scan prompt files for unsafe instructions and policy violations",
+	Long: `Scan prompt files for deterministic security findings before they are executed by an LLM or agent.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Examples:
+  promptinel scan prompts/
+  promptinel scan --config .promptinel.yaml prompts/
+  promptinel scan --include "*.md" prompts/
+  promptinel scan --exclude "*.yaml" prompts/`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("scan called")
 	},

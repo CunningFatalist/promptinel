@@ -8,14 +8,16 @@ import (
 
 // sanitizeCmd represents the sanitize command
 var sanitizeCmd = &cobra.Command{
-	Use:   "sanitize",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Use:   "sanitize [path ...]",
+	Short: "Sanitize prompt files with safe, deterministic transformations",
+	Long: `Sanitize prompt files using only safe transformations, such as removing invisible characters.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Examples:
+  promptinel sanitize prompts/
+  promptinel sanitize --apply prompts/
+  promptinel sanitize --config .promptinel.yaml --apply prompts/
+  promptinel sanitize --include "*.md" --apply prompts/
+  promptinel sanitize --exclude "*.yaml" --apply prompts/`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("sanitize called")
 	},
