@@ -36,15 +36,16 @@ The key separation is:
 - resolves input paths
 - recursively collects files (deduplicated via canonical path keys while preserving cleaned scan paths)
 - applies include/exclude path filters
-- reads file content
-- evaluates compiled rules with contextual metadata (path, environment, trust)
+- reads file content in a bounded worker pool
+- evaluates compiled rules with contextual metadata (path, environment, trust) per worker
 - applies scope-based severity overrides from config
-- returns file-qualified findings
+- returns file-qualified findings in stable file order
 
 Important design choices:
 
 - Context cancellation is supported (`context.Context`) and checked during file iteration.
 - Paths are matched both relative to working directory and to input roots to reduce surprises in scope matching.
+- Concurrent scanning is bounded by `GOMAXPROCS` and preserves deterministic output ordering.
 - Engine logic avoids side effects beyond reading files, making behavior testable and reproducible.
 
 ## Rule System and Interfaces
@@ -150,7 +151,7 @@ Commands return typed `exitcode.Error` values so process exit mapping stays cent
 
 Current tradeoffs:
 
-- Simplicity over maximum throughput: files are read fully in memory and processed sequentially.
+- Files are read fully in memory per target file (simple and fast for typical prompt files).
 - Deterministic lexical/template analysis over probabilistic/NLP behavior.
 - Terminal-friendly text output over machine-readable reporting formats.
 
@@ -159,4 +160,4 @@ Natural next architecture steps:
 - implement `sanitize` and `baseline` command internals (currently placeholders)
 - add JSON/SARIF output modes
 - expand flow-level rules for deeper cross-segment reasoning
-- add scalability controls (parallel scanning, large-file guardrails)
+- add large-file guardrails and configurable worker limits

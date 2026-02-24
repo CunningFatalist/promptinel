@@ -91,6 +91,7 @@ Responsible for:
 - Applying include/exclude glob filters
 - Scope matching
 - Loading file contents
+- Dispatching file evaluation concurrently with bounded workers
 
 Output:
 
@@ -106,6 +107,7 @@ Trust    TrustLevel
 ```
 
 No analysis occurs here.
+Evaluation order remains deterministic in final reporting even when files are processed concurrently.
 
 ---
 

@@ -239,6 +239,44 @@ func Test_Rules_Compile_IncludesCustomRules(t *testing.T) {
 	assert.Equal(t, "curl found", findings[0].Message)
 }
 
+func Test_Rules_Compile_CustomRegexReportsMatchPositionWithinToken(t *testing.T) {
+	registry := NewRegistry()
+
+	compiled, err := registry.Compile(&config.Config{
+		CustomRules: []config.CustomRule{{
+			ID:       "custom-url",
+			Pattern:  "url",
+			Severity: config.SeverityLow,
+			Message:  "url found",
+		}},
+	})
+	require.NoError(t, err)
+
+	findings := Evaluate(compiled, Context{}, "run curl")
+	require.Len(t, findings, 1)
+	assert.Equal(t, Position{Line: 1, Column: 6}, findings[0].Position)
+}
+
+func Test_Rules_Compile_CustomRegexReportsDistinctPositionsForMultipleMatchesInToken(t *testing.T) {
+	registry := NewRegistry()
+
+	compiled, err := registry.Compile(&config.Config{
+		CustomRules: []config.CustomRule{{
+			ID:       "custom-a",
+			Pattern:  "a",
+			Severity: config.SeverityLow,
+			Message:  "a found",
+		}},
+	})
+	require.NoError(t, err)
+
+	findings := Evaluate(compiled, Context{}, "banana")
+	require.Len(t, findings, 3)
+	assert.Equal(t, Position{Line: 1, Column: 2}, findings[0].Position)
+	assert.Equal(t, Position{Line: 1, Column: 4}, findings[1].Position)
+	assert.Equal(t, Position{Line: 1, Column: 6}, findings[2].Position)
+}
+
 func Test_Rules_CompileRule_SetsImplementedPhaseChecks(t *testing.T) {
 	tests := []struct {
 		name        string

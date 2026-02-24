@@ -16,6 +16,8 @@ unintended external actions, such as data exfiltration, tool misuse, or environm
 
 Promptinel treats prompts as executable artifacts.
 
+`scan` processes files concurrently with deterministic output ordering to keep CI results stable.
+
 ---
 
 ## State

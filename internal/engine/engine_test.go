@@ -157,3 +157,24 @@ func Test_Engine_ScanPaths_AppliesScopeSeverityOverride_WhenWorkingDirectoryDiff
 	require.Len(t, findings, 1)
 	assert.Equal(t, config.SeverityLow, findings[0].Severity)
 }
+
+func Test_Engine_ScanPaths_PreservesInputOrderWithConcurrentWorkers(t *testing.T) {
+	tmp := t.TempDir()
+	first := filepath.Join(tmp, "first.md")
+	second := filepath.Join(tmp, "second.md")
+	require.NoError(t, os.WriteFile(first, []byte("x"), 0o644))
+	require.NoError(t, os.WriteFile(second, []byte("x"), 0o644))
+
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("always", config.SeverityMedium, "found"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	scanner := NewScanner(compiled, config.DefaultConfig())
+	findings, err := scanner.ScanPaths(context.Background(), []string{second, first}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 2)
+	assert.Equal(t, filepath.Base(second), filepath.Base(findings[0].Path))
+	assert.Equal(t, filepath.Base(first), filepath.Base(findings[1].Path))
+}

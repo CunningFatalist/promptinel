@@ -6,7 +6,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/pathmatch"
@@ -51,8 +53,13 @@ func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns
 		return nil, err
 	}
 
+	wd, err := os.Getwd()
+	if err != nil {
+		wd = ""
+	}
+
 	scopeRoots := resolveScopeRoots(paths)
-	findings := make([]FileFinding, 0)
+	targets := make([]scanTarget, 0, len(files))
 	for _, filePath := range files {
 		select {
 		case <-ctx.Done():
@@ -60,38 +67,136 @@ func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns
 		default:
 		}
 
-		relativePath := filePath
-		if wd, err := os.Getwd(); err == nil {
-			if rel, relErr := filepath.Rel(wd, filePath); relErr == nil {
-				relativePath = rel
-			}
-		}
+		relativePath := relativePathFromWorkingDir(wd, filePath)
 		if !matchesFilters(relativePath, includePatterns, excludePatterns) {
 			continue
 		}
+		targets = append(targets, scanTarget{
+			index:        len(targets),
+			absolutePath: filePath,
+			relativePath: relativePath,
+		})
+	}
 
-		content, err := os.ReadFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("read file %q: %w", filePath, err)
-		}
+	return s.scanTargets(ctx, targets, scopeRoots)
+}
 
-		ruleFindings := rules.Evaluate(s.compiledRules, rules.Context{
-			Path:        relativePath,
-			Environment: s.environment,
-			TrustLevel:  s.trustLevel,
-		}, string(content))
-		for _, finding := range ruleFindings {
-			if scope := s.scopeForFile(relativePath, filePath, scopeRoots); scope != nil {
-				finding.Severity = scope.Severity
+type scanTarget struct {
+	index        int
+	absolutePath string
+	relativePath string
+}
+
+type scanResult struct {
+	index    int
+	findings []FileFinding
+	err      error
+}
+
+func (s *Scanner) scanTargets(ctx context.Context, targets []scanTarget, scopeRoots []string) ([]FileFinding, error) {
+	if len(targets) == 0 {
+		return nil, nil
+	}
+
+	workerCount := runtime.GOMAXPROCS(0)
+	if workerCount < 1 {
+		workerCount = 1
+	}
+	if workerCount > len(targets) {
+		workerCount = len(targets)
+	}
+
+	jobs := make(chan scanTarget)
+	results := make(chan scanResult, len(targets))
+	var workerGroup sync.WaitGroup
+	for i := 0; i < workerCount; i++ {
+		workerGroup.Add(1)
+		go func() {
+			defer workerGroup.Done()
+			for target := range jobs {
+				findings, err := s.scanSingleTarget(ctx, target, scopeRoots)
+				results <- scanResult{
+					index:    target.index,
+					findings: findings,
+					err:      err,
+				}
 			}
-			findings = append(findings, FileFinding{
-				Path:    relativePath,
-				Finding: finding,
-			})
+		}()
+	}
+
+	for _, target := range targets {
+		jobs <- target
+	}
+	close(jobs)
+
+	orderedFindings := make([][]FileFinding, len(targets))
+	errsByIndex := make([]error, len(targets))
+	for i := 0; i < len(targets); i++ {
+		result := <-results
+		orderedFindings[result.index] = result.findings
+		errsByIndex[result.index] = result.err
+	}
+
+	workerGroup.Wait()
+
+	for _, err := range errsByIndex {
+		if err != nil {
+			return nil, err
 		}
 	}
 
+	findings := make([]FileFinding, 0)
+	for _, bucket := range orderedFindings {
+		findings = append(findings, bucket...)
+	}
+
 	return findings, nil
+}
+
+func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scopeRoots []string) ([]FileFinding, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	content, err := os.ReadFile(target.absolutePath)
+	if err != nil {
+		return nil, fmt.Errorf("read file %q: %w", target.absolutePath, err)
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	ruleFindings := rules.Evaluate(s.compiledRules, rules.Context{
+		Path:        target.relativePath,
+		Environment: s.environment,
+		TrustLevel:  s.trustLevel,
+	}, string(content))
+
+	scope := s.scopeForFile(target.relativePath, target.absolutePath, scopeRoots)
+	findings := make([]FileFinding, 0, len(ruleFindings))
+	for _, finding := range ruleFindings {
+		if scope != nil {
+			finding.Severity = scope.Severity
+		}
+		findings = append(findings, FileFinding{
+			Path:    target.relativePath,
+			Finding: finding,
+		})
+	}
+
+	return findings, nil
+}
+
+func relativePathFromWorkingDir(workingDir string, filePath string) string {
+	relativePath := filePath
+	if workingDir == "" {
+		return relativePath
+	}
+	if rel, err := filepath.Rel(workingDir, filePath); err == nil {
+		return rel
+	}
+	return relativePath
 }
 
 func collectFiles(inputPaths []string) ([]string, error) {

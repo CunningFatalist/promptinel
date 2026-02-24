@@ -21,14 +21,38 @@ func (r customRegexRule) CheckTokens(_ Context, _ Segment, tokens []Token) []Fin
 	findings := make([]Finding, 0)
 	for _, token := range tokens {
 		matches := r.pattern.FindAllStringIndex(token.Value, -1)
-		for range matches {
+		for _, match := range matches {
 			findings = append(findings, Finding{
 				Message:  r.message,
-				Position: token.Position,
+				Position: positionFromTokenOffset(token.Position, token.Value, match[0]),
 			})
 		}
 	}
 	return findings
+}
+
+func positionFromTokenOffset(start Position, value string, byteOffset int) Position {
+	if byteOffset < 0 {
+		byteOffset = 0
+	}
+	if byteOffset > len(value) {
+		byteOffset = len(value)
+	}
+
+	position := start
+	for i, r := range value {
+		if i >= byteOffset {
+			break
+		}
+		if r == '\n' {
+			position.Line++
+			position.Column = 1
+			continue
+		}
+		position.Column++
+	}
+
+	return position
 }
 
 func compileCustomRule(cfg config.CustomRule) (Rule, error) {
