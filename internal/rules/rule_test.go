@@ -107,15 +107,6 @@ func Test_Rules_Evaluate_DispatchesPhaseChecks(t *testing.T) {
 }
 
 func Test_Rules_Evaluate_DocumentOnly_DoesNotBuildAnalysisArtifacts(t *testing.T) {
-	previousTemplatePattern := templateSegmentPattern
-	previousTokenPattern := tokenPattern
-	templateSegmentPattern = nil
-	tokenPattern = nil
-	t.Cleanup(func() {
-		templateSegmentPattern = previousTemplatePattern
-		tokenPattern = previousTokenPattern
-	})
-
 	compiled := []CompiledRule{
 		{
 			ID:       "doc-only",

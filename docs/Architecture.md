@@ -26,6 +26,7 @@ The key separation is:
 - `internal/config`: typed config model, defaults, validation
 - `internal/engine`: file collection/filtering plus per-file rule execution
 - `internal/rules`: rule contracts, compilation, multi-phase evaluation
+- `internal/lexer`: deterministic lexical + semantic tokenization with byte offsets
 - `internal/exitcode`: policy threshold mapping to process codes
 
 ## Engine Design
@@ -33,7 +34,7 @@ The key separation is:
 `internal/engine.Scanner` is intentionally small and deterministic:
 
 - resolves input paths
-- recursively collects files (deduplicated and canonicalized)
+- recursively collects files (deduplicated via canonical path keys while preserving cleaned scan paths)
 - applies include/exclude path filters
 - reads file content
 - evaluates compiled rules with contextual metadata (path, environment, trust)
@@ -58,6 +59,13 @@ Core interfaces in `internal/rules/rule.go`:
 - `TokenRule`: lexical checks (`CheckTokens`)
 - `FlowRule`: full analyzed-document checks (`CheckFlow`)
 
+`Token` values provided to `TokenRule` include:
+
+- semantic `Type` (`lexer.TokenType`)
+- `Value`
+- byte `Start`/`End` offsets
+- line/column `Position`
+
 Compilation in `internal/rules/registry.go` binds configured severity and enabled-state into `CompiledRule` values. Each
 compiled rule stores only the phase callbacks actually implemented by that rule.
 
@@ -73,7 +81,7 @@ flowchart TD
     A["DocumentView"] --> B["Document checks"]
     A --> C["segmentDocument (lazy)"]
     C --> D["Segment checks"]
-    C --> E["tokenizeSegment (lazy)"]
+    C --> E["tokenizeSegment (lazy: lexer.Lex + lexer.Classify)"]
     E --> F["Token checks"]
     C --> G["AnalyzedDocument (lazy)"]
     E --> G
@@ -91,17 +99,30 @@ Key decisions:
 - Rule metadata is attached after callbacks, centralizing severity and ID assignment.
 - Findings are stably sorted (`rule ID`, `line`, `column`, `message`) to guarantee deterministic output.
 
+## Lexer Architecture
+
+Tokenization is implemented in `internal/lexer` and is explicitly deterministic and offline:
+
+- single-pass UTF-8 lexing (`lexer.Lex`) without global `[]rune` conversion
+- exact byte offsets on every token
+- explicit detection for zero-width and control characters
+- semantic post-processing (`lexer.Classify`) for URLs, placeholders, base64-like values, shell commands, paths, and code blocks
+- Unicode grapheme segmentation helper via `github.com/rivo/uniseg` (`Graphemes`)
+
+The rules layer consumes these tokens; it does not perform raw-string lexical tokenization.
+
 ## Built-In and Custom Rules
 
 Built-ins are composed in `internal/rules/builtin` and registered centrally (`builtin.NewRegistry`).
 
 Current built-in examples:
 
-- `no-zero-width` (document phase): detects hidden zero-width characters
-- `no-unsafe-templates` (segment phase): detects risky signals in template expressions
+- `no-zero-width` (token phase): detects zero-width tokens emitted by the lexer
+- `no-unsafe-templates` (token phase over template segments): detects risky execution/exfiltration signals in template expressions
 
-Custom regex rules are compiled from config (`custom-rules`) into first-class rule implementations, validated for regex
-correctness and duplicate IDs.
+Custom regex rules are compiled from config (`custom-rules`) into first-class token-phase rule implementations,
+validated for regex correctness and duplicate IDs. Regex matching is performed on `Token.Value` rather than on raw file
+content.
 
 ## Configuration and Policy Decisions
 

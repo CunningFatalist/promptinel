@@ -4,6 +4,7 @@ go 1.25.7
 
 require (
 	github.com/fatih/color v1.18.0
+	github.com/rivo/uniseg v0.4.7
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1

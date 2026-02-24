@@ -1,9 +1,8 @@
 package nozerowidth
 
 import (
-	"strings"
-
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/lexer"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 )
 
@@ -14,7 +13,7 @@ const (
 	description = "Invisible zero-width characters can hide instructions and make reviews unreliable."
 )
 
-// Rule detects zero-width characters in full document content.
+// Rule detects zero-width characters in tokenized content.
 type Rule struct{}
 
 // New returns the no-zero-width rule instance.
@@ -38,22 +37,17 @@ func Metadata() rules.Metadata {
 	}
 }
 
-// CheckDocument detects zero-width characters in content.
-func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Finding {
-	content := doc.Content
+// CheckTokens detects zero-width tokens in segments.
+func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
 	findings := make([]rules.Finding, 0)
-	for i, candidate := range content {
-		if !isZeroWidth(candidate) {
+	for _, token := range tokens {
+		if token.Type != lexer.TokenZeroWidth {
 			continue
 		}
 		findings = append(findings, rules.Finding{
 			Message:  "Zero-width character detected",
-			Position: rules.PositionFromByteOffset(content, i),
+			Position: token.Position,
 		})
 	}
 	return findings
-}
-
-func isZeroWidth(r rune) bool {
-	return strings.ContainsRune("\u200B\u200C\u200D\u2060\uFEFF", r)
 }

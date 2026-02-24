@@ -168,28 +168,27 @@ Segmentation enables context-aware rule execution.
 
 # 4. Tokenization Layer
 
-Each segment is tokenized into lexical units.
+Each segment is tokenized into lexical units by a deterministic lexer in
+`internal/lexer`.
 
-This is not NLP. It is deterministic lexical scanning.
+The lexer:
 
-Token types may include:
+- operates in a single pass over UTF-8 input
+- preserves exact byte offsets for every token
+- detects zero-width and control characters
+- uses `github.com/rivo/uniseg` only for Unicode grapheme segmentation helpers
 
-- Word
-- Operator
-- URL
-- ShellOperator
-- Placeholder
-- Base64Like
-- StringLiteral
+Semantic classification upgrades lexical tokens into categories like URL,
+placeholder, path, shell command, base64, and markdown code block.
 
 ```
-
 type Token struct {
-Value    string
-Kind     TokenKind
-Position Position
+	Value    string
+	Type     lexer.TokenType
+	Start    int
+	End      int
+	Position Position
 }
-
 ```
 
 Tokenization enables:

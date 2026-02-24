@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/lexer"
 )
 
 // Metadata describes a rule and how it should be presented to users.
@@ -50,21 +51,12 @@ type Segment struct {
 	ByteOffset int
 }
 
-// TokenKind identifies the lexical type of a token.
-type TokenKind string
-
-const (
-	TokenKindWord        TokenKind = "word"
-	TokenKindOperator    TokenKind = "operator"
-	TokenKindURL         TokenKind = "url"
-	TokenKindPlaceholder TokenKind = "placeholder"
-	TokenKindBase64Like  TokenKind = "base64_like"
-)
-
 // Token is a lexical unit inside a segment.
 type Token struct {
 	Value    string
-	Kind     TokenKind
+	Type     lexer.TokenType
+	Start    int
+	End      int
 	Position Position
 }
 

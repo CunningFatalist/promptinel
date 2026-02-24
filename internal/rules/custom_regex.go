@@ -17,14 +17,16 @@ func (r customRegexRule) Metadata() Metadata {
 	return r.metadata
 }
 
-func (r customRegexRule) CheckDocument(_ Context, doc DocumentView) []Finding {
-	matches := r.pattern.FindAllStringIndex(doc.Content, -1)
-	findings := make([]Finding, 0, len(matches))
-	for _, match := range matches {
-		findings = append(findings, Finding{
-			Message:  r.message,
-			Position: PositionFromByteOffset(doc.Content, match[0]),
-		})
+func (r customRegexRule) CheckTokens(_ Context, _ Segment, tokens []Token) []Finding {
+	findings := make([]Finding, 0)
+	for _, token := range tokens {
+		matches := r.pattern.FindAllStringIndex(token.Value, -1)
+		for range matches {
+			findings = append(findings, Finding{
+				Message:  r.message,
+				Position: token.Position,
+			})
+		}
 	}
 	return findings
 }

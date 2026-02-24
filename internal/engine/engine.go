@@ -131,12 +131,13 @@ func collectFiles(inputPaths []string) ([]string, error) {
 }
 
 func appendUniqueFile(files []string, seen map[string]struct{}, path string) []string {
-	canonicalPath := canonicalizePath(path)
+	cleanPath := filepath.Clean(path)
+	canonicalPath := canonicalizePath(cleanPath)
 	if _, exists := seen[canonicalPath]; exists {
 		return files
 	}
 	seen[canonicalPath] = struct{}{}
-	return append(files, canonicalPath)
+	return append(files, cleanPath)
 }
 
 func canonicalizePath(path string) string {

@@ -1,97 +1,173 @@
 package rules
 
 import (
-	"regexp"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/CunningFatalist/promptinel/internal/lexer"
 )
 
-var templateSegmentPattern = regexp.MustCompile(`\{\{[\s\S]*?\}\}|\$\{[\s\S]*?\}|<%[\s\S]*?%>`)
-var tokenPattern = regexp.MustCompile(`https?://[^\s"'<>]+|{{|}}|\$\{|<%|%>|\|\||&&|[|&;(){}<>]|[A-Za-z0-9_./:+-]+`)
-var base64LikePattern = regexp.MustCompile(`^[A-Za-z0-9+/]{40,}={0,2}$`)
+type templateBoundary struct {
+	open  string
+	close string
+}
+
+var templateBoundaries = [...]templateBoundary{
+	{open: "{{", close: "}}"},
+	{open: "${", close: "}"},
+	{open: "<%", close: "%>"},
+}
 
 func segmentDocument(content string) []Segment {
-	matches := templateSegmentPattern.FindAllStringIndex(content, -1)
-	if len(matches) == 0 {
-		return []Segment{
-			{
-				Type:       SegmentTypePlainText,
-				Content:    content,
-				Position:   PositionFromByteOffset(content, 0),
-				ByteOffset: 0,
-			},
-		}
+	if content == "" {
+		return []Segment{{
+			Type:       SegmentTypePlainText,
+			Content:    "",
+			Position:   PositionFromByteOffset(content, 0),
+			ByteOffset: 0,
+		}}
 	}
 
-	segments := make([]Segment, 0, len(matches)*2+1)
+	segments := make([]Segment, 0, len(content)/16+1)
 	cursor := 0
-	for _, match := range matches {
-		if match[0] > cursor {
+
+	for cursor < len(content) {
+		start, boundary, found := findNextTemplateStart(content, cursor)
+		if !found {
 			segments = append(segments, Segment{
 				Type:       SegmentTypePlainText,
-				Content:    content[cursor:match[0]],
+				Content:    content[cursor:],
+				Position:   PositionFromByteOffset(content, cursor),
+				ByteOffset: cursor,
+			})
+			break
+		}
+
+		if start > cursor {
+			segments = append(segments, Segment{
+				Type:       SegmentTypePlainText,
+				Content:    content[cursor:start],
 				Position:   PositionFromByteOffset(content, cursor),
 				ByteOffset: cursor,
 			})
 		}
 
+		searchFrom := start + len(boundary.open)
+		closingRelative := strings.Index(content[searchFrom:], boundary.close)
+		if closingRelative < 0 {
+			segments = append(segments, Segment{
+				Type:       SegmentTypePlainText,
+				Content:    content[start:],
+				Position:   PositionFromByteOffset(content, start),
+				ByteOffset: start,
+			})
+			break
+		}
+
+		end := searchFrom + closingRelative + len(boundary.close)
 		segments = append(segments, Segment{
 			Type:       SegmentTypeTemplate,
-			Content:    content[match[0]:match[1]],
-			Position:   PositionFromByteOffset(content, match[0]),
-			ByteOffset: match[0],
+			Content:    content[start:end],
+			Position:   PositionFromByteOffset(content, start),
+			ByteOffset: start,
 		})
-		cursor = match[1]
-	}
-
-	if cursor < len(content) {
-		segments = append(segments, Segment{
-			Type:       SegmentTypePlainText,
-			Content:    content[cursor:],
-			Position:   PositionFromByteOffset(content, cursor),
-			ByteOffset: cursor,
-		})
+		cursor = end
 	}
 
 	return segments
 }
 
+func findNextTemplateStart(content string, cursor int) (int, templateBoundary, bool) {
+	bestStart := len(content)
+	var best templateBoundary
+	found := false
+
+	for _, boundary := range templateBoundaries {
+		relative := strings.Index(content[cursor:], boundary.open)
+		if relative < 0 {
+			continue
+		}
+		start := cursor + relative
+		if !found || start < bestStart {
+			bestStart = start
+			best = boundary
+			found = true
+		}
+	}
+
+	return bestStart, best, found
+}
+
 func tokenizeSegment(documentContent string, segment Segment) []Token {
-	matches := tokenPattern.FindAllStringIndex(segment.Content, -1)
-	tokens := make([]Token, 0, len(matches))
-	for _, match := range matches {
-		value := segment.Content[match[0]:match[1]]
-		byteOffset := segment.ByteOffset + match[0]
+	lexed := lexer.Classify(lexer.Lex(segment.Content))
+	tokens := make([]Token, 0, len(lexed))
+	tracker := newPositionTracker(documentContent)
+
+	for _, token := range lexed {
+		absoluteStart := segment.ByteOffset + token.Start
+		absoluteEnd := segment.ByteOffset + token.End
 		tokens = append(tokens, Token{
-			Value:    value,
-			Kind:     classifyToken(value),
-			Position: PositionFromByteOffset(documentContent, byteOffset),
+			Value:    token.Value,
+			Type:     token.Type,
+			Start:    absoluteStart,
+			End:      absoluteEnd,
+			Position: tracker.positionAt(absoluteStart),
 		})
 	}
+
 	return tokens
 }
 
-func classifyToken(value string) TokenKind {
-	lowered := strings.ToLower(value)
+// positionTracker maps byte offsets to line/column positions in amortized O(n)
+// across a token stream. This avoids repeatedly rescanning from byte 0 for every token.
+type positionTracker struct {
+	content string
+	index   int
+	line    int
+	column  int
+}
 
-	switch {
-	case strings.HasPrefix(lowered, "http://"), strings.HasPrefix(lowered, "https://"):
-		return TokenKindURL
-	case value == "{{" || value == "}}" || value == "${" || value == "<%" || value == "%>":
-		return TokenKindPlaceholder
-	case base64LikePattern.MatchString(value):
-		return TokenKindBase64Like
-	case isOperatorToken(value):
-		return TokenKindOperator
-	default:
-		return TokenKindWord
+func newPositionTracker(content string) *positionTracker {
+	return &positionTracker{
+		content: content,
+		index:   0,
+		line:    1,
+		column:  1,
 	}
 }
 
-func isOperatorToken(value string) bool {
-	switch value {
-	case "|", "||", "&", "&&", ";", "(", ")", "{", "}", "<", ">":
-		return true
-	default:
-		return false
+// positionAt returns the 1-based line/column for byteOffset while advancing from
+// the current cursor. Tokenization asks for non-decreasing offsets, so this stays
+// linear overall; if a caller asks for an earlier offset, the tracker rewinds.
+func (p *positionTracker) positionAt(byteOffset int) Position {
+	if byteOffset < 0 {
+		byteOffset = 0
 	}
+	if byteOffset > len(p.content) {
+		byteOffset = len(p.content)
+	}
+
+	if byteOffset < p.index {
+		p.index = 0
+		p.line = 1
+		p.column = 1
+	}
+
+	for p.index < byteOffset {
+		r, size := utf8.DecodeRuneInString(p.content[p.index:])
+		if r == utf8.RuneError && size == 1 {
+			p.index++
+			p.column++
+			continue
+		}
+		p.index += size
+		if r == '\n' {
+			p.line++
+			p.column = 1
+			continue
+		}
+		p.column++
+	}
+
+	return Position{Line: p.line, Column: p.column}
 }
