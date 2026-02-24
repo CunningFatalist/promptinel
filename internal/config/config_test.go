@@ -185,6 +185,7 @@ func Test_Config_DefaultConfig(t *testing.T) {
 	assert.Equal(t, TrustLevelTrusted, cfg.Trust.LocalFiles)
 	assert.Equal(t, TrustLevelUntrusted, cfg.Trust.RemoteIncludes)
 	assert.Equal(t, TrustLevelTainted, cfg.Trust.UserInputPlaceholders)
+	assert.Equal(t, DefaultMaxFileSizeBytes, cfg.Limits.MaxFileSizeBytes)
 
 	assert.Empty(t, cfg.Scopes)
 	assert.Empty(t, cfg.Rules)
@@ -218,6 +219,9 @@ trust:
   local-files: untrusted
   remote-includes: tainted
   user-input-placeholders: trusted
+
+limits:
+  max_file_size_bytes: 12345
 
 scopes:
   - path: agents/**
@@ -255,6 +259,7 @@ custom-rules:
 	assert.Equal(t, TrustLevelUntrusted, cfg.Trust.LocalFiles)
 	assert.Equal(t, TrustLevelTainted, cfg.Trust.RemoteIncludes)
 	assert.Equal(t, TrustLevelTrusted, cfg.Trust.UserInputPlaceholders)
+	assert.Equal(t, int64(12345), cfg.Limits.MaxFileSizeBytes)
 
 	require.Len(t, cfg.Scopes, 2)
 	assert.Equal(t, "agents/**", cfg.Scopes[0].Path)
@@ -425,6 +430,14 @@ func Test_Config_Validate_InvalidUserInputPlaceholders(t *testing.T) {
 	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid trust.user-input-placeholders level")
+}
+
+func Test_Config_Validate_InvalidMaxFileSize(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Limits.MaxFileSizeBytes = 0
+	err := cfg.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid limits.max_file_size_bytes")
 }
 
 func Test_Config_Validate_InvalidScopeSeverity(t *testing.T) {

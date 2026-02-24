@@ -15,11 +15,14 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/rules"
 )
 
+const oversizedFileFindingID = "scan-file-too-large"
+
 // Scanner evaluates configured rules against files.
 type Scanner struct {
 	compiledRules []rules.CompiledRule
 	environment   config.Environment
 	trustLevel    config.TrustLevel
+	maxFileSize   int64
 	config        *config.Config
 }
 
@@ -33,15 +36,20 @@ type FileFinding struct {
 func NewScanner(compiledRules []rules.CompiledRule, cfg *config.Config) *Scanner {
 	environment := config.Environment{}
 	trustLevel := config.TrustLevelTrusted
+	maxFileSize := config.DefaultMaxFileSizeBytes
 	if cfg != nil {
 		environment = cfg.Environment
 		trustLevel = cfg.Trust.LocalFiles
+		if cfg.Limits.MaxFileSizeBytes > 0 {
+			maxFileSize = cfg.Limits.MaxFileSizeBytes
+		}
 	}
 
 	return &Scanner{
 		compiledRules: compiledRules,
 		environment:   environment,
 		trustLevel:    trustLevel,
+		maxFileSize:   maxFileSize,
 		config:        cfg,
 	}
 }
@@ -156,6 +164,22 @@ func (s *Scanner) scanTargets(ctx context.Context, targets []scanTarget, scopeRo
 func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scopeRoots []string) ([]FileFinding, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+
+	fileInfo, err := os.Stat(target.absolutePath)
+	if err != nil {
+		return nil, fmt.Errorf("stat file %q: %w", target.absolutePath, err)
+	}
+	if fileInfo.Size() > s.maxFileSize {
+		return []FileFinding{{
+			Path: target.relativePath,
+			Finding: rules.Finding{
+				ID:       oversizedFileFindingID,
+				Severity: config.SeverityLow,
+				Message:  fmt.Sprintf("File skipped: size %d bytes exceeds limits.max_file_size_bytes (%d)", fileInfo.Size(), s.maxFileSize),
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		}}, nil
 	}
 
 	content, err := os.ReadFile(target.absolutePath)

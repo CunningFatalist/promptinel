@@ -95,6 +95,31 @@ func Test_Engine_ScanPaths_ContextCanceled(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 }
 
+func Test_Engine_ScanPaths_SkipsOversizedFileWithExplicitFinding(t *testing.T) {
+	tmp := t.TempDir()
+	file := filepath.Join(tmp, "large.md")
+	require.NoError(t, os.WriteFile(file, []byte("123456789"), 0o644))
+
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("always", config.SeverityHigh, "m"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	cfg := config.DefaultConfig()
+	cfg.Limits.MaxFileSizeBytes = 4
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanPaths(context.Background(), []string{tmp}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, oversizedFileFindingID, findings[0].ID)
+	assert.Equal(t, config.SeverityLow, findings[0].Severity)
+	assert.Contains(t, findings[0].Message, "File skipped")
+	assert.Equal(t, 1, findings[0].Position.Line)
+	assert.Equal(t, 1, findings[0].Position.Column)
+}
+
 func Test_Engine_ScanPaths_AppliesScopeSeverityOverride(t *testing.T) {
 	tmp := t.TempDir()
 	nestedDir := filepath.Join(tmp, "docs", "nested")

@@ -27,8 +27,9 @@ const (
 
 // Config file constants.
 const (
-	DefaultConfigName = ".promptinel"
-	ConfigType        = "yaml"
+	DefaultConfigName             = ".promptinel"
+	ConfigType                    = "yaml"
+	DefaultMaxFileSizeBytes int64 = 5 * 1024 * 1024
 )
 
 // Severity represents the severity level of a finding or rule.
@@ -58,6 +59,11 @@ type Trust struct {
 	UserInputPlaceholders TrustLevel `mapstructure:"user-input-placeholders"`
 }
 
+// Limits defines scanner guardrails.
+type Limits struct {
+	MaxFileSizeBytes int64 `mapstructure:"max_file_size_bytes"`
+}
+
 // Scope defines severity adjustments based on file path patterns.
 type Scope struct {
 	Path     string   `mapstructure:"path"`
@@ -84,6 +90,7 @@ type Config struct {
 	Policy      Policy       `mapstructure:"policy"`
 	Environment Environment  `mapstructure:"environment"`
 	Trust       Trust        `mapstructure:"trust"`
+	Limits      Limits       `mapstructure:"limits"`
 	Scopes      []Scope      `mapstructure:"scopes"`
 	Rules       []Rule       `mapstructure:"rules"`
 	CustomRules []CustomRule `mapstructure:"custom-rules"`
@@ -106,6 +113,9 @@ func DefaultConfig() *Config {
 			LocalFiles:            TrustLevelTrusted,
 			RemoteIncludes:        TrustLevelUntrusted,
 			UserInputPlaceholders: TrustLevelTainted,
+		},
+		Limits: Limits{
+			MaxFileSizeBytes: DefaultMaxFileSizeBytes,
 		},
 		Scopes:      []Scope{},
 		Rules:       []Rule{},
@@ -177,6 +187,7 @@ func setDefaults(v *viper.Viper, cfg *Config) {
 	v.SetDefault("trust.local-files", cfg.Trust.LocalFiles)
 	v.SetDefault("trust.remote-includes", cfg.Trust.RemoteIncludes)
 	v.SetDefault("trust.user-input-placeholders", cfg.Trust.UserInputPlaceholders)
+	v.SetDefault("limits.max_file_size_bytes", cfg.Limits.MaxFileSizeBytes)
 
 	v.SetDefault("scopes", cfg.Scopes)
 	v.SetDefault("rules", cfg.Rules)
@@ -287,6 +298,9 @@ func (c *Config) Validate() error {
 	}
 	if !c.Trust.UserInputPlaceholders.IsValid() {
 		return fmt.Errorf("invalid trust.user-input-placeholders level: %s", c.Trust.UserInputPlaceholders)
+	}
+	if c.Limits.MaxFileSizeBytes <= 0 {
+		return fmt.Errorf("invalid limits.max_file_size_bytes: must be greater than 0")
 	}
 
 	for i, scope := range c.Scopes {

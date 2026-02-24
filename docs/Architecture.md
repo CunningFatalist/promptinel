@@ -160,4 +160,4 @@ Natural next architecture steps:
 - implement `sanitize` and `baseline` command internals (currently placeholders)
 - add JSON/SARIF output modes
 - expand flow-level rules for deeper cross-segment reasoning
-- add large-file guardrails and configurable worker limits
+- add configurable worker limits

@@ -166,6 +166,9 @@ trust:
   remote-includes: untrusted
   user-input-placeholders: tainted
 
+limits:
+  max_file_size_bytes: 5242880
+
 scopes:
   - path: agents/**
     severity: high
@@ -266,6 +269,17 @@ trust:
   remote-includes: untrusted
   user-input-placeholders: tainted
 ```
+
+### Limits
+
+Use limits to guard scanner resource usage.
+
+```yaml
+limits:
+  max_file_size_bytes: 5242880 # 5 MiB
+```
+
+Files above the limit are skipped and reported with a low-severity scanner finding.
 
 ### Scopes
 
