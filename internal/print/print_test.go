@@ -36,11 +36,17 @@ func Test_Print_SuccessMessage(t *testing.T) {
 }
 
 func Test_Print_ErrorMessage(t *testing.T) {
-	var buf bytes.Buffer
-	color.Output = &buf
+	old := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
 
 	ErrorMessage("Error")
 
+	_ = w.Close()
+	os.Stderr = old
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
 	assert.True(t, strings.Contains(buf.String(), "Error"))
 }
 

@@ -2,6 +2,7 @@ package print
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/fatih/color"
 )
@@ -18,7 +19,7 @@ func SuccessMessage(message string) {
 
 // ErrorMessage prints an error message in red.
 func ErrorMessage(message string) {
-	color.Red(message)
+	_, _ = color.New(color.FgRed).Fprintln(os.Stderr, message)
 }
 
 // WarningMessage prints a warning message in yellow.
