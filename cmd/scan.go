@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/engine"
@@ -58,12 +59,27 @@ func scanOptionsFromCommand(cmd *cobra.Command) (scanOptions, error) {
 	if err != nil {
 		return scanOptions{}, fmt.Errorf("read exclude flag: %w", err)
 	}
+	if err := validateGlobPatterns("include", includes); err != nil {
+		return scanOptions{}, err
+	}
+	if err := validateGlobPatterns("exclude", excludes); err != nil {
+		return scanOptions{}, err
+	}
 
 	return scanOptions{
 		configFile: configFile,
 		includes:   includes,
 		excludes:   excludes,
 	}, nil
+}
+
+func validateGlobPatterns(flagName string, patterns []string) error {
+	for i, pattern := range patterns {
+		if _, err := filepath.Match(pattern, ""); err != nil {
+			return fmt.Errorf("invalid %s pattern at index %d (%q): %w", flagName, i, pattern, err)
+		}
+	}
+	return nil
 }
 
 func runScanWithOptions(args []string, options scanOptions) error {

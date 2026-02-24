@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
@@ -55,5 +56,43 @@ func Test_Cmd_ScanOptionsFromCommand_ReadsFlagValues(t *testing.T) {
 	}
 	if len(options.excludes) != 1 || options.excludes[0] != "*.txt" {
 		t.Fatalf("unexpected excludes: %#v", options.excludes)
+	}
+}
+
+func Test_Cmd_ScanOptionsFromCommand_ReturnsErrorForInvalidIncludeGlob(t *testing.T) {
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+
+	if err := command.Flags().Set("include", "invalid["); err != nil {
+		t.Fatalf("set include flag: %v", err)
+	}
+
+	_, err := scanOptionsFromCommand(command)
+	if err == nil {
+		t.Fatal("expected include glob validation error")
+	}
+	if !strings.Contains(err.Error(), "invalid include pattern") {
+		t.Fatalf("expected include validation error, got %v", err)
+	}
+}
+
+func Test_Cmd_ScanOptionsFromCommand_ReturnsErrorForInvalidExcludeGlob(t *testing.T) {
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+
+	if err := command.Flags().Set("exclude", "invalid["); err != nil {
+		t.Fatalf("set exclude flag: %v", err)
+	}
+
+	_, err := scanOptionsFromCommand(command)
+	if err == nil {
+		t.Fatal("expected exclude glob validation error")
+	}
+	if !strings.Contains(err.Error(), "invalid exclude pattern") {
+		t.Fatalf("expected exclude validation error, got %v", err)
 	}
 }
