@@ -238,3 +238,151 @@ func Test_Rules_Compile_IncludesCustomRules(t *testing.T) {
 	assert.Equal(t, config.SeverityHigh, findings[0].Severity)
 	assert.Equal(t, "curl found", findings[0].Message)
 }
+
+func Test_Rules_CompileRule_SetsImplementedPhaseChecks(t *testing.T) {
+	tests := []struct {
+		name        string
+		rule        Rule
+		hasDocument bool
+		hasSegment  bool
+		hasTokens   bool
+		hasFlow     bool
+	}{
+		{
+			name:        "document",
+			rule:        documentTestRule{meta: Metadata{ID: "document"}},
+			hasDocument: true,
+		},
+		{
+			name:       "segment",
+			rule:       segmentTestRule{meta: Metadata{ID: "segment"}},
+			hasSegment: true,
+		},
+		{
+			name:      "tokens",
+			rule:      tokenTestRule{meta: Metadata{ID: "tokens"}},
+			hasTokens: true,
+		},
+		{
+			name:    "flow",
+			rule:    flowTestRule{meta: Metadata{ID: "flow"}},
+			hasFlow: true,
+		},
+		{
+			name:        "document-and-flow",
+			rule:        documentAndFlowTestRule{meta: Metadata{ID: "document-and-flow"}},
+			hasDocument: true,
+			hasFlow:     true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			compiled := compileRule(tc.rule, "compiled-id", config.SeverityHigh)
+
+			assert.Equal(t, "compiled-id", compiled.ID)
+			assert.Equal(t, config.SeverityHigh, compiled.Severity)
+			assert.Equal(t, tc.hasDocument, compiled.checkDocument != nil)
+			assert.Equal(t, tc.hasSegment, compiled.checkSegment != nil)
+			assert.Equal(t, tc.hasTokens, compiled.checkTokens != nil)
+			assert.Equal(t, tc.hasFlow, compiled.checkFlow != nil)
+		})
+	}
+}
+
+func Test_Rules_SupportsAtLeastOnePhase_ReturnsExpectedResult(t *testing.T) {
+	tests := []struct {
+		name     string
+		rule     Rule
+		expected bool
+	}{
+		{
+			name:     "no-phase",
+			rule:     noPhaseTestRule{meta: Metadata{ID: "none"}},
+			expected: false,
+		},
+		{
+			name:     "document",
+			rule:     documentTestRule{meta: Metadata{ID: "document"}},
+			expected: true,
+		},
+		{
+			name:     "segment",
+			rule:     segmentTestRule{meta: Metadata{ID: "segment"}},
+			expected: true,
+		},
+		{
+			name:     "tokens",
+			rule:     tokenTestRule{meta: Metadata{ID: "tokens"}},
+			expected: true,
+		},
+		{
+			name:     "flow",
+			rule:     flowTestRule{meta: Metadata{ID: "flow"}},
+			expected: true,
+		},
+		{
+			name:     "document-and-flow",
+			rule:     documentAndFlowTestRule{meta: Metadata{ID: "document-and-flow"}},
+			expected: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, supportsAtLeastOnePhase(tc.rule))
+		})
+	}
+}
+
+type segmentTestRule struct {
+	meta Metadata
+}
+
+func (r segmentTestRule) Metadata() Metadata {
+	return r.meta
+}
+
+func (r segmentTestRule) CheckSegment(_ Context, _ Segment) []Finding {
+	return nil
+}
+
+type tokenTestRule struct {
+	meta Metadata
+}
+
+func (r tokenTestRule) Metadata() Metadata {
+	return r.meta
+}
+
+func (r tokenTestRule) CheckTokens(_ Context, _ Segment, _ []Token) []Finding {
+	return nil
+}
+
+type flowTestRule struct {
+	meta Metadata
+}
+
+func (r flowTestRule) Metadata() Metadata {
+	return r.meta
+}
+
+func (r flowTestRule) CheckFlow(_ Context, _ AnalyzedDocument) []Finding {
+	return nil
+}
+
+type documentAndFlowTestRule struct {
+	meta Metadata
+}
+
+func (r documentAndFlowTestRule) Metadata() Metadata {
+	return r.meta
+}
+
+func (r documentAndFlowTestRule) CheckDocument(_ Context, _ DocumentView) []Finding {
+	return nil
+}
+
+func (r documentAndFlowTestRule) CheckFlow(_ Context, _ AnalyzedDocument) []Finding {
+	return nil
+}

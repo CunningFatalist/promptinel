@@ -27,6 +27,7 @@ func (r *Registry) Register(rule Rule) error {
 	if r == nil {
 		return fmt.Errorf("registry is nil")
 	}
+
 	if isNilRule(rule) {
 		return fmt.Errorf("rule is nil")
 	}
@@ -141,52 +142,63 @@ func (r *Registry) Compile(cfg *config.Config) ([]CompiledRule, error) {
 }
 
 func compileRule(rule Rule, id string, severity config.Severity) CompiledRule {
-	compiled := CompiledRule{
-		ID:       id,
-		Severity: severity,
-	}
+	checks := extractPhaseChecks(rule)
 
-	if documentRule, ok := rule.(DocumentRule); ok {
-		compiled.checkDocument = documentRule.CheckDocument
+	return CompiledRule{
+		ID:            id,
+		Severity:      severity,
+		checkDocument: checks.document,
+		checkSegment:  checks.segment,
+		checkTokens:   checks.tokens,
+		checkFlow:     checks.flow,
 	}
-	if segmentRule, ok := rule.(SegmentRule); ok {
-		compiled.checkSegment = segmentRule.CheckSegment
-	}
-	if tokenRule, ok := rule.(TokenRule); ok {
-		compiled.checkTokens = tokenRule.CheckTokens
-	}
-	if flowRule, ok := rule.(FlowRule); ok {
-		compiled.checkFlow = flowRule.CheckFlow
-	}
-
-	return compiled
 }
 
 func supportsAtLeastOnePhase(rule Rule) bool {
-	if _, ok := rule.(DocumentRule); ok {
-		return true
-	}
-	if _, ok := rule.(SegmentRule); ok {
-		return true
-	}
-	if _, ok := rule.(TokenRule); ok {
-		return true
-	}
-	if _, ok := rule.(FlowRule); ok {
-		return true
-	}
-	return false
+	return extractPhaseChecks(rule).hasAny()
 }
 
 func isNilRule(rule Rule) bool {
 	if rule == nil {
 		return true
 	}
-	ruleValue := reflect.ValueOf(rule)
-	switch ruleValue.Kind() {
-	case reflect.Ptr, reflect.Interface, reflect.Slice, reflect.Map, reflect.Func:
-		return ruleValue.IsNil()
+
+	rv := reflect.ValueOf(rule)
+
+	switch rv.Kind() {
+	case reflect.Ptr, reflect.Interface, reflect.Slice, reflect.Map, reflect.Func, reflect.Chan:
+		return rv.IsNil()
 	default:
 		return false
 	}
+}
+
+type phaseChecks struct {
+	document func(Context, DocumentView) []Finding
+	segment  func(Context, Segment) []Finding
+	tokens   func(Context, Segment, []Token) []Finding
+	flow     func(Context, AnalyzedDocument) []Finding
+}
+
+func (p phaseChecks) hasAny() bool {
+	return p.document != nil || p.segment != nil || p.tokens != nil || p.flow != nil
+}
+
+func extractPhaseChecks(rule Rule) phaseChecks {
+	var checks phaseChecks
+
+	if documentRule, ok := rule.(DocumentRule); ok {
+		checks.document = documentRule.CheckDocument
+	}
+	if segmentRule, ok := rule.(SegmentRule); ok {
+		checks.segment = segmentRule.CheckSegment
+	}
+	if tokenRule, ok := rule.(TokenRule); ok {
+		checks.tokens = tokenRule.CheckTokens
+	}
+	if flowRule, ok := rule.(FlowRule); ok {
+		checks.flow = flowRule.CheckFlow
+	}
+
+	return checks
 }
