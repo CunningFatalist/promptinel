@@ -6,6 +6,6 @@ COPY . .
 
 RUN go mod download
 
-RUN curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.10.1
+RUN GOBIN=$(go env GOPATH)/bin go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.10.1
 
 ENTRYPOINT [ "tail", "-f", "/dev/null" ]
