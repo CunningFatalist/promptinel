@@ -46,6 +46,8 @@ Your task is considered complete when:
 - Documentation is updated
 - Test coverage is above 85% for new code
 
+**Tip:** Run required checks with `make fmt fix vet lint test`.
+
 ## General Philosophy
 
 - Do things the Go way

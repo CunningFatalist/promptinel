@@ -286,7 +286,7 @@ func (c *Config) Validate() error {
 	if !c.Policy.WarnOn.IsValid() {
 		return fmt.Errorf("invalid policy.warn-on severity: %s", c.Policy.WarnOn)
 	}
-	if policySeverityRank(c.Policy.FailOn) < policySeverityRank(c.Policy.WarnOn) {
+	if !SeverityAtLeast(c.Policy.FailOn, c.Policy.WarnOn) {
 		return fmt.Errorf("invalid policy severity ordering: fail-on (%s) must be greater than or equal to warn-on (%s)", c.Policy.FailOn, c.Policy.WarnOn)
 	}
 
@@ -365,17 +365,6 @@ func validateUniqueCustomRuleIDs(customRules []CustomRule) error {
 		seenRuleIDs[customRule.ID] = i
 	}
 	return nil
-}
-
-func policySeverityRank(severity Severity) int {
-	switch severity {
-	case SeverityHigh:
-		return 3
-	case SeverityMedium:
-		return 2
-	default:
-		return 1
-	}
 }
 
 // GetRuleByID returns the rule with the given ID, or nil if not found.

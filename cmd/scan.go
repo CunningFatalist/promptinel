@@ -157,7 +157,19 @@ func runSharedScan(args []string, options sharedScanOptions) ([]engine.FileFindi
 		return nil, nil, fmt.Errorf("scan files: %w", err)
 	}
 
+	findings = filterFindingsByMinimumSeverity(findings, cfg.Policy.WarnOn)
+
 	return findings, cfg, nil
+}
+
+func filterFindingsByMinimumSeverity(findings []engine.FileFinding, minSeverity config.Severity) []engine.FileFinding {
+	filtered := make([]engine.FileFinding, 0, len(findings))
+	for _, finding := range findings {
+		if config.SeverityAtLeast(finding.Severity, minSeverity) {
+			filtered = append(filtered, finding)
+		}
+	}
+	return filtered
 }
 
 func init() {

@@ -25,25 +25,25 @@ func Test_Exitcode_ErrorMessage(t *testing.T) {
 }
 
 func Test_Exitcode_SeverityRank(t *testing.T) {
-	if got := severityRank(config.SeverityHigh); got != 3 {
+	if got := config.SeverityRank(config.SeverityHigh); got != 3 {
 		t.Fatalf("expected high rank 3, got %d", got)
 	}
-	if got := severityRank(config.SeverityMedium); got != 2 {
+	if got := config.SeverityRank(config.SeverityMedium); got != 2 {
 		t.Fatalf("expected medium rank 2, got %d", got)
 	}
-	if got := severityRank(config.SeverityLow); got != 1 {
+	if got := config.SeverityRank(config.SeverityLow); got != 1 {
 		t.Fatalf("expected low rank 1, got %d", got)
 	}
 }
 
 func Test_Exitcode_SeverityAtLeast(t *testing.T) {
-	if !severityAtLeast(config.SeverityHigh, config.SeverityMedium) {
+	if !config.SeverityAtLeast(config.SeverityHigh, config.SeverityMedium) {
 		t.Fatal("expected high >= medium")
 	}
-	if !severityAtLeast(config.SeverityMedium, config.SeverityMedium) {
+	if !config.SeverityAtLeast(config.SeverityMedium, config.SeverityMedium) {
 		t.Fatal("expected medium >= medium")
 	}
-	if severityAtLeast(config.SeverityLow, config.SeverityMedium) {
+	if config.SeverityAtLeast(config.SeverityLow, config.SeverityMedium) {
 		t.Fatal("expected low < medium")
 	}
 }

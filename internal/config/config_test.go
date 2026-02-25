@@ -31,6 +31,18 @@ func Test_Config_Severity_String(t *testing.T) {
 	assert.Equal(t, "high", high.String())
 }
 
+func Test_Config_SeverityRank(t *testing.T) {
+	assert.Equal(t, 1, SeverityRank(SeverityLow))
+	assert.Equal(t, 2, SeverityRank(SeverityMedium))
+	assert.Equal(t, 3, SeverityRank(SeverityHigh))
+}
+
+func Test_Config_SeverityAtLeast(t *testing.T) {
+	assert.True(t, SeverityAtLeast(SeverityHigh, SeverityMedium))
+	assert.True(t, SeverityAtLeast(SeverityMedium, SeverityMedium))
+	assert.False(t, SeverityAtLeast(SeverityLow, SeverityMedium))
+}
+
 func Test_Config_Severity_MarshalYAML(t *testing.T) {
 	tests := []struct {
 		name     string

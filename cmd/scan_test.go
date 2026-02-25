@@ -4,7 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
+	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/spf13/cobra"
 )
 
@@ -103,5 +106,48 @@ func Test_Cmd_ScanOptionsFromCommand_ReturnsErrorForInvalidExcludeGlob(t *testin
 	}
 	if !strings.Contains(err.Error(), "invalid exclude pattern") {
 		t.Fatalf("expected exclude validation error, got %v", err)
+	}
+}
+
+func Test_Cmd_ScanCommand_FilterFindingsByMinimumSeverity_IgnoresLowerFindings(t *testing.T) {
+	findings := []engine.FileFinding{
+		{Finding: engineFindingWithSeverityForTest(config.SeverityLow)},
+		{Finding: engineFindingWithSeverityForTest(config.SeverityMedium)},
+		{Finding: engineFindingWithSeverityForTest(config.SeverityHigh)},
+	}
+
+	filtered := filterFindingsByMinimumSeverity(findings, config.SeverityMedium)
+
+	if len(filtered) != 2 {
+		t.Fatalf("expected 2 findings after filtering, got %d", len(filtered))
+	}
+	if filtered[0].Severity != config.SeverityMedium {
+		t.Fatalf("expected first finding to be medium, got %s", filtered[0].Severity)
+	}
+	if filtered[1].Severity != config.SeverityHigh {
+		t.Fatalf("expected second finding to be high, got %s", filtered[1].Severity)
+	}
+}
+
+func Test_Cmd_ScanCommand_FilterFindingsByMinimumSeverity_WithHighThreshold_OnlyKeepsHigh(t *testing.T) {
+	findings := []engine.FileFinding{
+		{Finding: engineFindingWithSeverityForTest(config.SeverityLow)},
+		{Finding: engineFindingWithSeverityForTest(config.SeverityMedium)},
+		{Finding: engineFindingWithSeverityForTest(config.SeverityHigh)},
+	}
+
+	filtered := filterFindingsByMinimumSeverity(findings, config.SeverityHigh)
+
+	if len(filtered) != 1 {
+		t.Fatalf("expected 1 finding after filtering, got %d", len(filtered))
+	}
+	if filtered[0].Severity != config.SeverityHigh {
+		t.Fatalf("expected high finding, got %s", filtered[0].Severity)
+	}
+}
+
+func engineFindingWithSeverityForTest(severity config.Severity) rules.Finding {
+	return rules.Finding{
+		Severity: severity,
 	}
 }

@@ -274,6 +274,9 @@ policy:
 
 `fail-on` must be greater than or equal to `warn-on`.
 
+`warn-on` also acts as the minimum reported severity. Findings below `warn-on`
+are ignored by scan and baseline commands.
+
 ### Environment
 
 Risk depends on what the agent can do. The same prompt may be safe or critical

@@ -19,12 +19,6 @@ const (
 	CodeFail Code = 2
 )
 
-const (
-	severityRankLow    = 1
-	severityRankMedium = 2
-	severityRankHigh   = 3
-)
-
 // Error wraps a non-zero process exit code in an error value.
 type Error struct {
 	Code Code
@@ -42,11 +36,11 @@ func Resolve(policy config.Policy, findings []engine.FileFinding) Code {
 
 	maxSeverity := maxFindingSeverity(findings)
 
-	if severityAtLeast(maxSeverity, policy.FailOn) {
+	if config.SeverityAtLeast(maxSeverity, policy.FailOn) {
 		return CodeFail
 	}
 
-	if severityAtLeast(maxSeverity, policy.WarnOn) {
+	if config.SeverityAtLeast(maxSeverity, policy.WarnOn) {
 		return CodeWarn
 	}
 
@@ -56,24 +50,9 @@ func Resolve(policy config.Policy, findings []engine.FileFinding) Code {
 func maxFindingSeverity(findings []engine.FileFinding) config.Severity {
 	maxSeverity := config.SeverityLow
 	for _, finding := range findings {
-		if severityRank(finding.Severity) > severityRank(maxSeverity) {
+		if config.SeverityRank(finding.Severity) > config.SeverityRank(maxSeverity) {
 			maxSeverity = finding.Severity
 		}
 	}
 	return maxSeverity
-}
-
-func severityAtLeast(severity config.Severity, threshold config.Severity) bool {
-	return severityRank(severity) >= severityRank(threshold)
-}
-
-func severityRank(severity config.Severity) int {
-	switch severity {
-	case config.SeverityHigh:
-		return severityRankHigh
-	case config.SeverityMedium:
-		return severityRankMedium
-	default:
-		return severityRankLow
-	}
 }
