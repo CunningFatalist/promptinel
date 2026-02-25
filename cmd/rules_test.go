@@ -25,14 +25,14 @@ func Test_Cmd_RulesListCommand_OutputIsSorted(t *testing.T) {
 	})
 
 	lines := strings.Split(strings.TrimSpace(output), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("expected 2 rules, got %d (%q)", len(lines), output)
+	if len(lines) != 18 {
+		t.Fatalf("expected 18 rules, got %d (%q)", len(lines), output)
 	}
-	if !strings.Contains(lines[0], " no-unsafe-templates ") {
-		t.Fatalf("expected first rule to be no-unsafe-templates, got %q", lines[0])
+	if !strings.Contains(lines[0], " no-bidi-control-characters ") {
+		t.Fatalf("expected first rule to be no-bidi-control-characters, got %q", lines[0])
 	}
-	if !strings.Contains(lines[1], " no-zero-width ") {
-		t.Fatalf("expected second rule to be no-zero-width, got %q", lines[1])
+	if !strings.Contains(lines[len(lines)-1], " no-zero-width ") {
+		t.Fatalf("expected last rule to be no-zero-width, got %q", lines[len(lines)-1])
 	}
 
 	pattern := regexp.MustCompile(`^\[ ([^]]+) \] `)

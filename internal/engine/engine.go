@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/normalize"
 	"github.com/CunningFatalist/promptinel/internal/pathmatch"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 )
@@ -191,11 +192,13 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 		return nil, err
 	}
 
+	normalized := normalize.ForScan(string(content))
+
 	ruleFindings := rules.Evaluate(s.compiledRules, rules.Context{
 		Path:        target.relativePath,
 		Environment: s.environment,
 		TrustLevel:  s.trustLevel,
-	}, string(content))
+	}, normalized.Content)
 
 	scope := s.scopeForFile(target.relativePath, target.absolutePath, scopeRoots)
 	findings := make([]FileFinding, 0, len(ruleFindings))

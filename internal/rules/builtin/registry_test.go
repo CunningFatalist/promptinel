@@ -12,9 +12,29 @@ func Test_Builtin_NewRegistry_ContainsDefaultRules(t *testing.T) {
 	require.NoError(t, err)
 
 	list := registry.List()
-	require.Len(t, list, 2)
-	assert.Equal(t, "no-unsafe-templates", list[0].ID)
-	assert.Equal(t, "no-zero-width", list[1].ID)
+	expectedIDs := []string{
+		"no-bidi-control-characters",
+		"no-command-chaining",
+		"no-curl-pipe-shell",
+		"no-data-uri-payloads",
+		"no-download-execute",
+		"no-hidden-html-instructions",
+		"no-insecure-http",
+		"no-metadata-service-access",
+		"no-override-capability-flow",
+		"no-prompt-injection-override",
+		"no-secret-exfiltration-intent",
+		"no-secret-to-network-flow",
+		"no-sensitive-file-paths",
+		"no-staged-download-execution",
+		"no-suspicious-base64",
+		"no-unsafe-templates",
+		"no-zero-width",
+	}
+	require.Len(t, list, len(expectedIDs))
+	for i, id := range expectedIDs {
+		assert.Equal(t, id, list[i].ID)
+	}
 }
 
 func Test_Builtin_NewRegistry_DescribeKnownRule(t *testing.T) {

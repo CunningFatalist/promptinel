@@ -118,8 +118,11 @@ Built-ins are composed in `internal/rules/builtin` and registered centrally (`bu
 
 Current built-in examples:
 
+- `no-bidi-control-characters` (document phase): detects bidirectional control characters used for visual obfuscation
+- `no-hidden-html-instructions` (document phase): flags suspicious instructions hidden inside HTML comments
 - `no-zero-width` (token phase): detects zero-width tokens emitted by the lexer
 - `no-unsafe-templates` (token phase over template segments): detects risky execution/exfiltration signals in template expressions
+- `no-secret-to-network-flow` (flow phase): detects secret-source plus exfiltration action plus outbound sink chains
 
 Custom regex rules are compiled from config (`custom-rules`) into first-class token-phase rule implementations,
 validated for regex correctness and duplicate IDs. Regex matching is performed on `Token.Value` rather than on raw file
@@ -157,7 +160,6 @@ Current tradeoffs:
 
 Natural next architecture steps:
 
-- implement `sanitize` and `baseline` command internals (currently placeholders)
 - add JSON/SARIF output modes
 - expand flow-level rules for deeper cross-segment reasoning
 - add configurable worker limits

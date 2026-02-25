@@ -104,7 +104,13 @@ promptinel baseline create
 
 # Update the baseline file with new findings (e.g. after fixing some issues)
 promptinel baseline update
+
+# Scan while suppressing accepted findings from a baseline snapshot
+promptinel scan --baseline .promptinel-baseline.json prompts/
 ```
+
+`baseline create` and `baseline update` write `.promptinel-baseline.json` by default.  
+Use `--file` to select a different baseline path.
 
 ### Globbing
 
@@ -183,6 +189,51 @@ scopes:
     severity: low
 
 rules:
+  - id: no-bidi-control-characters
+    severity: high
+
+  - id: no-command-chaining
+    severity: medium
+
+  - id: no-curl-pipe-shell
+    severity: high
+
+  - id: no-data-uri-payloads
+    severity: medium
+
+  - id: no-download-execute
+    severity: medium
+
+  - id: no-hidden-html-instructions
+    severity: medium
+
+  - id: no-insecure-http
+    severity: low
+
+  - id: no-metadata-service-access
+    severity: high
+
+  - id: no-override-capability-flow
+    severity: high
+
+  - id: no-prompt-injection-override
+    severity: medium
+
+  - id: no-secret-exfiltration-intent
+    severity: high
+
+  - id: no-secret-to-network-flow
+    severity: high
+
+  - id: no-sensitive-file-paths
+    severity: high
+
+  - id: no-staged-download-execution
+    severity: high
+
+  - id: no-suspicious-base64
+    severity: medium
+
   - id: no-zero-width
     enabled: true
 
@@ -301,6 +352,51 @@ Use `promptinel rules list` to see all available rules. You can enable or disabl
 
 ```yaml
 rules:
+  - id: no-bidi-control-characters
+    severity: high
+
+  - id: no-command-chaining
+    severity: medium
+
+  - id: no-curl-pipe-shell
+    severity: high
+
+  - id: no-data-uri-payloads
+    severity: medium
+
+  - id: no-download-execute
+    severity: medium
+
+  - id: no-hidden-html-instructions
+    severity: medium
+
+  - id: no-insecure-http
+    severity: low
+
+  - id: no-metadata-service-access
+    severity: high
+
+  - id: no-override-capability-flow
+    severity: high
+
+  - id: no-prompt-injection-override
+    severity: medium
+
+  - id: no-secret-exfiltration-intent
+    severity: high
+
+  - id: no-secret-to-network-flow
+    severity: high
+
+  - id: no-sensitive-file-paths
+    severity: high
+
+  - id: no-staged-download-execution
+    severity: high
+
+  - id: no-suspicious-base64
+    severity: medium
+
   - id: no-zero-width
     enabled: true
 
@@ -325,15 +421,19 @@ custom-rules:
 ## Output Example
 
 ```
+Capabilities:
+ - can_execute_shell: true
+ - can_access_filesystem: true
+ - can_access_network: true
+ - has_secrets: true
+
 File: agents/build.md
+ - 12:8 [high] no-zero-width: Zero-width character detected
+ - 18:3 [medium] no-unsafe-templates: Unsafe template expression detected
 
-Capabilities detected:
- - requests secrets
- - attempts instruction override
- - invokes shell commands
-
-Risk: HIGH
-Policy: FAIL
+Summary:
+ - findings: 2
+ - policy: FAIL
 ```
 
 ---

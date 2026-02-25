@@ -32,6 +32,7 @@ func Test_Cmd_ScanOptionsFromCommand_ReadsFlagValues(t *testing.T) {
 	command.Flags().String("config", "", "")
 	command.Flags().StringArray("include", nil, "")
 	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().String("baseline", "", "")
 
 	if err := command.Flags().Set("config", "custom.yaml"); err != nil {
 		t.Fatalf("set config flag: %v", err)
@@ -41,6 +42,9 @@ func Test_Cmd_ScanOptionsFromCommand_ReadsFlagValues(t *testing.T) {
 	}
 	if err := command.Flags().Set("exclude", "*.txt"); err != nil {
 		t.Fatalf("set exclude flag: %v", err)
+	}
+	if err := command.Flags().Set("baseline", "baseline.json"); err != nil {
+		t.Fatalf("set baseline flag: %v", err)
 	}
 
 	options, err := scanOptionsFromCommand(command)
@@ -57,6 +61,9 @@ func Test_Cmd_ScanOptionsFromCommand_ReadsFlagValues(t *testing.T) {
 	if len(options.excludes) != 1 || options.excludes[0] != "*.txt" {
 		t.Fatalf("unexpected excludes: %#v", options.excludes)
 	}
+	if options.baselineFile != "baseline.json" {
+		t.Fatalf("expected baseline file baseline.json, got %q", options.baselineFile)
+	}
 }
 
 func Test_Cmd_ScanOptionsFromCommand_ReturnsErrorForInvalidIncludeGlob(t *testing.T) {
@@ -64,6 +71,7 @@ func Test_Cmd_ScanOptionsFromCommand_ReturnsErrorForInvalidIncludeGlob(t *testin
 	command.Flags().String("config", "", "")
 	command.Flags().StringArray("include", nil, "")
 	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().String("baseline", "", "")
 
 	if err := command.Flags().Set("include", "invalid["); err != nil {
 		t.Fatalf("set include flag: %v", err)
@@ -83,6 +91,7 @@ func Test_Cmd_ScanOptionsFromCommand_ReturnsErrorForInvalidExcludeGlob(t *testin
 	command.Flags().String("config", "", "")
 	command.Flags().StringArray("include", nil, "")
 	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().String("baseline", "", "")
 
 	if err := command.Flags().Set("exclude", "invalid["); err != nil {
 		t.Fatalf("set exclude flag: %v", err)

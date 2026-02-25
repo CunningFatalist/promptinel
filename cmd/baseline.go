@@ -2,11 +2,21 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/CunningFatalist/promptinel/internal/baseline"
+	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/spf13/cobra"
 )
 
-// baselineCmd represents the baseline command
+type baselineOptions struct {
+	configFile string
+	includes   []string
+	excludes   []string
+	file       string
+}
+
+// baselineCmd represents the baseline command.
 var baselineCmd = &cobra.Command{
 	Use:   "baseline",
 	Short: "Create and update baseline files for CI adoption",
@@ -15,21 +25,138 @@ var baselineCmd = &cobra.Command{
 Examples:
   promptinel baseline create
   promptinel baseline update`,
+}
+
+var baselineCreateCmd = &cobra.Command{
+	Use:   "create [path ...]",
+	Short: "Create a baseline snapshot from current findings",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("baseline called")
+		util.ExitOnCommandError("baseline create command failed", runBaselineCreate(cmd, args))
 	},
+}
+
+var baselineUpdateCmd = &cobra.Command{
+	Use:   "update [path ...]",
+	Short: "Update an existing baseline snapshot with current findings",
+	Run: func(cmd *cobra.Command, args []string) {
+		util.ExitOnCommandError("baseline update command failed", runBaselineUpdate(cmd, args))
+	},
+}
+
+func runBaselineCreate(cmd *cobra.Command, args []string) error {
+	options, err := baselineOptionsFromCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("read baseline create options: %w", err)
+	}
+
+	return runBaselineSnapshot(args, options, false)
+}
+
+func runBaselineUpdate(cmd *cobra.Command, args []string) error {
+	options, err := baselineOptionsFromCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("read baseline update options: %w", err)
+	}
+
+	if _, err := os.Stat(options.file); err != nil {
+		return fmt.Errorf("stat baseline file %q: %w", options.file, err)
+	}
+
+	return runBaselineSnapshot(args, options, true)
+}
+
+func baselineOptionsFromCommand(cmd *cobra.Command) (baselineOptions, error) {
+	configFile, err := cmd.Flags().GetString("config")
+	if err != nil {
+		return baselineOptions{}, fmt.Errorf("read config flag: %w", err)
+	}
+
+	includes, err := cmd.Flags().GetStringArray("include")
+	if err != nil {
+		return baselineOptions{}, fmt.Errorf("read include flag: %w", err)
+	}
+
+	excludes, err := cmd.Flags().GetStringArray("exclude")
+	if err != nil {
+		return baselineOptions{}, fmt.Errorf("read exclude flag: %w", err)
+	}
+
+	file, err := cmd.Flags().GetString("file")
+	if err != nil {
+		return baselineOptions{}, fmt.Errorf("read file flag: %w", err)
+	}
+
+	if err := validateGlobPatterns("include", includes); err != nil {
+		return baselineOptions{}, err
+	}
+	if err := validateGlobPatterns("exclude", excludes); err != nil {
+		return baselineOptions{}, err
+	}
+
+	return baselineOptions{
+		configFile: configFile,
+		includes:   includes,
+		excludes:   excludes,
+		file:       file,
+	}, nil
+}
+
+func runBaselineSnapshot(args []string, options baselineOptions, update bool) error {
+	paths := args
+	if len(paths) == 0 {
+		paths = []string{"."}
+	}
+
+	findings, _, err := runSharedScan(paths, sharedScanOptions{
+		configFile: options.configFile,
+		includes:   options.includes,
+		excludes:   options.excludes,
+	})
+	if err != nil {
+		return err
+	}
+
+	snapshot := baseline.BuildSnapshot(findings)
+	previousEntryCount := 0
+	if update {
+		previousSnapshot, readErr := baseline.Read(options.file)
+		if readErr != nil {
+			return fmt.Errorf("load existing baseline file %q: %w", options.file, readErr)
+		}
+		previousEntryCount = len(previousSnapshot.Entries)
+	}
+
+	if err := baseline.Write(options.file, snapshot); err != nil {
+		return fmt.Errorf("write baseline: %w", err)
+	}
+
+	if update {
+		delta := len(snapshot.Entries) - previousEntryCount
+		fmt.Printf(
+			"Updated baseline %s with %d entries (%+d compared to previous snapshot).\n",
+			options.file,
+			len(snapshot.Entries),
+			delta,
+		)
+		return nil
+	}
+
+	fmt.Printf("Created baseline %s with %d entries.\n", options.file, len(snapshot.Entries))
+	return nil
 }
 
 func init() {
 	rootCmd.AddCommand(baselineCmd)
+	baselineCmd.AddCommand(baselineCreateCmd)
+	baselineCmd.AddCommand(baselineUpdateCmd)
 
-	// Here you will define your flags and configuration settings.
+	baselineCreateCmd.Flags().String("config", "", "Path to a Promptinel config file")
+	baselineCreateCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
+	baselineCreateCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
+	baselineCreateCmd.Flags().String("file", baseline.DefaultFileName, "Path to write baseline snapshot file")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// baselineCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// baselineCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	baselineUpdateCmd.Flags().String("config", "", "Path to a Promptinel config file")
+	baselineUpdateCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
+	baselineUpdateCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
+	baselineUpdateCmd.Flags().String("file", baseline.DefaultFileName, "Path to write baseline snapshot file")
 }

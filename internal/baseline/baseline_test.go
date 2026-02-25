@@ -1,0 +1,119 @@
+package baseline
+
+import (
+	"path/filepath"
+	"testing"
+
+	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/engine"
+	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func Test_Baseline_BuildSnapshot_DeduplicatesAndSortsDeterministically(t *testing.T) {
+	findings := []engine.FileFinding{
+		{
+			Path: "b.md",
+			Finding: rules.Finding{
+				ID:       "rule-b",
+				Severity: config.SeverityMedium,
+				Message:  "message b",
+				Position: rules.Position{Line: 2, Column: 1},
+			},
+		},
+		{
+			Path: "a.md",
+			Finding: rules.Finding{
+				ID:       "rule-a",
+				Severity: config.SeverityLow,
+				Message:  "message a",
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		},
+		{
+			Path: "a.md",
+			Finding: rules.Finding{
+				ID:       "rule-a",
+				Severity: config.SeverityLow,
+				Message:  "message a",
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		},
+	}
+
+	snapshot := BuildSnapshot(findings)
+
+	assert.Equal(t, SnapshotVersion, snapshot.Version)
+	require.Len(t, snapshot.Entries, 2)
+	assert.LessOrEqual(t, snapshot.Entries[0].Hash, snapshot.Entries[1].Hash)
+}
+
+func Test_Baseline_FilterFindings_RemovesAcceptedEntries(t *testing.T) {
+	accepted := engine.FileFinding{
+		Path: "a.md",
+		Finding: rules.Finding{
+			ID:       "rule-a",
+			Severity: config.SeverityHigh,
+			Message:  "accepted",
+			Position: rules.Position{Line: 1, Column: 1},
+		},
+	}
+	newFinding := engine.FileFinding{
+		Path: "b.md",
+		Finding: rules.Finding{
+			ID:       "rule-b",
+			Severity: config.SeverityLow,
+			Message:  "new",
+			Position: rules.Position{Line: 3, Column: 2},
+		},
+	}
+
+	snapshot := BuildSnapshot([]engine.FileFinding{accepted})
+	filtered := FilterFindings([]engine.FileFinding{accepted, newFinding}, snapshot)
+
+	require.Len(t, filtered, 1)
+	assert.Equal(t, newFinding.Path, filtered[0].Path)
+	assert.Equal(t, newFinding.ID, filtered[0].ID)
+}
+
+func Test_Baseline_ReadWrite_RoundTrip(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "baseline.json")
+	snapshot := Snapshot{
+		Version: SnapshotVersion,
+		Entries: []Entry{
+			{
+				Hash:     "abc",
+				Path:     "a.md",
+				RuleID:   "rule-a",
+				Severity: config.SeverityMedium,
+				Message:  "msg",
+				Line:     4,
+				Column:   2,
+			},
+		},
+	}
+
+	require.NoError(t, Write(file, snapshot))
+	loaded, err := Read(file)
+	require.NoError(t, err)
+
+	assert.Equal(t, snapshot.Version, loaded.Version)
+	assert.Equal(t, snapshot.Entries, loaded.Entries)
+}
+
+func Test_Baseline_HashFinding_IsDeterministic(t *testing.T) {
+	finding := engine.FileFinding{
+		Path: "a.md",
+		Finding: rules.Finding{
+			ID:       "rule-a",
+			Severity: config.SeverityHigh,
+			Message:  "msg",
+			Position: rules.Position{Line: 10, Column: 8},
+		},
+	}
+
+	first := HashFinding(finding)
+	second := HashFinding(finding)
+	assert.Equal(t, first, second)
+}
