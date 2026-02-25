@@ -129,3 +129,28 @@ func Test_Report_WriteScanText_PrintsNoneWhenNoFindings(t *testing.T) {
 	assert.Contains(t, rendered, "Findings: none")
 	assert.Contains(t, rendered, "- policy: PASS")
 }
+
+func Test_Report_WriteScanText_EscapesControlCharacters(t *testing.T) {
+	var output bytes.Buffer
+
+	err := WriteScanText(&output, ScanSummary{
+		Findings: []engine.FileFinding{
+			{
+				Path: "bad\npath.md",
+				Finding: rules.Finding{
+					ID:       "rule\tname",
+					Severity: config.SeverityMedium,
+					Message:  "hello\rworld",
+					Position: rules.Position{Line: 1, Column: 1},
+				},
+			},
+		},
+		Environment:   config.Environment{},
+		PolicyOutcome: exitcode.CodeWarn,
+	})
+	require.NoError(t, err)
+
+	rendered := output.String()
+	assert.Contains(t, rendered, "File: bad\\npath.md")
+	assert.Contains(t, rendered, "rule\\tname: hello\\rworld")
+}

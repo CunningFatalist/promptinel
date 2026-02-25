@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -10,10 +11,11 @@ import (
 )
 
 type baselineOptions struct {
-	configFile string
-	includes   []string
-	excludes   []string
-	file       string
+	configFile        string
+	noConfigDiscovery bool
+	includes          []string
+	excludes          []string
+	file              string
 }
 
 // baselineCmd represents the baseline command.
@@ -70,6 +72,10 @@ func baselineOptionsFromCommand(cmd *cobra.Command) (baselineOptions, error) {
 	if err != nil {
 		return baselineOptions{}, fmt.Errorf("read config flag: %w", err)
 	}
+	noConfigDiscovery, err := cmd.Flags().GetBool("no-config-discovery")
+	if err != nil {
+		return baselineOptions{}, fmt.Errorf("read no-config-discovery flag: %w", err)
+	}
 
 	includes, err := cmd.Flags().GetStringArray("include")
 	if err != nil {
@@ -94,10 +100,11 @@ func baselineOptionsFromCommand(cmd *cobra.Command) (baselineOptions, error) {
 	}
 
 	return baselineOptions{
-		configFile: configFile,
-		includes:   includes,
-		excludes:   excludes,
-		file:       file,
+		configFile:        configFile,
+		noConfigDiscovery: noConfigDiscovery,
+		includes:          includes,
+		excludes:          excludes,
+		file:              file,
 	}, nil
 }
 
@@ -108,10 +115,11 @@ func runBaselineSnapshot(args []string, options baselineOptions, update bool) er
 	}
 
 	findings, _, err := runSharedScan(paths, sharedScanOptions{
-		configFile: options.configFile,
-		includes:   options.includes,
-		excludes:   options.excludes,
-	})
+		configFile:        options.configFile,
+		noConfigDiscovery: options.noConfigDiscovery,
+		includes:          options.includes,
+		excludes:          options.excludes,
+	}, context.Background())
 	if err != nil {
 		return err
 	}
@@ -151,11 +159,13 @@ func init() {
 	baselineCmd.AddCommand(baselineUpdateCmd)
 
 	baselineCreateCmd.Flags().String("config", "", "Path to a Promptinel config file")
+	baselineCreateCmd.Flags().Bool("no-config-discovery", false, "Disable implicit .promptinel.yaml discovery from current directory and $HOME")
 	baselineCreateCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
 	baselineCreateCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
 	baselineCreateCmd.Flags().String("file", baseline.DefaultFileName, "Path to write baseline snapshot file")
 
 	baselineUpdateCmd.Flags().String("config", "", "Path to a Promptinel config file")
+	baselineUpdateCmd.Flags().Bool("no-config-discovery", false, "Disable implicit .promptinel.yaml discovery from current directory and $HOME")
 	baselineUpdateCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
 	baselineUpdateCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
 	baselineUpdateCmd.Flags().String("file", baseline.DefaultFileName, "Path to write baseline snapshot file")

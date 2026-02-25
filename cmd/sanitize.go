@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -15,10 +16,11 @@ import (
 )
 
 type sanitizeOptions struct {
-	configFile string
-	includes   []string
-	excludes   []string
-	apply      bool
+	configFile        string
+	noConfigDiscovery bool
+	includes          []string
+	excludes          []string
+	apply             bool
 }
 
 // sanitizeCmd represents the sanitize command.
@@ -53,6 +55,10 @@ func sanitizeOptionsFromCommand(cmd *cobra.Command) (sanitizeOptions, error) {
 	if err != nil {
 		return sanitizeOptions{}, fmt.Errorf("read config flag: %w", err)
 	}
+	noConfigDiscovery, err := cmd.Flags().GetBool("no-config-discovery")
+	if err != nil {
+		return sanitizeOptions{}, fmt.Errorf("read no-config-discovery flag: %w", err)
+	}
 
 	includes, err := cmd.Flags().GetStringArray("include")
 	if err != nil {
@@ -77,20 +83,23 @@ func sanitizeOptionsFromCommand(cmd *cobra.Command) (sanitizeOptions, error) {
 	}
 
 	return sanitizeOptions{
-		configFile: configFile,
-		includes:   includes,
-		excludes:   excludes,
-		apply:      apply,
+		configFile:        configFile,
+		noConfigDiscovery: noConfigDiscovery,
+		includes:          includes,
+		excludes:          excludes,
+		apply:             apply,
 	}, nil
 }
 
 func runSanitizeWithOptions(args []string, options sanitizeOptions) error {
-	cfg, err := config.Load(options.configFile)
+	cfg, err := config.LoadWithOptions(options.configFile, config.LoadOptions{
+		Discover: !options.noConfigDiscovery,
+	})
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	files, err := collectSanitizeFiles(args, options.includes, options.excludes)
+	files, skippedDuringDiscovery, err := collectSanitizeFiles(args, options.includes, options.excludes)
 	if err != nil {
 		return fmt.Errorf("collect files: %w", err)
 	}
@@ -100,10 +109,31 @@ func runSanitizeWithOptions(args []string, options sanitizeOptions) error {
 	totalLineEndingChanges := 0
 	totalZeroWidthChanges := 0
 
+	for _, skipped := range skippedDuringDiscovery {
+		fmt.Printf("%s: skipped (%s)\n", skipped.RelativePath, skipped.Reason)
+		skippedFiles++
+	}
+
 	for _, file := range files {
-		info, statErr := os.Stat(file.AbsolutePath)
+		info, statErr := os.Lstat(file.AbsolutePath)
 		if statErr != nil {
-			return fmt.Errorf("stat file %q: %w", file.AbsolutePath, statErr)
+			if errors.Is(statErr, os.ErrNotExist) {
+				fmt.Printf("%s: skipped (path no longer exists)\n", file.RelativePath)
+				skippedFiles++
+				continue
+			}
+			return fmt.Errorf("lstat file %q: %w", file.AbsolutePath, statErr)
+		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			fmt.Printf("%s: skipped (symbolic links are not sanitized)\n", file.RelativePath)
+			skippedFiles++
+			continue
+		}
+		if !info.Mode().IsRegular() {
+			fmt.Printf("%s: skipped (non-regular file)\n", file.RelativePath)
+			skippedFiles++
+			continue
 		}
 
 		if info.Size() > cfg.Limits.MaxFileSizeBytes {
@@ -114,7 +144,9 @@ func runSanitizeWithOptions(args []string, options sanitizeOptions) error {
 
 		content, readErr := os.ReadFile(file.AbsolutePath)
 		if readErr != nil {
-			return fmt.Errorf("read file %q: %w", file.AbsolutePath, readErr)
+			fmt.Printf("%s: skipped (read error: %v)\n", file.RelativePath, readErr)
+			skippedFiles++
+			continue
 		}
 
 		result := normalize.ForSanitize(string(content))
@@ -128,11 +160,30 @@ func runSanitizeWithOptions(args []string, options sanitizeOptions) error {
 
 		action := "would sanitize"
 		if options.apply {
-			if writeErr := os.WriteFile(file.AbsolutePath, []byte(result.Content), info.Mode().Perm()); writeErr != nil {
-				return fmt.Errorf("write sanitized file %q: %w", file.AbsolutePath, writeErr)
+			latestInfo, latestErr := os.Lstat(file.AbsolutePath)
+			if latestErr != nil {
+				if errors.Is(latestErr, os.ErrNotExist) {
+					fmt.Printf("%s: skipped (path no longer exists)\n", file.RelativePath)
+					skippedFiles++
+					continue
+				}
+				return fmt.Errorf("lstat file before write %q: %w", file.AbsolutePath, latestErr)
 			}
-			action = "sanitized"
-		}
+			if latestInfo.Mode()&os.ModeSymlink != 0 {
+				fmt.Printf("%s: skipped (symbolic links are not sanitized)\n", file.RelativePath)
+				skippedFiles++
+				continue
+			}
+			if !latestInfo.Mode().IsRegular() {
+				fmt.Printf("%s: skipped (non-regular file)\n", file.RelativePath)
+				skippedFiles++
+				continue
+			}
+				if writeErr := writeFileAtomically(file.AbsolutePath, []byte(result.Content), info.Mode().Perm()); writeErr != nil {
+					return fmt.Errorf("write sanitized file %q: %w", file.AbsolutePath, writeErr)
+				}
+				action = "sanitized"
+			}
 
 		fmt.Printf(
 			"%s: %s (line_endings=%d, zero_width=%d)\n",
@@ -162,10 +213,16 @@ type sanitizeFile struct {
 	RelativePath string
 }
 
-func collectSanitizeFiles(paths []string, includePatterns []string, excludePatterns []string) ([]sanitizeFile, error) {
-	absolutePaths, err := collectFiles(paths)
+type sanitizeSkippedFile struct {
+	AbsolutePath string
+	RelativePath string
+	Reason       string
+}
+
+func collectSanitizeFiles(paths []string, includePatterns []string, excludePatterns []string) ([]sanitizeFile, []sanitizeSkippedFile, error) {
+	absolutePaths, skippedPaths, err := collectFiles(paths)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	workingDir, err := os.Getwd()
@@ -185,43 +242,103 @@ func collectSanitizeFiles(paths []string, includePatterns []string, excludePatte
 		})
 	}
 
-	return files, nil
+	skippedFiles := make([]sanitizeSkippedFile, 0, len(skippedPaths))
+	for _, skippedPath := range skippedPaths {
+		relativePath := relativePathFromWorkingDir(workingDir, skippedPath.path)
+		if !matchesFilters(relativePath, includePatterns, excludePatterns) {
+			continue
+		}
+		skippedFiles = append(skippedFiles, sanitizeSkippedFile{
+			AbsolutePath: skippedPath.path,
+			RelativePath: relativePath,
+			Reason:       skippedPath.reason,
+		})
+	}
+
+	return files, skippedFiles, nil
 }
 
-func collectFiles(inputPaths []string) ([]string, error) {
+type skippedPath struct {
+	path   string
+	reason string
+}
+
+func collectFiles(inputPaths []string) ([]string, []skippedPath, error) {
 	files := make([]string, 0)
+	skipped := make([]skippedPath, 0)
 	seen := make(map[string]struct{})
 	for _, path := range inputPaths {
 		resolvedPath, err := filepath.Abs(path)
 		if err != nil {
-			return nil, fmt.Errorf("resolve path %q: %w", path, err)
+			return nil, nil, fmt.Errorf("resolve path %q: %w", path, err)
 		}
 
-		fileInfo, err := os.Stat(resolvedPath)
+		fileInfo, err := os.Lstat(resolvedPath)
 		if err != nil {
-			return nil, fmt.Errorf("stat path %q: %w", path, err)
+			return nil, nil, fmt.Errorf("lstat path %q: %w", path, err)
+		}
+
+		if fileInfo.Mode()&os.ModeSymlink != 0 {
+			skipped = append(skipped, skippedPath{
+				path:   resolvedPath,
+				reason: "symbolic links are not sanitized",
+			})
+			continue
 		}
 
 		if !fileInfo.IsDir() {
+			if !fileInfo.Mode().IsRegular() {
+				skipped = append(skipped, skippedPath{
+					path:   resolvedPath,
+					reason: "non-regular file",
+				})
+				continue
+			}
 			files = appendUniqueFile(files, seen, resolvedPath)
 			continue
 		}
 
 		if walkErr := filepath.WalkDir(resolvedPath, func(currentPath string, entry fs.DirEntry, currentErr error) error {
 			if currentErr != nil {
-				return currentErr
+				skipped = append(skipped, skippedPath{
+					path:   currentPath,
+					reason: fmt.Sprintf("walk error: %v", currentErr),
+				})
+				return nil
 			}
 			if entry.IsDir() {
+				return nil
+			}
+			if entry.Type()&os.ModeSymlink != 0 {
+				skipped = append(skipped, skippedPath{
+					path:   currentPath,
+					reason: "symbolic links are not sanitized",
+				})
+				return nil
+			}
+			info, infoErr := entry.Info()
+			if infoErr != nil {
+				skipped = append(skipped, skippedPath{
+					path:   currentPath,
+					reason: fmt.Sprintf("metadata error: %v", infoErr),
+				})
+				return nil
+			}
+			if !info.Mode().IsRegular() {
+				skipped = append(skipped, skippedPath{
+					path:   currentPath,
+					reason: "non-regular file",
+				})
 				return nil
 			}
 			files = appendUniqueFile(files, seen, currentPath)
 			return nil
 		}); walkErr != nil {
-			return nil, fmt.Errorf("walk path %q: %w", path, walkErr)
+			return nil, nil, fmt.Errorf("walk path %q: %w", path, walkErr)
 		}
 	}
 
-	return files, nil
+	return files, skipped, nil
 }
 
 func appendUniqueFile(files []string, seen map[string]struct{}, path string) []string {
@@ -235,6 +352,42 @@ func appendUniqueFile(files []string, seen map[string]struct{}, path string) []s
 	}
 	seen[canonicalPath] = struct{}{}
 	return append(files, cleanPath)
+}
+
+func writeFileAtomically(path string, content []byte, perm os.FileMode) (returnErr error) {
+	dir := filepath.Dir(path)
+	tempFile, err := os.CreateTemp(dir, ".promptinel-sanitize-*")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+
+	tempPath := tempFile.Name()
+	defer func() {
+		if returnErr != nil {
+			_ = os.Remove(tempPath)
+		}
+	}()
+
+	if err := tempFile.Chmod(perm); err != nil {
+		_ = tempFile.Close()
+		return fmt.Errorf("set temp file permissions: %w", err)
+	}
+	if _, err := tempFile.Write(content); err != nil {
+		_ = tempFile.Close()
+		return fmt.Errorf("write temp file: %w", err)
+	}
+	if err := tempFile.Sync(); err != nil {
+		_ = tempFile.Close()
+		return fmt.Errorf("sync temp file: %w", err)
+	}
+	if err := tempFile.Close(); err != nil {
+		return fmt.Errorf("close temp file: %w", err)
+	}
+	if err := os.Rename(tempPath, path); err != nil {
+		return fmt.Errorf("replace destination file: %w", err)
+	}
+
+	return nil
 }
 
 func matchesFilters(path string, includePatterns []string, excludePatterns []string) bool {
@@ -281,6 +434,7 @@ func relativePathFromWorkingDir(workingDir string, filePath string) string {
 func init() {
 	rootCmd.AddCommand(sanitizeCmd)
 	sanitizeCmd.Flags().String("config", "", "Path to a Promptinel config file")
+	sanitizeCmd.Flags().Bool("no-config-discovery", false, "Disable implicit .promptinel.yaml discovery from current directory and $HOME")
 	sanitizeCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
 	sanitizeCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
 	sanitizeCmd.Flags().Bool("apply", false, "Apply sanitized output to files (default is dry-run preview)")

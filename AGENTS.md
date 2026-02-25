@@ -21,10 +21,12 @@ and documentation.
 ## Commands
 
 - Always make sure to run `go mod tidy` after adding new dependencies
+- Always pin dependency and tool versions explicitly; never use floating versions like `@latest`
 - Use `go run main.go` to run the application locally.
   Prefer this over `make run`
 - Use `make test` to run all tests with coverage
 - Use `make lint` to check code quality with `golangci-lint`
+- Use `make vuln` to check for vulnerable dependencies with `govulncheck`
 - Use `make fmt` to format the code
 - Use `make vet` to check for common mistakes
 - Use `make coverage` to generate a coverage report
@@ -46,7 +48,7 @@ Your task is considered complete when:
 - Documentation is updated
 - Test coverage is above 85% for new code
 
-**Tip:** Run required checks with `make fmt fix vet lint test`.
+**Tip:** Run required checks with `make fmt fix vet vuln lint test`.
 
 ## General Philosophy
 

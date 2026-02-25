@@ -96,6 +96,11 @@ type Config struct {
 	CustomRules []CustomRule `mapstructure:"custom-rules"`
 }
 
+// LoadOptions controls config loading behavior.
+type LoadOptions struct {
+	Discover bool
+}
+
 // DefaultConfig returns a Config with sensible and secure default values.
 func DefaultConfig() *Config {
 	return &Config{
@@ -127,6 +132,12 @@ func DefaultConfig() *Config {
 // If configFile is empty, it searches for .promptinel.yaml in the current directory and $HOME.
 // Returns default config if no config file is found.
 func Load(configFile string) (*Config, error) {
+	return LoadWithOptions(configFile, LoadOptions{Discover: true})
+}
+
+// LoadWithOptions reads configuration with explicit loading behavior.
+// If configFile is empty and Discover is false, only secure defaults are used.
+func LoadWithOptions(configFile string, options LoadOptions) (*Config, error) {
 	cfg := DefaultConfig()
 	v := viper.New()
 
@@ -134,11 +145,13 @@ func Load(configFile string) (*Config, error) {
 
 	if configFile != "" {
 		v.SetConfigFile(configFile)
-	} else {
+	} else if options.Discover {
 		v.SetConfigName(DefaultConfigName)
 		v.SetConfigType(ConfigType)
 		v.AddConfigPath(".")
 		v.AddConfigPath("$HOME")
+	} else {
+		return cfg, nil
 	}
 
 	if err := v.ReadInConfig(); err != nil {
@@ -171,7 +184,7 @@ func LoadFromPath(path string) (*Config, error) {
 		absPath = filepath.Join(absPath, DefaultConfigName+"."+ConfigType)
 	}
 
-	return Load(absPath)
+	return LoadWithOptions(absPath, LoadOptions{Discover: true})
 }
 
 // setDefaults applies default values to the viper instance.

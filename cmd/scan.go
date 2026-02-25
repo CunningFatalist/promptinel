@@ -17,16 +17,18 @@ import (
 )
 
 type scanOptions struct {
-	configFile   string
-	includes     []string
-	excludes     []string
-	baselineFile string
+	configFile        string
+	noConfigDiscovery bool
+	includes          []string
+	excludes          []string
+	baselineFile      string
 }
 
 type sharedScanOptions struct {
-	configFile string
-	includes   []string
-	excludes   []string
+	configFile        string
+	noConfigDiscovery bool
+	includes          []string
+	excludes          []string
 }
 
 // scanCmd represents the scan command.
@@ -51,13 +53,17 @@ func runScan(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("read scan options: %w", err)
 	}
-	return runScanWithOptions(args, options)
+	return runScanWithOptions(cmd.Context(), args, options)
 }
 
 func scanOptionsFromCommand(cmd *cobra.Command) (scanOptions, error) {
 	configFile, err := cmd.Flags().GetString("config")
 	if err != nil {
 		return scanOptions{}, fmt.Errorf("read config flag: %w", err)
+	}
+	noConfigDiscovery, err := cmd.Flags().GetBool("no-config-discovery")
+	if err != nil {
+		return scanOptions{}, fmt.Errorf("read no-config-discovery flag: %w", err)
 	}
 
 	includes, err := cmd.Flags().GetStringArray("include")
@@ -82,10 +88,11 @@ func scanOptionsFromCommand(cmd *cobra.Command) (scanOptions, error) {
 	}
 
 	return scanOptions{
-		configFile:   configFile,
-		includes:     includes,
-		excludes:     excludes,
-		baselineFile: baselineFile,
+		configFile:        configFile,
+		noConfigDiscovery: noConfigDiscovery,
+		includes:          includes,
+		excludes:          excludes,
+		baselineFile:      baselineFile,
 	}, nil
 }
 
@@ -98,12 +105,13 @@ func validateGlobPatterns(flagName string, patterns []string) error {
 	return nil
 }
 
-func runScanWithOptions(args []string, options scanOptions) error {
+func runScanWithOptions(ctx context.Context, args []string, options scanOptions) error {
 	findings, cfg, err := runSharedScan(args, sharedScanOptions{
-		configFile: options.configFile,
-		includes:   options.includes,
-		excludes:   options.excludes,
-	})
+		configFile:        options.configFile,
+		noConfigDiscovery: options.noConfigDiscovery,
+		includes:          options.includes,
+		excludes:          options.excludes,
+	}, ctx)
 	if err != nil {
 		return err
 	}
@@ -135,8 +143,10 @@ func runScanWithOptions(args []string, options scanOptions) error {
 	return nil
 }
 
-func runSharedScan(args []string, options sharedScanOptions) ([]engine.FileFinding, *config.Config, error) {
-	cfg, err := config.Load(options.configFile)
+func runSharedScan(args []string, options sharedScanOptions, ctx context.Context) ([]engine.FileFinding, *config.Config, error) {
+	cfg, err := config.LoadWithOptions(options.configFile, config.LoadOptions{
+		Discover: !options.noConfigDiscovery,
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("load config: %w", err)
 	}
@@ -152,7 +162,7 @@ func runSharedScan(args []string, options sharedScanOptions) ([]engine.FileFindi
 	}
 
 	scanner := engine.NewScanner(compiledRules, cfg)
-	findings, err := scanner.ScanPaths(context.Background(), args, options.includes, options.excludes)
+	findings, err := scanner.ScanPaths(ctx, args, options.includes, options.excludes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("scan files: %w", err)
 	}
@@ -175,6 +185,7 @@ func filterFindingsByMinimumSeverity(findings []engine.FileFinding, minSeverity 
 func init() {
 	rootCmd.AddCommand(scanCmd)
 	scanCmd.Flags().String("config", "", "Path to a Promptinel config file")
+	scanCmd.Flags().Bool("no-config-discovery", false, "Disable implicit .promptinel.yaml discovery from current directory and $HOME")
 	scanCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
 	scanCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
 	scanCmd.Flags().String("baseline", "", "Path to baseline snapshot file used to suppress accepted findings")

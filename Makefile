@@ -34,6 +34,14 @@ lint: tidy vendor ## Run linters
 		docker compose exec promptinel_app golangci-lint run; \
 	fi
 
+.PHONY: vuln
+vuln: tidy vendor ## Run dependency vulnerability scan
+	if command -v govulncheck >/dev/null 2>&1; then \
+		govulncheck ./...; \
+	else \
+		docker compose exec promptinel_app govulncheck ./...; \
+	fi
+
 .PHONY: fmt
 fmt: ## Format the code
 	docker compose exec promptinel_app go fmt ./...

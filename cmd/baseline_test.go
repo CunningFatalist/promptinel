@@ -84,6 +84,7 @@ func Test_Cmd_BaselineSnapshot_UpdateRewritesFile(t *testing.T) {
 func Test_Cmd_BaselineOptionsFromCommand_ReadsFlags(t *testing.T) {
 	command := &cobra.Command{}
 	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
 	command.Flags().StringArray("include", nil, "")
 	command.Flags().StringArray("exclude", nil, "")
 	command.Flags().String("file", baseline.DefaultFileName, "")
@@ -99,6 +100,9 @@ func Test_Cmd_BaselineOptionsFromCommand_ReadsFlags(t *testing.T) {
 	}
 	if err := command.Flags().Set("file", "custom-baseline.json"); err != nil {
 		t.Fatalf("set file flag: %v", err)
+	}
+	if err := command.Flags().Set("no-config-discovery", "true"); err != nil {
+		t.Fatalf("set no-config-discovery flag: %v", err)
 	}
 
 	options, err := baselineOptionsFromCommand(command)
@@ -118,11 +122,15 @@ func Test_Cmd_BaselineOptionsFromCommand_ReadsFlags(t *testing.T) {
 	if options.file != "custom-baseline.json" {
 		t.Fatalf("unexpected baseline file option: %q", options.file)
 	}
+	if !options.noConfigDiscovery {
+		t.Fatal("expected no-config-discovery to be true")
+	}
 }
 
 func Test_Cmd_RunBaselineUpdate_ReturnsErrorWhenFileMissing(t *testing.T) {
 	command := &cobra.Command{}
 	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
 	command.Flags().StringArray("include", nil, "")
 	command.Flags().StringArray("exclude", nil, "")
 	command.Flags().String("file", baseline.DefaultFileName, "")
@@ -137,5 +145,57 @@ func Test_Cmd_RunBaselineUpdate_ReturnsErrorWhenFileMissing(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "stat baseline file") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Cmd_BaselineSnapshot_NoConfigDiscovery_IgnoresLocalConfig(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := `
+policy:
+  fail-on: low
+  warn-on: low
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	prompt := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(prompt, []byte("http://example.com"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	previousWorkingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("read working directory: %v", err)
+	}
+	if err := os.Chdir(workingDir); err != nil {
+		t.Fatalf("switch working directory: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(previousWorkingDir)
+	})
+
+	withDiscoveryFile := filepath.Join(workingDir, "with-discovery.json")
+	if err := runBaselineSnapshot([]string{"prompt.md"}, baselineOptions{file: withDiscoveryFile}, false); err != nil {
+		t.Fatalf("create baseline with discovery: %v", err)
+	}
+	withDiscoverySnapshot, err := baseline.Read(withDiscoveryFile)
+	if err != nil {
+		t.Fatalf("read baseline with discovery: %v", err)
+	}
+	if len(withDiscoverySnapshot.Entries) == 0 {
+		t.Fatal("expected at least one finding with discovered low warn-on policy")
+	}
+
+	withoutDiscoveryFile := filepath.Join(workingDir, "without-discovery.json")
+	if err := runBaselineSnapshot([]string{"prompt.md"}, baselineOptions{file: withoutDiscoveryFile, noConfigDiscovery: true}, false); err != nil {
+		t.Fatalf("create baseline without discovery: %v", err)
+	}
+	withoutDiscoverySnapshot, err := baseline.Read(withoutDiscoveryFile)
+	if err != nil {
+		t.Fatalf("read baseline without discovery: %v", err)
+	}
+	if len(withoutDiscoverySnapshot.Entries) != 0 {
+		t.Fatalf("expected no findings with default medium warn-on policy, got %d", len(withoutDiscoverySnapshot.Entries))
 	}
 }

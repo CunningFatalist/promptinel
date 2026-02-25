@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -17,6 +18,7 @@ import (
 )
 
 const oversizedFileFindingID = "scan-file-too-large"
+const unreadableFileFindingID = "scan-file-unreadable"
 
 // Scanner evaluates configured rules against files.
 type Scanner struct {
@@ -57,7 +59,7 @@ func NewScanner(compiledRules []rules.CompiledRule, cfg *config.Config) *Scanner
 
 // ScanPaths scans provided files or directories and returns findings.
 func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns []string, excludePatterns []string) ([]FileFinding, error) {
-	files, err := collectFiles(paths)
+	files, skippedPaths, err := collectFiles(paths)
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +70,29 @@ func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns
 	}
 
 	scopeRoots := resolveScopeRoots(paths)
+	findings := make([]FileFinding, 0, len(skippedPaths))
+	for _, skippedPath := range skippedPaths {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		relativePath := relativePathFromWorkingDir(wd, skippedPath.path)
+		if !matchesFilters(relativePath, includePatterns, excludePatterns) {
+			continue
+		}
+		findings = append(findings, FileFinding{
+			Path: relativePath,
+			Finding: rules.Finding{
+				ID:       unreadableFileFindingID,
+				Severity: config.SeverityLow,
+				Message:  fmt.Sprintf("File skipped: %s", skippedPath.reason),
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		})
+	}
+
 	targets := make([]scanTarget, 0, len(files))
 	for _, filePath := range files {
 		select {
@@ -87,7 +112,13 @@ func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns
 		})
 	}
 
-	return s.scanTargets(ctx, targets, scopeRoots)
+	scannedFindings, err := s.scanTargets(ctx, targets, scopeRoots)
+	if err != nil {
+		return nil, err
+	}
+
+	findings = append(findings, scannedFindings...)
+	return findings, nil
 }
 
 type scanTarget struct {
@@ -169,7 +200,15 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 
 	fileInfo, err := os.Stat(target.absolutePath)
 	if err != nil {
-		return nil, fmt.Errorf("stat file %q: %w", target.absolutePath, err)
+		return []FileFinding{{
+			Path: target.relativePath,
+			Finding: rules.Finding{
+				ID:       unreadableFileFindingID,
+				Severity: config.SeverityLow,
+				Message:  fmt.Sprintf("File skipped: metadata read failed (%v)", err),
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		}}, nil
 	}
 	if fileInfo.Size() > s.maxFileSize {
 		return []FileFinding{{
@@ -185,7 +224,15 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 
 	content, err := os.ReadFile(target.absolutePath)
 	if err != nil {
-		return nil, fmt.Errorf("read file %q: %w", target.absolutePath, err)
+		return []FileFinding{{
+			Path: target.relativePath,
+			Finding: rules.Finding{
+				ID:       unreadableFileFindingID,
+				Severity: config.SeverityLow,
+				Message:  fmt.Sprintf("File skipped: read failed (%v)", err),
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		}}, nil
 	}
 
 	if err := ctx.Err(); err != nil {
@@ -226,40 +273,94 @@ func relativePathFromWorkingDir(workingDir string, filePath string) string {
 	return relativePath
 }
 
-func collectFiles(inputPaths []string) ([]string, error) {
+type skippedPath struct {
+	path   string
+	reason string
+}
+
+func collectFiles(inputPaths []string) ([]string, []skippedPath, error) {
 	files := make([]string, 0)
+	skipped := make([]skippedPath, 0)
 	seen := make(map[string]struct{})
 	for _, path := range inputPaths {
 		resolvedPath, err := filepath.Abs(path)
 		if err != nil {
-			return nil, fmt.Errorf("resolve path %q: %w", path, err)
+			return nil, nil, fmt.Errorf("resolve path %q: %w", path, err)
 		}
 
-		fileInfo, err := os.Stat(resolvedPath)
+		fileInfo, err := os.Lstat(resolvedPath)
 		if err != nil {
-			return nil, fmt.Errorf("stat path %q: %w", path, err)
+			return nil, nil, fmt.Errorf("stat path %q: %w", path, err)
+		}
+
+		if fileInfo.Mode()&os.ModeSymlink != 0 {
+			skipped = append(skipped, skippedPath{
+				path:   resolvedPath,
+				reason: "symbolic links are not scanned",
+			})
+			continue
 		}
 
 		if !fileInfo.IsDir() {
+			if !fileInfo.Mode().IsRegular() {
+				skipped = append(skipped, skippedPath{
+					path:   resolvedPath,
+					reason: "non-regular file",
+				})
+				continue
+			}
 			files = appendUniqueFile(files, seen, resolvedPath)
 			continue
 		}
 
 		err = filepath.WalkDir(resolvedPath, func(currentPath string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
-				return walkErr
+				if errors.Is(walkErr, fs.ErrNotExist) {
+					skipped = append(skipped, skippedPath{
+						path:   currentPath,
+						reason: "path does not exist",
+					})
+					return nil
+				}
+				skipped = append(skipped, skippedPath{
+					path:   currentPath,
+					reason: fmt.Sprintf("walk error: %v", walkErr),
+				})
+				return nil
 			}
 			if entry.IsDir() {
+				return nil
+			}
+			if entry.Type()&os.ModeSymlink != 0 {
+				skipped = append(skipped, skippedPath{
+					path:   currentPath,
+					reason: "symbolic links are not scanned",
+				})
+				return nil
+			}
+			info, infoErr := entry.Info()
+			if infoErr != nil {
+				skipped = append(skipped, skippedPath{
+					path:   currentPath,
+					reason: fmt.Sprintf("metadata read failed (%v)", infoErr),
+				})
+				return nil
+			}
+			if !info.Mode().IsRegular() {
+				skipped = append(skipped, skippedPath{
+					path:   currentPath,
+					reason: "non-regular file",
+				})
 				return nil
 			}
 			files = appendUniqueFile(files, seen, currentPath)
 			return nil
 		})
 		if err != nil {
-			return nil, fmt.Errorf("walk path %q: %w", path, err)
+			return nil, nil, fmt.Errorf("walk path %q: %w", path, err)
 		}
 	}
-	return files, nil
+	return files, skipped, nil
 }
 
 func appendUniqueFile(files []string, seen map[string]struct{}, path string) []string {

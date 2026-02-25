@@ -35,6 +35,9 @@ jobs:
     - name: Vet
       run: make vet
 
+    - name: Dependency vulnerability audit
+      run: make vuln
+
     - name: Build
       env:
         BUILD_VERSION: ${{ github.sha }}

@@ -212,6 +212,47 @@ func Test_Config_Load_NoConfigFile(t *testing.T) {
 	assert.Equal(t, DefaultConfig(), cfg)
 }
 
+func Test_Config_LoadWithOptions_NoDiscovery_UsesDefaultsOnly(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ".promptinel.yaml")
+	configContent := `
+policy:
+  fail-on: low
+  warn-on: low
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	previousWD, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+	t.Cleanup(func() {
+		_ = os.Chdir(previousWD)
+	})
+
+	cfg, err := LoadWithOptions("", LoadOptions{Discover: false})
+	require.NoError(t, err)
+	assert.Equal(t, SeverityHigh, cfg.Policy.FailOn)
+	assert.Equal(t, SeverityMedium, cfg.Policy.WarnOn)
+}
+
+func Test_Config_LoadWithOptions_NoDiscovery_StillLoadsExplicitFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ".promptinel.yaml")
+	configContent := `
+policy:
+  fail-on: low
+  warn-on: low
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	cfg, err := LoadWithOptions(configPath, LoadOptions{Discover: false})
+	require.NoError(t, err)
+	assert.Equal(t, SeverityLow, cfg.Policy.FailOn)
+	assert.Equal(t, SeverityLow, cfg.Policy.WarnOn)
+}
+
 func Test_Config_Load_ValidConfigFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, ".promptinel.yaml")

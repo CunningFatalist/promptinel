@@ -58,6 +58,9 @@ promptinel scan prompts/
 # Scan with a custom config file
 promptinel scan --config .promptinel.yaml prompts/
 
+# Scan with built-in defaults only (do not auto-discover .promptinel.yaml)
+promptinel scan --no-config-discovery prompts/
+
 # Scan only Markdown files
 promptinel scan --include "*.md" prompts/
 
@@ -78,6 +81,9 @@ promptinel sanitize --apply prompts/
 
 # Use a custom config file for sanitization
 promptinel sanitize --config .promptinel.yaml --apply prompts/
+
+# Sanitize with built-in defaults only (do not auto-discover .promptinel.yaml)
+promptinel sanitize --no-config-discovery --apply prompts/
 
 # Only apply transformations to Markdown files
 promptinel sanitize --include "*.md" --apply prompts/
@@ -256,6 +262,10 @@ custom-rules:
     severity: high
     message: "Network download command detected in prompt"
 ```
+
+If `--config` is not set, Promptinel auto-discovers `.promptinel.yaml` from the current directory and `$HOME`.
+Use `--no-config-discovery` on `scan`, `sanitize`, and `baseline` commands to force secure defaults unless you
+explicitly pass `--config`.
 
 ### Severity Levels
 

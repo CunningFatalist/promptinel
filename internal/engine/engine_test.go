@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"syscall"
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
@@ -58,9 +60,10 @@ func Test_Engine_CollectFiles_FilePath(t *testing.T) {
 	file := filepath.Join(tmp, "f.md")
 	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
 
-	files, err := collectFiles([]string{file})
+	files, skipped, err := collectFiles([]string{file})
 	require.NoError(t, err)
 	require.Len(t, files, 1)
+	require.Empty(t, skipped)
 	assert.Equal(t, file, files[0])
 }
 
@@ -69,9 +72,10 @@ func Test_Engine_CollectFiles_DeduplicatesOverlappingInputs(t *testing.T) {
 	file := filepath.Join(tmp, "f.md")
 	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
 
-	files, err := collectFiles([]string{tmp, file})
+	files, skipped, err := collectFiles([]string{tmp, file})
 	require.NoError(t, err)
 	require.Len(t, files, 1)
+	require.Empty(t, skipped)
 	assert.Equal(t, file, files[0])
 }
 
@@ -202,4 +206,34 @@ func Test_Engine_ScanPaths_PreservesInputOrderWithConcurrentWorkers(t *testing.T
 	require.Len(t, findings, 2)
 	assert.Equal(t, filepath.Base(second), filepath.Base(findings[0].Path))
 	assert.Equal(t, filepath.Base(first), filepath.Base(findings[1].Path))
+}
+
+func Test_Engine_ScanPaths_SkipsSymlinkedInputAsNonFatalFinding(t *testing.T) {
+	tmp := t.TempDir()
+	link := filepath.Join(tmp, "broken.md")
+	require.NoError(t, os.Symlink(filepath.Join(tmp, "missing.md"), link))
+
+	scanner := NewScanner(nil, config.DefaultConfig())
+	findings, err := scanner.ScanPaths(context.Background(), []string{link}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, unreadableFileFindingID, findings[0].ID)
+	assert.Contains(t, findings[0].Message, "symbolic links are not scanned")
+}
+
+func Test_Engine_ScanPaths_NonRegularInputBecomesSkipFinding(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("named pipes are not supported in this test on windows")
+	}
+
+	tmp := t.TempDir()
+	pipePath := filepath.Join(tmp, "scan.fifo")
+	require.NoError(t, syscall.Mkfifo(pipePath, 0o600))
+
+	scanner := NewScanner(nil, config.DefaultConfig())
+	findings, err := scanner.ScanPaths(context.Background(), []string{pipePath}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, unreadableFileFindingID, findings[0].ID)
+	assert.Contains(t, findings[0].Message, "non-regular file")
 }

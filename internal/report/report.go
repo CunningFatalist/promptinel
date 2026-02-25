@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/engine"
@@ -49,7 +51,7 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 		for _, finding := range groupedFindings {
 			if finding.path != currentPath {
 				currentPath = finding.path
-				if _, err := fmt.Fprintf(w, "\nFile: %s\n", currentPath); err != nil {
+				if _, err := fmt.Fprintf(w, "\nFile: %s\n", sanitizeForTerminal(currentPath)); err != nil {
 					return err
 				}
 			}
@@ -60,8 +62,8 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 				" - lines %s [%s] %s: %s\n",
 				lineSummary,
 				finding.severity,
-				finding.id,
-				finding.message,
+				sanitizeForTerminal(finding.id),
+				sanitizeForTerminal(finding.message),
 			); err != nil {
 				return err
 			}
@@ -172,4 +174,37 @@ func outcomeLabel(code exitcode.Code) string {
 	default:
 		return "PASS"
 	}
+}
+
+func sanitizeForTerminal(value string) string {
+	if value == "" {
+		return ""
+	}
+
+	var builder strings.Builder
+	builder.Grow(len(value))
+	for _, r := range value {
+		switch {
+		case r == '\n':
+			builder.WriteString(`\n`)
+		case r == '\r':
+			builder.WriteString(`\r`)
+		case r == '\t':
+			builder.WriteString(`\t`)
+		case isControlRune(r):
+			builder.WriteString(`\x`)
+			builder.WriteString(strconv.FormatInt(int64(r), 16))
+		default:
+			builder.WriteRune(r)
+		}
+	}
+
+	return builder.String()
+}
+
+func isControlRune(r rune) bool {
+	if r == utf8.RuneError {
+		return false
+	}
+	return unicode.IsControl(r)
 }

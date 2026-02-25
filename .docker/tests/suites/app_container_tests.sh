@@ -21,7 +21,12 @@ docker compose exec promptinel_app git --version > /dev/null 2>&1 \
 
 should "have golanglint-ci installed"
 docker compose exec promptinel_app golangci-lint --version > /dev/null 2>&1 \
-  && pass "git is installed" \
-  || fail "git is not installed"
+  && pass "golanglint-ci is installed" \
+  || fail "golanglint-ci is not installed"
+
+should "have govulncheck installed"
+docker compose exec promptinel_app govulncheck --version > /dev/null 2>&1 \
+  && pass "govulncheck is installed" \
+  || fail "govulncheck is not installed"
 
 finish
