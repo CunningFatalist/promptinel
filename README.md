@@ -428,8 +428,8 @@ Capabilities:
  - has_secrets: true
 
 File: agents/build.md
- - 12:8 [high] no-zero-width: Zero-width character detected
- - 18:3 [medium] no-unsafe-templates: Unsafe template expression detected
+ - lines 12 [high] no-zero-width: Zero-width character detected
+ - lines 18 [medium] no-unsafe-templates: Unsafe template expression detected
 
 Summary:
  - findings: 2
