@@ -7,6 +7,7 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/fatih/color"
 )
@@ -25,8 +26,14 @@ func Test_Cmd_RulesListCommand_OutputIsSorted(t *testing.T) {
 	})
 
 	lines := strings.Split(strings.TrimSpace(output), "\n")
-	if len(lines) != 18 {
-		t.Fatalf("expected 18 rules, got %d (%q)", len(lines), output)
+	registry, err := builtin.NewRegistry()
+	if err != nil {
+		t.Fatalf("initialize builtin rule registry: %v", err)
+	}
+
+	expectedRuleCount := len(registry.List())
+	if len(lines) != expectedRuleCount {
+		t.Fatalf("expected %d rules, got %d (%q)", expectedRuleCount, len(lines), output)
 	}
 	if !strings.Contains(lines[0], " no-bidi-control-characters ") {
 		t.Fatalf("expected first rule to be no-bidi-control-characters, got %q", lines[0])
