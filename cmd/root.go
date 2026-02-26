@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"runtime/debug"
+	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/spf13/cobra"
@@ -25,10 +27,8 @@ Promptinel treats prompts as executable artifacts.`,
 		versionFlag, err := cmd.Flags().GetBool("version")
 		util.ExitOnError("error reading version flag", err)
 
-		if versionFlag && Version == DevelopmentVersion {
-			fmt.Println(Version)
-		} else if versionFlag {
-			fmt.Printf("v%s\n", Version)
+		if versionFlag {
+			fmt.Println(displayVersion())
 		}
 	},
 }
@@ -41,4 +41,29 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().BoolP("version", "v", false, "Print the current Promptinel version")
+}
+
+func displayVersion() string {
+	version := effectiveVersion()
+	if version == DevelopmentVersion {
+		return version
+	}
+	if strings.HasPrefix(version, "v") {
+		return version
+	}
+	return "v" + version
+}
+
+func effectiveVersion() string {
+	if Version != DevelopmentVersion {
+		return Version
+	}
+	buildInfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		return DevelopmentVersion
+	}
+	if buildInfo.Main.Version == "" || buildInfo.Main.Version == "(devel)" {
+		return DevelopmentVersion
+	}
+	return buildInfo.Main.Version
 }
