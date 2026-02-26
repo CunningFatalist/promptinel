@@ -28,7 +28,11 @@ Promptinel is in early development and many features are still missing.
 
 ## Installation
 
-_TODO_
+```bash
+go install github.com/CunningFatalist/promptinel@latest
+```
+
+The `promptinel` binary will be installed into your `GOBIN` (or `$(go env GOPATH)/bin`).
 
 ### Build from Source
 

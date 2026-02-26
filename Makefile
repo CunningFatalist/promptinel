@@ -86,3 +86,11 @@ shell: ## Open a shell in the application container
 .PHONY: test-docker
 test-docker: ## Test the docker setup
 	.docker/tests/run.sh
+
+.PHONY: goreleaser-check
+goreleaser-check: ## Validate GoReleaser configuration
+	docker compose exec -T promptinel_app goreleaser check
+
+.PHONY: goreleaser-healthcheck
+goreleaser-healthcheck: ## Verify GoReleaser release environment
+	docker compose exec -T promptinel_app goreleaser healthcheck
