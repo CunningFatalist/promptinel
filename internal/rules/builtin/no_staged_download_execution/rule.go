@@ -73,14 +73,14 @@ func (Rule) CheckFlow(_ rules.Context, doc rules.AnalyzedDocument) []rules.Findi
 				token := tokens[i]
 				lower := strings.ToLower(token.Value)
 				if token.Type == lexer.TokenShellCommand {
-					if _, ok := signals.ExecutionCommands[lower]; ok {
+					if _, ok := signals.ExecutionSignals[lower]; ok {
 						executionSegment = segmentIndex
 						executionTokenIndex = tokenCursor + i
 						executionTokenIndexInSegment = i
 						break
 					}
 				}
-				if _, ok := signals.ExecutionCommands[lower]; ok {
+				if _, ok := signals.ExecutionSignals[lower]; ok {
 					executionSegment = segmentIndex
 					executionTokenIndex = tokenCursor + i
 					executionTokenIndexInSegment = i

@@ -124,6 +124,12 @@ func Test_Cmd_SanitizeOptionsFromCommand_ReadsFlags(t *testing.T) {
 	if !options.noConfigDiscovery {
 		t.Fatal("expected no-config-discovery option to be true")
 	}
+	if !options.includeSet {
+		t.Fatal("expected includeSet to be true")
+	}
+	if !options.excludeSet {
+		t.Fatal("expected excludeSet to be true")
+	}
 	if len(options.includes) != 1 || options.includes[0] != "*.md" {
 		t.Fatalf("unexpected includes: %#v", options.includes)
 	}
@@ -217,6 +223,82 @@ limits:
 	}
 }
 
+func Test_Cmd_SanitizeWithOptions_ConfigFiltersApplyWhenCLIFlagsUnset(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := `
+filters:
+  include:
+    - "*.md"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	mdFile := filepath.Join(workingDir, "included.md")
+	if err := os.WriteFile(mdFile, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write markdown file: %v", err)
+	}
+	txtFile := filepath.Join(workingDir, "excluded.txt")
+	if err := os.WriteFile(txtFile, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write txt file: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		if err := runSanitizeWithOptions([]string{workingDir}, sanitizeOptions{
+			configFile:        configPath,
+			noConfigDiscovery: true,
+		}); err != nil {
+			t.Fatalf("run sanitize with config filters: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "included.md: would sanitize") {
+		t.Fatalf("expected markdown file to be included, got %q", output)
+	}
+	if strings.Contains(output, "excluded.txt: would sanitize") {
+		t.Fatalf("expected txt file to be excluded by config filter, got %q", output)
+	}
+}
+
+func Test_Cmd_SanitizeWithOptions_CLIIncludeOverridesConfigFilters(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := `
+filters:
+  include:
+    - "*.md"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	mdFile := filepath.Join(workingDir, "excluded-by-cli.md")
+	if err := os.WriteFile(mdFile, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write markdown file: %v", err)
+	}
+	txtFile := filepath.Join(workingDir, "included-by-cli.txt")
+	if err := os.WriteFile(txtFile, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write txt file: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		if err := runSanitizeWithOptions([]string{workingDir}, sanitizeOptions{
+			configFile:        configPath,
+			noConfigDiscovery: true,
+			includes:          []string{"*.txt"},
+			includeSet:        true,
+		}); err != nil {
+			t.Fatalf("run sanitize with cli filters: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "included-by-cli.txt: would sanitize") {
+		t.Fatalf("expected txt file to be included by CLI filter, got %q", output)
+	}
+	if strings.Contains(output, "excluded-by-cli.md: would sanitize") {
+		t.Fatalf("expected markdown file to be excluded by CLI override, got %q", output)
+	}
+}
+
 func Test_Cmd_SanitizeWithOptions_SkipsSymlinkedDirectory(t *testing.T) {
 	workingDir := t.TempDir()
 	targetDir := filepath.Join(workingDir, "real")
@@ -281,5 +363,47 @@ func Test_Cmd_WriteFileAtomically_DoesNotWriteThroughSymlink(t *testing.T) {
 	}
 	if string(replacedContent) != "replacement" {
 		t.Fatalf("unexpected replaced file content: %q", string(replacedContent))
+	}
+}
+
+func Test_Cmd_RunSanitize_ReturnsErrorForInvalidOptions(t *testing.T) {
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().Bool("apply", false, "")
+	if err := command.Flags().Set("include", "invalid["); err != nil {
+		t.Fatalf("set include flag: %v", err)
+	}
+
+	err := runSanitize(command, []string{"."})
+	if err == nil {
+		t.Fatal("expected runSanitize to return invalid include error")
+	}
+	if !strings.Contains(err.Error(), "read sanitize options") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Cmd_RunSanitize_ReturnsNilOnValidInput(t *testing.T) {
+	workingDir := t.TempDir()
+	prompt := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(prompt, []byte("hello world"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().Bool("apply", false, "")
+	if err := command.Flags().Set("no-config-discovery", "true"); err != nil {
+		t.Fatalf("set no-config-discovery flag: %v", err)
+	}
+
+	if err := runSanitize(command, []string{workingDir}); err != nil {
+		t.Fatalf("expected runSanitize to succeed, got %v", err)
 	}
 }

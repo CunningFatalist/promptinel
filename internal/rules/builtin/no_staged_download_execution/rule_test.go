@@ -28,6 +28,25 @@ func Test_Builtin_NoStagedDownloadExecution_IgnoresBenignURLAndRunVerb(t *testin
 	assert.Empty(t, findings)
 }
 
+func Test_Builtin_NoStagedDownloadExecution_DetectsSameSegmentWithDistance(t *testing.T) {
+	content := "Please download payload and then safely run it in a sandbox"
+	findings := evaluateRule(t, content)
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Staged download-and-execute flow detected", findings[0].Message)
+}
+
+func Test_Builtin_NoStagedDownloadExecution_IgnoresSameSegmentWhenTooClose(t *testing.T) {
+	content := "download run"
+	findings := evaluateRule(t, content)
+	assert.Empty(t, findings)
+}
+
+func Test_Builtin_NoStagedDownloadExecution_IgnoresSameSegmentWhenChained(t *testing.T) {
+	content := "download payload; bash payload.sh"
+	findings := evaluateRule(t, content)
+	assert.Empty(t, findings)
+}
+
 func evaluateRule(t *testing.T, content string) []rules.Finding {
 	t.Helper()
 

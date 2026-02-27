@@ -198,6 +198,8 @@ func Test_Config_DefaultConfig(t *testing.T) {
 	assert.Equal(t, TrustLevelUntrusted, cfg.Trust.RemoteIncludes)
 	assert.Equal(t, TrustLevelTainted, cfg.Trust.UserInputPlaceholders)
 	assert.Equal(t, DefaultMaxFileSizeBytes, cfg.Limits.MaxFileSizeBytes)
+	assert.Empty(t, cfg.Filters.Include)
+	assert.Empty(t, cfg.Filters.Exclude)
 
 	assert.Empty(t, cfg.Scopes)
 	assert.Empty(t, cfg.Rules)
@@ -276,6 +278,12 @@ trust:
 limits:
   max_file_size_bytes: 12345
 
+filters:
+  include:
+    - "*.md"
+  exclude:
+    - "*.yaml"
+
 scopes:
   - path: agents/**
     severity: high
@@ -313,6 +321,8 @@ custom-rules:
 	assert.Equal(t, TrustLevelTainted, cfg.Trust.RemoteIncludes)
 	assert.Equal(t, TrustLevelTrusted, cfg.Trust.UserInputPlaceholders)
 	assert.Equal(t, int64(12345), cfg.Limits.MaxFileSizeBytes)
+	assert.Equal(t, []string{"*.md"}, cfg.Filters.Include)
+	assert.Equal(t, []string{"*.yaml"}, cfg.Filters.Exclude)
 
 	require.Len(t, cfg.Scopes, 2)
 	assert.Equal(t, "agents/**", cfg.Scopes[0].Path)
@@ -394,6 +404,23 @@ scopes:
 	_, err = Load(configPath)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid glob pattern")
+}
+
+func Test_Config_Load_InvalidIncludeFilterPattern(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ".promptinel.yaml")
+
+	configContent := `
+filters:
+  include:
+    - "invalid["
+`
+	err := os.WriteFile(configPath, []byte(configContent), 0o644)
+	require.NoError(t, err)
+
+	_, err = Load(configPath)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid glob pattern for filters.include")
 }
 
 func Test_Config_LoadFromPath(t *testing.T) {
@@ -507,6 +534,14 @@ func Test_Config_Validate_InvalidScopeGlobPattern(t *testing.T) {
 	err := cfg.Validate()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid glob pattern for scope")
+}
+
+func Test_Config_Validate_InvalidIncludeFilterGlobPattern(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Filters.Include = []string{"test["}
+	err := cfg.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid glob pattern for filters.include")
 }
 
 func Test_Config_Validate_EmptyRuleID(t *testing.T) {

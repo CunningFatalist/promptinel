@@ -20,6 +20,8 @@ type sanitizeOptions struct {
 	noConfigDiscovery bool
 	includes          []string
 	excludes          []string
+	includeSet        bool
+	excludeSet        bool
 	apply             bool
 }
 
@@ -87,6 +89,8 @@ func sanitizeOptionsFromCommand(cmd *cobra.Command) (sanitizeOptions, error) {
 		noConfigDiscovery: noConfigDiscovery,
 		includes:          includes,
 		excludes:          excludes,
+		includeSet:        cmd.Flags().Changed("include"),
+		excludeSet:        cmd.Flags().Changed("exclude"),
 		apply:             apply,
 	}, nil
 }
@@ -99,7 +103,8 @@ func runSanitizeWithOptions(args []string, options sanitizeOptions) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	files, skippedDuringDiscovery, err := collectSanitizeFiles(args, options.includes, options.excludes)
+	includes, excludes := resolveEffectiveFilters(cfg, options.includes, options.excludes, options.includeSet, options.excludeSet)
+	files, skippedDuringDiscovery, err := collectSanitizeFiles(args, includes, excludes)
 	if err != nil {
 		return fmt.Errorf("collect files: %w", err)
 	}
@@ -179,11 +184,11 @@ func runSanitizeWithOptions(args []string, options sanitizeOptions) error {
 				skippedFiles++
 				continue
 			}
-				if writeErr := writeFileAtomically(file.AbsolutePath, []byte(result.Content), info.Mode().Perm()); writeErr != nil {
-					return fmt.Errorf("write sanitized file %q: %w", file.AbsolutePath, writeErr)
-				}
-				action = "sanitized"
+			if writeErr := writeFileAtomically(file.AbsolutePath, []byte(result.Content), info.Mode().Perm()); writeErr != nil {
+				return fmt.Errorf("write sanitized file %q: %w", file.AbsolutePath, writeErr)
 			}
+			action = "sanitized"
+		}
 
 		fmt.Printf(
 			"%s: %s (line_endings=%d, zero_width=%d)\n",

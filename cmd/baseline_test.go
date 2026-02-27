@@ -119,6 +119,12 @@ func Test_Cmd_BaselineOptionsFromCommand_ReadsFlags(t *testing.T) {
 	if len(options.excludes) != 1 || options.excludes[0] != "*.txt" {
 		t.Fatalf("unexpected excludes: %#v", options.excludes)
 	}
+	if !options.includeSet {
+		t.Fatal("expected includeSet to be true")
+	}
+	if !options.excludeSet {
+		t.Fatal("expected excludeSet to be true")
+	}
 	if options.file != "custom-baseline.json" {
 		t.Fatalf("unexpected baseline file option: %q", options.file)
 	}
@@ -197,5 +203,64 @@ policy:
 	}
 	if len(withoutDiscoverySnapshot.Entries) != 0 {
 		t.Fatalf("expected no findings with default medium warn-on policy, got %d", len(withoutDiscoverySnapshot.Entries))
+	}
+}
+
+func Test_Cmd_RunBaselineCreate_CreatesSnapshot(t *testing.T) {
+	workingDir := t.TempDir()
+	prompt := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(prompt, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+	baselinePath := filepath.Join(workingDir, "baseline.json")
+
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().String("file", baseline.DefaultFileName, "")
+	if err := command.Flags().Set("file", baselinePath); err != nil {
+		t.Fatalf("set file flag: %v", err)
+	}
+	if err := command.Flags().Set("no-config-discovery", "true"); err != nil {
+		t.Fatalf("set no-config-discovery flag: %v", err)
+	}
+
+	if err := runBaselineCreate(command, []string{workingDir}); err != nil {
+		t.Fatalf("run baseline create: %v", err)
+	}
+
+	if _, err := os.Stat(baselinePath); err != nil {
+		t.Fatalf("expected baseline file to exist: %v", err)
+	}
+}
+
+func Test_Cmd_RunBaselineUpdate_UpdatesSnapshot(t *testing.T) {
+	workingDir := t.TempDir()
+	prompt := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(prompt, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+	baselinePath := filepath.Join(workingDir, "baseline.json")
+	if err := runBaselineSnapshot([]string{workingDir}, baselineOptions{file: baselinePath, noConfigDiscovery: true}, false); err != nil {
+		t.Fatalf("seed baseline snapshot: %v", err)
+	}
+
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().String("file", baseline.DefaultFileName, "")
+	if err := command.Flags().Set("file", baselinePath); err != nil {
+		t.Fatalf("set file flag: %v", err)
+	}
+	if err := command.Flags().Set("no-config-discovery", "true"); err != nil {
+		t.Fatalf("set no-config-discovery flag: %v", err)
+	}
+
+	if err := runBaselineUpdate(command, []string{workingDir}); err != nil {
+		t.Fatalf("run baseline update: %v", err)
 	}
 }

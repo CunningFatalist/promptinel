@@ -64,6 +64,12 @@ type Limits struct {
 	MaxFileSizeBytes int64 `mapstructure:"max_file_size_bytes"`
 }
 
+// Filters defines include and exclude globs for file selection.
+type Filters struct {
+	Include []string `mapstructure:"include"`
+	Exclude []string `mapstructure:"exclude"`
+}
+
 // Scope defines severity adjustments based on file path patterns.
 type Scope struct {
 	Path     string   `mapstructure:"path"`
@@ -91,6 +97,7 @@ type Config struct {
 	Environment Environment  `mapstructure:"environment"`
 	Trust       Trust        `mapstructure:"trust"`
 	Limits      Limits       `mapstructure:"limits"`
+	Filters     Filters      `mapstructure:"filters"`
 	Scopes      []Scope      `mapstructure:"scopes"`
 	Rules       []Rule       `mapstructure:"rules"`
 	CustomRules []CustomRule `mapstructure:"custom-rules"`
@@ -121,6 +128,10 @@ func DefaultConfig() *Config {
 		},
 		Limits: Limits{
 			MaxFileSizeBytes: DefaultMaxFileSizeBytes,
+		},
+		Filters: Filters{
+			Include: []string{},
+			Exclude: []string{},
 		},
 		Scopes:      []Scope{},
 		Rules:       []Rule{},
@@ -201,6 +212,8 @@ func setDefaults(v *viper.Viper, cfg *Config) {
 	v.SetDefault("trust.remote-includes", cfg.Trust.RemoteIncludes)
 	v.SetDefault("trust.user-input-placeholders", cfg.Trust.UserInputPlaceholders)
 	v.SetDefault("limits.max_file_size_bytes", cfg.Limits.MaxFileSizeBytes)
+	v.SetDefault("filters.include", cfg.Filters.Include)
+	v.SetDefault("filters.exclude", cfg.Filters.Exclude)
 
 	v.SetDefault("scopes", cfg.Scopes)
 	v.SetDefault("rules", cfg.Rules)
@@ -314,6 +327,16 @@ func (c *Config) Validate() error {
 	}
 	if c.Limits.MaxFileSizeBytes <= 0 {
 		return fmt.Errorf("invalid limits.max_file_size_bytes: must be greater than 0")
+	}
+	for i, pattern := range c.Filters.Include {
+		if _, err := filepath.Match(pattern, ""); err != nil {
+			return fmt.Errorf("invalid glob pattern for filters.include[%d]: %s", i, pattern)
+		}
+	}
+	for i, pattern := range c.Filters.Exclude {
+		if _, err := filepath.Match(pattern, ""); err != nil {
+			return fmt.Errorf("invalid glob pattern for filters.exclude[%d]: %s", i, pattern)
+		}
 	}
 
 	for i, scope := range c.Scopes {

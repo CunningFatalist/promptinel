@@ -71,6 +71,12 @@ func Test_Cmd_ScanOptionsFromCommand_ReadsFlagValues(t *testing.T) {
 	if len(options.excludes) != 1 || options.excludes[0] != "*.txt" {
 		t.Fatalf("unexpected excludes: %#v", options.excludes)
 	}
+	if !options.includeSet {
+		t.Fatal("expected includeSet to be true")
+	}
+	if !options.excludeSet {
+		t.Fatal("expected excludeSet to be true")
+	}
 	if options.baselineFile != "baseline.json" {
 		t.Fatalf("expected baseline file baseline.json, got %q", options.baselineFile)
 	}
@@ -205,5 +211,112 @@ policy:
 	}
 	if withoutDiscovery.Policy.WarnOn != config.SeverityMedium {
 		t.Fatalf("expected default warn-on medium without discovery, got %s", withoutDiscovery.Policy.WarnOn)
+	}
+}
+
+func Test_Cmd_RunSharedScan_ConfigFiltersApplyWhenCLIFlagsUnset(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := `
+filters:
+  include:
+    - "*.md"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	mdFile := filepath.Join(workingDir, "included.md")
+	if err := os.WriteFile(mdFile, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write markdown file: %v", err)
+	}
+	txtFile := filepath.Join(workingDir, "excluded.txt")
+	if err := os.WriteFile(txtFile, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write txt file: %v", err)
+	}
+
+	findings, _, err := runSharedScan([]string{workingDir}, sharedScanOptions{
+		configFile:        configPath,
+		noConfigDiscovery: true,
+	}, context.Background())
+	if err != nil {
+		t.Fatalf("run shared scan: %v", err)
+	}
+
+	for _, finding := range findings {
+		if strings.HasSuffix(finding.Path, "excluded.txt") {
+			t.Fatalf("expected config include filter to skip excluded.txt, findings: %#v", findings)
+		}
+	}
+}
+
+func Test_Cmd_RunSharedScan_CLIIncludeOverridesConfigFilters(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := `
+filters:
+  include:
+    - "*.md"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	mdFile := filepath.Join(workingDir, "excluded-by-cli.md")
+	if err := os.WriteFile(mdFile, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write markdown file: %v", err)
+	}
+	txtFile := filepath.Join(workingDir, "included-by-cli.txt")
+	if err := os.WriteFile(txtFile, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write txt file: %v", err)
+	}
+
+	findings, _, err := runSharedScan([]string{workingDir}, sharedScanOptions{
+		configFile:        configPath,
+		noConfigDiscovery: true,
+		includes:          []string{"*.txt"},
+		includeSet:        true,
+	}, context.Background())
+	if err != nil {
+		t.Fatalf("run shared scan: %v", err)
+	}
+
+	for _, finding := range findings {
+		if strings.HasSuffix(finding.Path, "excluded-by-cli.md") {
+			t.Fatalf("expected CLI include filter to override config include filter, findings: %#v", findings)
+		}
+	}
+}
+
+func Test_Cmd_RunScan_ReturnsErrorForInvalidOptions(t *testing.T) {
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().String("baseline", "", "")
+	if err := command.Flags().Set("include", "invalid["); err != nil {
+		t.Fatalf("set include flag: %v", err)
+	}
+
+	err := runScan(command, []string{"."})
+	if err == nil {
+		t.Fatal("expected runScan to return invalid include error")
+	}
+	if !strings.Contains(err.Error(), "read scan options") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_ReturnsNilOnCleanInput(t *testing.T) {
+	workingDir := t.TempDir()
+	prompt := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(prompt, []byte("hello world"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	err := runScanWithOptions(context.Background(), []string{workingDir}, scanOptions{
+		noConfigDiscovery: true,
+	})
+	if err != nil {
+		t.Fatalf("expected clean scan to pass, got %v", err)
 	}
 }

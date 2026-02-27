@@ -15,6 +15,8 @@ type baselineOptions struct {
 	noConfigDiscovery bool
 	includes          []string
 	excludes          []string
+	includeSet        bool
+	excludeSet        bool
 	file              string
 }
 
@@ -104,6 +106,8 @@ func baselineOptionsFromCommand(cmd *cobra.Command) (baselineOptions, error) {
 		noConfigDiscovery: noConfigDiscovery,
 		includes:          includes,
 		excludes:          excludes,
+		includeSet:        cmd.Flags().Changed("include"),
+		excludeSet:        cmd.Flags().Changed("exclude"),
 		file:              file,
 	}, nil
 }
@@ -119,6 +123,8 @@ func runBaselineSnapshot(args []string, options baselineOptions, update bool) er
 		noConfigDiscovery: options.noConfigDiscovery,
 		includes:          options.includes,
 		excludes:          options.excludes,
+		includeSet:        options.includeSet,
+		excludeSet:        options.excludeSet,
 	}, context.Background())
 	if err != nil {
 		return err

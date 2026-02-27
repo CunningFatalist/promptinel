@@ -128,8 +128,14 @@ Promptinel uses glob patterns for:
 
 - `scan --include`
 - `scan --exclude`
+- `baseline create --include`
+- `baseline create --exclude`
+- `baseline update --include`
+- `baseline update --exclude`
 - `sanitize --include`
 - `sanitize --exclude`
+- `filters.include[]` in `.promptinel.yaml`
+- `filters.exclude[]` in `.promptinel.yaml`
 - `scopes[].path` in `.promptinel.yaml`
 
 #### Supported Pattern Behavior
@@ -184,6 +190,12 @@ trust:
 
 limits:
   max_file_size_bytes: 5242880
+
+filters:
+  include:
+    - "*.md"
+  exclude:
+    - "*.yaml"
 
 scopes:
   - path: agents/**
@@ -270,6 +282,23 @@ custom-rules:
 If `--config` is not set, Promptinel auto-discovers `.promptinel.yaml` from the current directory and `$HOME`.
 Use `--no-config-discovery` on `scan`, `sanitize`, and `baseline` commands to force secure defaults unless you
 explicitly pass `--config`.
+
+### Filters
+
+Use filters to define default file selection globs in `.promptinel.yaml`:
+
+```yaml
+filters:
+  include:
+    - "*.md"
+  exclude:
+    - "*.yaml"
+```
+
+CLI flags take precedence over config values:
+
+- `--include` overrides `filters.include`
+- `--exclude` overrides `filters.exclude`
 
 ### Severity Levels
 

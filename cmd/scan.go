@@ -21,6 +21,8 @@ type scanOptions struct {
 	noConfigDiscovery bool
 	includes          []string
 	excludes          []string
+	includeSet        bool
+	excludeSet        bool
 	baselineFile      string
 }
 
@@ -29,6 +31,8 @@ type sharedScanOptions struct {
 	noConfigDiscovery bool
 	includes          []string
 	excludes          []string
+	includeSet        bool
+	excludeSet        bool
 }
 
 // scanCmd represents the scan command.
@@ -92,6 +96,8 @@ func scanOptionsFromCommand(cmd *cobra.Command) (scanOptions, error) {
 		noConfigDiscovery: noConfigDiscovery,
 		includes:          includes,
 		excludes:          excludes,
+		includeSet:        cmd.Flags().Changed("include"),
+		excludeSet:        cmd.Flags().Changed("exclude"),
 		baselineFile:      baselineFile,
 	}, nil
 }
@@ -111,6 +117,8 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 		noConfigDiscovery: options.noConfigDiscovery,
 		includes:          options.includes,
 		excludes:          options.excludes,
+		includeSet:        options.includeSet,
+		excludeSet:        options.excludeSet,
 	}, ctx)
 	if err != nil {
 		return err
@@ -162,7 +170,8 @@ func runSharedScan(args []string, options sharedScanOptions, ctx context.Context
 	}
 
 	scanner := engine.NewScanner(compiledRules, cfg)
-	findings, err := scanner.ScanPaths(ctx, args, options.includes, options.excludes)
+	includes, excludes := resolveEffectiveFilters(cfg, options.includes, options.excludes, options.includeSet, options.excludeSet)
+	findings, err := scanner.ScanPaths(ctx, args, includes, excludes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("scan files: %w", err)
 	}
