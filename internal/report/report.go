@@ -12,6 +12,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
+	"github.com/CunningFatalist/promptinel/internal/sanitize"
 )
 
 // ScanSummary contains rendered scan outcome data.
@@ -20,6 +21,14 @@ type ScanSummary struct {
 	Environment      config.Environment
 	BaselineFiltered int
 	PolicyOutcome    exitcode.Code
+}
+
+// BaselineSummary contains rendered baseline outcome data.
+type BaselineSummary struct {
+	File            string
+	Entries         int
+	Updated         bool
+	PreviousEntries int
 }
 
 // WriteScanText writes a deterministic text report for scan findings.
@@ -85,6 +94,74 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 		return err
 	}
 
+	return nil
+}
+
+// WriteBaselineText writes deterministic baseline command output.
+func WriteBaselineText(w io.Writer, summary BaselineSummary) error {
+	if summary.Updated {
+		delta := summary.Entries - summary.PreviousEntries
+		_, err := fmt.Fprintf(
+			w,
+			"Updated baseline %s with %d entries (%+d compared to previous snapshot).\n",
+			summary.File,
+			summary.Entries,
+			delta,
+		)
+		return err
+	}
+
+	_, err := fmt.Fprintf(w, "Created baseline %s with %d entries.\n", summary.File, summary.Entries)
+	return err
+}
+
+// WriteSanitizeText writes deterministic sanitize command output.
+func WriteSanitizeText(w io.Writer, result sanitize.Result) error {
+	for _, event := range result.Events {
+		switch event.Action {
+		case sanitize.ActionSkipped:
+			if _, err := fmt.Fprintf(w, "%s: skipped (%s)\n", event.Path, event.Reason); err != nil {
+				return err
+			}
+		case sanitize.ActionWouldSanitize:
+			if _, err := fmt.Fprintf(
+				w,
+				"%s: would sanitize (line_endings=%d, zero_width=%d)\n",
+				event.Path,
+				event.LineEndingsNormalized,
+				event.ZeroWidthRunesStripped,
+			); err != nil {
+				return err
+			}
+		case sanitize.ActionSanitized:
+			if _, err := fmt.Fprintf(
+				w,
+				"%s: sanitized (line_endings=%d, zero_width=%d)\n",
+				event.Path,
+				event.LineEndingsNormalized,
+				event.ZeroWidthRunesStripped,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
+	if _, err := fmt.Fprintf(
+		w,
+		"\nSummary: files=%d changed=%d skipped=%d line_endings=%d zero_width=%d\n",
+		result.Summary.Files,
+		result.Summary.Changed,
+		result.Summary.Skipped,
+		result.Summary.LineEndingsNormalized,
+		result.Summary.ZeroWidthRunesStripped,
+	); err != nil {
+		return err
+	}
+	if result.Summary.Changed > 0 && !result.Summary.Applied {
+		if _, err := fmt.Fprintln(w, "Re-run with --apply to persist changes."); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

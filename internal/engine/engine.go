@@ -12,8 +12,8 @@ import (
 	"sync"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/normalize"
-	"github.com/CunningFatalist/promptinel/internal/pathmatch"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 )
 
@@ -79,7 +79,7 @@ func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns
 		}
 
 		relativePath := relativePathFromWorkingDir(wd, skippedPath.path)
-		if !matchesFilters(relativePath, includePatterns, excludePatterns) {
+		if !filters.Match(relativePath, includePatterns, excludePatterns) {
 			continue
 		}
 		findings = append(findings, FileFinding{
@@ -102,7 +102,7 @@ func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns
 		}
 
 		relativePath := relativePathFromWorkingDir(wd, filePath)
-		if !matchesFilters(relativePath, includePatterns, excludePatterns) {
+		if !filters.Match(relativePath, includePatterns, excludePatterns) {
 			continue
 		}
 		targets = append(targets, scanTarget{
@@ -379,37 +379,6 @@ func canonicalizePath(path string) string {
 		return filepath.Clean(resolvedPath)
 	}
 	return cleanPath
-}
-
-func matchesFilters(path string, includePatterns []string, excludePatterns []string) bool {
-	included := len(includePatterns) == 0
-	for _, include := range includePatterns {
-		if matchesPattern(include, path) {
-			included = true
-			break
-		}
-	}
-	if !included {
-		return false
-	}
-
-	for _, exclude := range excludePatterns {
-		if matchesPattern(exclude, path) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func matchesPattern(pattern string, path string) bool {
-	if pathmatch.Match(pattern, path) {
-		return true
-	}
-	if pathmatch.Match(pattern, filepath.Base(path)) {
-		return true
-	}
-	return false
 }
 
 func (s *Scanner) scopeForPath(path string) *config.Scope {

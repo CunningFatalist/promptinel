@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,19 +41,12 @@ func Test_Engine_ScanPaths_ReturnsErrorForMissingPath(t *testing.T) {
 	require.Error(t, err)
 }
 
-func Test_Engine_MatchesPattern_PathAndBase(t *testing.T) {
-	assert.True(t, matchesPattern("*.md", "dir/file.md"))
-	assert.True(t, matchesPattern("dir/*", "dir/file.md"))
-	assert.True(t, matchesPattern("dir/**", "dir/sub/file.md"))
-	assert.False(t, matchesPattern("*.yaml", "dir/file.md"))
-}
-
-func Test_Engine_MatchesFilters_IncludeAndExclude(t *testing.T) {
-	assert.True(t, matchesFilters("a.md", nil, nil))
-	assert.False(t, matchesFilters("a.txt", []string{"*.md"}, nil))
-	assert.False(t, matchesFilters("a.md", []string{"*.md"}, []string{"a.*"}))
-	assert.True(t, matchesFilters("docs/a/b.md", []string{"docs/**"}, nil))
-	assert.False(t, matchesFilters("docs/a/b.md", nil, []string{"docs/**"}))
+func Test_Engine_ScanPaths_UsesSharedFilterMatching(t *testing.T) {
+	assert.True(t, filters.Match("a.md", nil, nil))
+	assert.False(t, filters.Match("a.txt", []string{"*.md"}, nil))
+	assert.False(t, filters.Match("a.md", []string{"*.md"}, []string{"a.*"}))
+	assert.True(t, filters.Match("docs/a/b.md", []string{"docs/**"}, nil))
+	assert.False(t, filters.Match("docs/a/b.md", nil, []string{"docs/**"}))
 }
 
 func Test_Engine_CollectFiles_FilePath(t *testing.T) {

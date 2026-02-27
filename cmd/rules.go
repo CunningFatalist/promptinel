@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/rulecatalog"
 	"github.com/CunningFatalist/promptinel/internal/rules"
-	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -27,7 +26,7 @@ var rulesListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all available built-in rules",
 	Run: func(cmd *cobra.Command, args []string) {
-		util.ExitOnCommandError("rules list command failed", runRulesList())
+		util.ExitOnCommandError("rules list command failed", runRulesList(cmd, args))
 	},
 }
 
@@ -36,20 +35,16 @@ var rulesDescribeCmd = &cobra.Command{
 	Short: "Describe a single built-in rule",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		util.ExitOnCommandError("rules describe command failed", runRulesDescribe(args))
+		util.ExitOnCommandError("rules describe command failed", runRulesDescribe(cmd, args))
 	},
 }
 
-func runRulesList() error {
-	registry, err := builtin.NewRegistry()
+func runRulesList(_ *cobra.Command, _ []string) error {
+	ruleSet, err := rulecatalog.List()
 	if err != nil {
-		return fmt.Errorf("initialize rule registry: %w", err)
+		return err
 	}
 
-	ruleSet := registry.List()
-	sort.SliceStable(ruleSet, func(i, j int) bool {
-		return ruleSet[i].ID < ruleSet[j].ID
-	})
 	maxSeverityWidth := maxSeverityLabelWidth(ruleSet)
 	for _, meta := range ruleSet {
 		severityLabel := util.PadRight(meta.DefaultSeverity.String(), maxSeverityWidth)
@@ -68,16 +63,13 @@ func maxSeverityLabelWidth(ruleSet []rules.Metadata) int {
 	return maxWidth
 }
 
-func runRulesDescribe(args []string) error {
-	registry, err := builtin.NewRegistry()
+func runRulesDescribe(_ *cobra.Command, args []string) error {
+	meta, exists, err := rulecatalog.Describe(args[0])
 	if err != nil {
-		return fmt.Errorf("initialize rule registry: %w", err)
+		return err
 	}
-
-	id := args[0]
-	meta, exists := registry.Describe(id)
 	if !exists {
-		return fmt.Errorf("unknown rule %q", id)
+		return fmt.Errorf("unknown rule %q", args[0])
 	}
 
 	fmt.Printf("[ %s ] %s\n", addColorToLabel("id              "), meta.ID)

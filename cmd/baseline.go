@@ -6,6 +6,9 @@ import (
 	"os"
 
 	"github.com/CunningFatalist/promptinel/internal/baseline"
+	"github.com/CunningFatalist/promptinel/internal/filters"
+	"github.com/CunningFatalist/promptinel/internal/report"
+	internalscan "github.com/CunningFatalist/promptinel/internal/scan"
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/spf13/cobra"
 )
@@ -48,7 +51,7 @@ var baselineUpdateCmd = &cobra.Command{
 }
 
 func runBaselineCreate(cmd *cobra.Command, args []string) error {
-	options, err := baselineOptionsFromCommand(cmd)
+	options, err := parseBaselineOptions(cmd)
 	if err != nil {
 		return fmt.Errorf("read baseline create options: %w", err)
 	}
@@ -57,7 +60,7 @@ func runBaselineCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runBaselineUpdate(cmd *cobra.Command, args []string) error {
-	options, err := baselineOptionsFromCommand(cmd)
+	options, err := parseBaselineOptions(cmd)
 	if err != nil {
 		return fmt.Errorf("read baseline update options: %w", err)
 	}
@@ -69,7 +72,7 @@ func runBaselineUpdate(cmd *cobra.Command, args []string) error {
 	return runBaselineSnapshot(args, options, true)
 }
 
-func baselineOptionsFromCommand(cmd *cobra.Command) (baselineOptions, error) {
+func parseBaselineOptions(cmd *cobra.Command) (baselineOptions, error) {
 	configFile, err := cmd.Flags().GetString("config")
 	if err != nil {
 		return baselineOptions{}, fmt.Errorf("read config flag: %w", err)
@@ -83,21 +86,19 @@ func baselineOptionsFromCommand(cmd *cobra.Command) (baselineOptions, error) {
 	if err != nil {
 		return baselineOptions{}, fmt.Errorf("read include flag: %w", err)
 	}
-
 	excludes, err := cmd.Flags().GetStringArray("exclude")
 	if err != nil {
 		return baselineOptions{}, fmt.Errorf("read exclude flag: %w", err)
 	}
-
 	file, err := cmd.Flags().GetString("file")
 	if err != nil {
 		return baselineOptions{}, fmt.Errorf("read file flag: %w", err)
 	}
 
-	if err := validateGlobPatterns("include", includes); err != nil {
+	if err := filters.ValidateGlobPatterns("include", includes); err != nil {
 		return baselineOptions{}, err
 	}
-	if err := validateGlobPatterns("exclude", excludes); err != nil {
+	if err := filters.ValidateGlobPatterns("exclude", excludes); err != nil {
 		return baselineOptions{}, err
 	}
 
@@ -112,25 +113,30 @@ func baselineOptionsFromCommand(cmd *cobra.Command) (baselineOptions, error) {
 	}, nil
 }
 
-func runBaselineSnapshot(args []string, options baselineOptions, update bool) error {
+func buildBaselineScanRequest(args []string, options baselineOptions) internalscan.Request {
 	paths := args
 	if len(paths) == 0 {
 		paths = []string{"."}
 	}
 
-	findings, _, err := runSharedScan(paths, sharedScanOptions{
-		configFile:        options.configFile,
-		noConfigDiscovery: options.noConfigDiscovery,
-		includes:          options.includes,
-		excludes:          options.excludes,
-		includeSet:        options.includeSet,
-		excludeSet:        options.excludeSet,
-	}, context.Background())
+	return internalscan.Request{
+		Paths:      paths,
+		ConfigFile: options.configFile,
+		Discover:   !options.noConfigDiscovery,
+		Include:    options.includes,
+		Exclude:    options.excludes,
+		IncludeSet: options.includeSet,
+		ExcludeSet: options.excludeSet,
+	}
+}
+
+func runBaselineSnapshot(args []string, options baselineOptions, update bool) error {
+	result, err := internalscan.Run(context.Background(), buildBaselineScanRequest(args, options))
 	if err != nil {
 		return err
 	}
 
-	snapshot := baseline.BuildSnapshot(findings)
+	snapshot := baseline.BuildSnapshot(result.Findings)
 	previousEntryCount := 0
 	if update {
 		previousSnapshot, readErr := baseline.Read(options.file)
@@ -144,18 +150,15 @@ func runBaselineSnapshot(args []string, options baselineOptions, update bool) er
 		return fmt.Errorf("write baseline: %w", err)
 	}
 
-	if update {
-		delta := len(snapshot.Entries) - previousEntryCount
-		fmt.Printf(
-			"Updated baseline %s with %d entries (%+d compared to previous snapshot).\n",
-			options.file,
-			len(snapshot.Entries),
-			delta,
-		)
-		return nil
+	if err := report.WriteBaselineText(os.Stdout, report.BaselineSummary{
+		File:            options.file,
+		Entries:         len(snapshot.Entries),
+		Updated:         update,
+		PreviousEntries: previousEntryCount,
+	}); err != nil {
+		return fmt.Errorf("write baseline report: %w", err)
 	}
 
-	fmt.Printf("Created baseline %s with %d entries.\n", options.file, len(snapshot.Entries))
 	return nil
 }
 

@@ -1,28 +1,29 @@
 # Promptinel Architecture
 
 Promptinel is a deterministic, static scanner for prompt files. The codebase is organized to keep CLI concerns thin,
-isolate scanning logic in `internal`, and make rule execution predictable and extensible.
+isolate domain logic in `internal`, and make command execution predictable and extensible.
 
 ## High-Level Architecture
 
-At runtime, the CLI (`cmd/scan.go`) orchestrates configuration loading, rule compilation, scanning, reporting, and
-exit-code resolution.
+At runtime, commands in `cmd/` only orchestrate CLI flow: parse flags/args, build internal requests, call internal
+services, render output, and map errors to process exit codes.
 
 ```mermaid
 flowchart TD
-    A["CLI command: promptinel scan"] --> B["config.Load"]
-    B --> C["builtin.NewRegistry"]
-    C --> D["registry.Compile(cfg)"]
-    D --> E["engine.NewScanner"]
-    E --> F["ScanPaths(paths, include, exclude)"]
-    F --> G["rules.Evaluate(content)"]
-    G --> H["findings"]
-    H --> I["exitcode.Resolve(policy, findings)"]
+    A["CLI command in cmd/*"] --> B["parse options + args"]
+    B --> C["build internal request"]
+    C --> D["internal service (scan/sanitize/rulecatalog)"]
+    D --> E["report.Write..."]
+    E --> F["exitcode/util.ExitOnCommandError"]
 ```
 
 The key separation is:
 
 - `cmd`: user interface, flag parsing, command wiring
+- `internal/filters`: glob validation, config/CLI filter resolution, shared filter matching
+- `internal/scan`: reusable scan pipeline for `scan` and `baseline`
+- `internal/sanitize`: file discovery and sanitize domain workflow
+- `internal/rulecatalog`: built-in rule catalog listing and describing
 - `internal/config`: typed config model, defaults, validation
 - `internal/engine`: file collection/filtering plus per-file rule execution
 - `internal/rules`: rule contracts, compilation, multi-phase evaluation

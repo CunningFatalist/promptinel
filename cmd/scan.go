@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/CunningFatalist/promptinel/internal/baseline"
-	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
+	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/report"
-	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
+	internalscan "github.com/CunningFatalist/promptinel/internal/scan"
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/spf13/cobra"
 )
@@ -24,15 +22,6 @@ type scanOptions struct {
 	includeSet        bool
 	excludeSet        bool
 	baselineFile      string
-}
-
-type sharedScanOptions struct {
-	configFile        string
-	noConfigDiscovery bool
-	includes          []string
-	excludes          []string
-	includeSet        bool
-	excludeSet        bool
 }
 
 // scanCmd represents the scan command.
@@ -53,14 +42,15 @@ Examples:
 }
 
 func runScan(cmd *cobra.Command, args []string) error {
-	options, err := scanOptionsFromCommand(cmd)
+	options, err := parseScanOptions(cmd)
 	if err != nil {
 		return fmt.Errorf("read scan options: %w", err)
 	}
+
 	return runScanWithOptions(cmd.Context(), args, options)
 }
 
-func scanOptionsFromCommand(cmd *cobra.Command) (scanOptions, error) {
+func parseScanOptions(cmd *cobra.Command) (scanOptions, error) {
 	configFile, err := cmd.Flags().GetString("config")
 	if err != nil {
 		return scanOptions{}, fmt.Errorf("read config flag: %w", err)
@@ -74,7 +64,6 @@ func scanOptionsFromCommand(cmd *cobra.Command) (scanOptions, error) {
 	if err != nil {
 		return scanOptions{}, fmt.Errorf("read include flag: %w", err)
 	}
-
 	excludes, err := cmd.Flags().GetStringArray("exclude")
 	if err != nil {
 		return scanOptions{}, fmt.Errorf("read exclude flag: %w", err)
@@ -84,10 +73,10 @@ func scanOptionsFromCommand(cmd *cobra.Command) (scanOptions, error) {
 		return scanOptions{}, fmt.Errorf("read baseline flag: %w", err)
 	}
 
-	if err := validateGlobPatterns("include", includes); err != nil {
+	if err := filters.ValidateGlobPatterns("include", includes); err != nil {
 		return scanOptions{}, err
 	}
-	if err := validateGlobPatterns("exclude", excludes); err != nil {
+	if err := filters.ValidateGlobPatterns("exclude", excludes); err != nil {
 		return scanOptions{}, err
 	}
 
@@ -102,28 +91,25 @@ func scanOptionsFromCommand(cmd *cobra.Command) (scanOptions, error) {
 	}, nil
 }
 
-func validateGlobPatterns(flagName string, patterns []string) error {
-	for i, pattern := range patterns {
-		if _, err := filepath.Match(pattern, ""); err != nil {
-			return fmt.Errorf("invalid %s pattern at index %d (%q): %w", flagName, i, pattern, err)
-		}
+func buildScanRequest(args []string, options scanOptions) internalscan.Request {
+	return internalscan.Request{
+		Paths:      args,
+		ConfigFile: options.configFile,
+		Discover:   !options.noConfigDiscovery,
+		Include:    options.includes,
+		Exclude:    options.excludes,
+		IncludeSet: options.includeSet,
+		ExcludeSet: options.excludeSet,
 	}
-	return nil
 }
 
 func runScanWithOptions(ctx context.Context, args []string, options scanOptions) error {
-	findings, cfg, err := runSharedScan(args, sharedScanOptions{
-		configFile:        options.configFile,
-		noConfigDiscovery: options.noConfigDiscovery,
-		includes:          options.includes,
-		excludes:          options.excludes,
-		includeSet:        options.includeSet,
-		excludeSet:        options.excludeSet,
-	}, ctx)
+	result, err := internalscan.Run(ctx, buildScanRequest(args, options))
 	if err != nil {
 		return err
 	}
 
+	findings := result.Findings
 	baselineFiltered := 0
 	if options.baselineFile != "" {
 		snapshot, baselineErr := baseline.Read(options.baselineFile)
@@ -135,10 +121,10 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 		findings = filtered
 	}
 
-	code := exitcode.Resolve(cfg.Policy, findings)
+	code := exitcode.Resolve(result.Config.Policy, findings)
 	if err := report.WriteScanText(os.Stdout, report.ScanSummary{
 		Findings:         findings,
-		Environment:      cfg.Environment,
+		Environment:      result.Config.Environment,
 		BaselineFiltered: baselineFiltered,
 		PolicyOutcome:    code,
 	}); err != nil {
@@ -149,46 +135,6 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 		return exitcode.Error{Code: code}
 	}
 	return nil
-}
-
-func runSharedScan(args []string, options sharedScanOptions, ctx context.Context) ([]engine.FileFinding, *config.Config, error) {
-	cfg, err := config.LoadWithOptions(options.configFile, config.LoadOptions{
-		Discover: !options.noConfigDiscovery,
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("load config: %w", err)
-	}
-
-	registry, err := builtin.NewRegistry()
-	if err != nil {
-		return nil, nil, fmt.Errorf("initialize rule registry: %w", err)
-	}
-
-	compiledRules, err := registry.Compile(cfg)
-	if err != nil {
-		return nil, nil, fmt.Errorf("compile rules: %w", err)
-	}
-
-	scanner := engine.NewScanner(compiledRules, cfg)
-	includes, excludes := resolveEffectiveFilters(cfg, options.includes, options.excludes, options.includeSet, options.excludeSet)
-	findings, err := scanner.ScanPaths(ctx, args, includes, excludes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("scan files: %w", err)
-	}
-
-	findings = filterFindingsByMinimumSeverity(findings, cfg.Policy.WarnOn)
-
-	return findings, cfg, nil
-}
-
-func filterFindingsByMinimumSeverity(findings []engine.FileFinding, minSeverity config.Severity) []engine.FileFinding {
-	filtered := make([]engine.FileFinding, 0, len(findings))
-	for _, finding := range findings {
-		if config.SeverityAtLeast(finding.Severity, minSeverity) {
-			filtered = append(filtered, finding)
-		}
-	}
-	return filtered
 }
 
 func init() {

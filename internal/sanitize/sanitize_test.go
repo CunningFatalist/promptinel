@@ -1,0 +1,181 @@
+package sanitize
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+)
+
+func Test_Sanitize_Run_DryRunReportsPlannedChanges(t *testing.T) {
+	workingDir := t.TempDir()
+	file := filepath.Join(workingDir, "prompt.md")
+	content := "line1\r\nline2\u200b\r\n"
+	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+
+	previousWorkingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("read working directory: %v", err)
+	}
+	if err := os.Chdir(workingDir); err != nil {
+		t.Fatalf("switch working directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(previousWorkingDir) })
+
+	result, err := Run(Request{Paths: []string{"."}, Discover: true, Include: []string{"*.md"}})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+
+	if result.Summary.Changed != 1 {
+		t.Fatalf("expected changed files=1, got %d", result.Summary.Changed)
+	}
+	if len(result.Events) == 0 || result.Events[0].Action != ActionWouldSanitize {
+		t.Fatalf("expected would sanitize event, got %#v", result.Events)
+	}
+
+	persisted, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatalf("read fixture after dry-run: %v", err)
+	}
+	if string(persisted) != content {
+		t.Fatalf("expected dry-run to keep original content, got %q", string(persisted))
+	}
+}
+
+func Test_Sanitize_Run_ApplyWritesChanges(t *testing.T) {
+	workingDir := t.TempDir()
+	file := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(file, []byte("line1\r\nline2\u200b\r\n"), 0o644); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+
+	result, err := Run(Request{Paths: []string{workingDir}, Discover: true, Include: []string{"*.md"}, Apply: true})
+	if err != nil {
+		t.Fatalf("run sanitize --apply: %v", err)
+	}
+	if !result.Summary.Applied {
+		t.Fatal("expected applied summary to be true")
+	}
+
+	persisted, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatalf("read fixture after apply: %v", err)
+	}
+	if string(persisted) != "line1\nline2\n" {
+		t.Fatalf("unexpected sanitized content: %q", string(persisted))
+	}
+}
+
+func Test_Sanitize_Run_NoConfigDiscovery_IgnoresLocalConfig(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := "limits:\n  max_file_size_bytes: 1\n"
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	file := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(file, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+
+	previousWorkingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("read working directory: %v", err)
+	}
+	if err := os.Chdir(workingDir); err != nil {
+		t.Fatalf("switch working directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(previousWorkingDir) })
+
+	withDiscovery, err := Run(Request{Paths: []string{"."}, Discover: true})
+	if err != nil {
+		t.Fatalf("run sanitize with discovery: %v", err)
+	}
+	foundLimitSkip := false
+	for _, event := range withDiscovery.Events {
+		if event.Action == ActionSkipped && strings.Contains(event.Reason, "exceeds limits.max_file_size_bytes=1") {
+			foundLimitSkip = true
+		}
+	}
+	if !foundLimitSkip {
+		t.Fatalf("expected discovered config max file size skip, events: %#v", withDiscovery.Events)
+	}
+
+	withoutDiscovery, err := Run(Request{Paths: []string{"."}, Discover: false})
+	if err != nil {
+		t.Fatalf("run sanitize without discovery: %v", err)
+	}
+	foundWouldSanitize := false
+	for _, event := range withoutDiscovery.Events {
+		if event.Action == ActionWouldSanitize {
+			foundWouldSanitize = true
+		}
+	}
+	if !foundWouldSanitize {
+		t.Fatalf("expected sanitize to proceed with defaults, events: %#v", withoutDiscovery.Events)
+	}
+}
+
+func Test_Sanitize_Run_CLIIncludeOverridesConfigFilters(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := "filters:\n  include:\n    - \"*.md\"\n"
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(workingDir, "excluded-by-cli.md"), []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write markdown file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(workingDir, "included-by-cli.txt"), []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write txt file: %v", err)
+	}
+
+	result, err := Run(Request{
+		Paths:      []string{workingDir},
+		ConfigFile: configPath,
+		Discover:   false,
+		Include:    []string{"*.txt"},
+		IncludeSet: true,
+	})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+
+	for _, event := range result.Events {
+		if strings.Contains(event.Path, "excluded-by-cli.md") && event.Action == ActionWouldSanitize {
+			t.Fatalf("expected markdown file to be excluded by CLI override, events: %#v", result.Events)
+		}
+	}
+}
+
+func Test_Sanitize_WriteFileAtomically_DoesNotWriteThroughSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	victimPath := filepath.Join(workingDir, "victim.md")
+	if err := os.WriteFile(victimPath, []byte("victim-original"), 0o644); err != nil {
+		t.Fatalf("write victim file: %v", err)
+	}
+	linkPath := filepath.Join(workingDir, "link.md")
+	if err := os.Symlink(victimPath, linkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	if err := writeFileAtomically(linkPath, []byte("replacement"), 0o644); err != nil {
+		t.Fatalf("write file atomically: %v", err)
+	}
+
+	victimContent, err := os.ReadFile(victimPath)
+	if err != nil {
+		t.Fatalf("read victim file: %v", err)
+	}
+	if string(victimContent) != "victim-original" {
+		t.Fatalf("expected victim file unchanged, got %q", string(victimContent))
+	}
+}

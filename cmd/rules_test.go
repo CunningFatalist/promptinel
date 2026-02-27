@@ -20,7 +20,7 @@ func Test_Cmd_RulesListCommand_OutputIsSorted(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		if err := runRulesList(); err != nil {
+		if err := runRulesList(nil, nil); err != nil {
 			t.Fatalf("run rules list: %v", err)
 		}
 	})
@@ -73,7 +73,7 @@ func Test_Cmd_RulesDescribeCommand_DescribesKnownRule(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		if err := runRulesDescribe([]string{"no-zero-width"}); err != nil {
+		if err := runRulesDescribe(nil, []string{"no-zero-width"}); err != nil {
 			t.Fatalf("run rules describe: %v", err)
 		}
 	})
@@ -87,7 +87,7 @@ func Test_Cmd_RulesDescribeCommand_DescribesKnownRule(t *testing.T) {
 }
 
 func Test_Cmd_RulesDescribeCommand_ReturnsErrorForUnknownRule(t *testing.T) {
-	err := runRulesDescribe([]string{"unknown-rule"})
+	err := runRulesDescribe(nil, []string{"unknown-rule"})
 	if err == nil {
 		t.Fatal("expected error for unknown rule")
 	}
