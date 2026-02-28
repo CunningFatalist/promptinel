@@ -87,6 +87,18 @@ This is needed to support CI integrations and security tooling pipelines that re
 - [ ] Add tests that validate schema shape, deterministic ordering, and parity with text-mode findings.
 - [ ] Document output format semantics and compatibility expectations in `README.md` and architecture docs.
 
+### 8) Harden `**` path matching worst-case complexity
+
+This is needed because the current recursive `**` matcher can branch heavily on some pattern/path combinations.
+In large repositories or CI runs with broad include/exclude patterns, this can create avoidable CPU spikes and
+slow scans even when behavior is functionally correct.
+
+- [ ] Replace recursive backtracking in `internal/pathmatch` with a memoized or iterative DP matcher for
+  `**` semantics.
+- [ ] Add targeted tests/benchmarks that exercise adversarial pattern/path combinations and verify bounded runtime.
+- [ ] Keep matching semantics backward compatible for existing include/exclude and scope patterns.
+- [ ] Document supported glob behavior and practical pattern guidance to avoid pathological configurations.
+
 ### Suggested implementation order
 
 This order prioritizes highest-risk security and visibility fixes first, then operability, then structural cleanup.
@@ -94,3 +106,4 @@ This order prioritizes highest-risk security and visibility fixes first, then op
 - [ ] Phase A: context-aware rules + oversized-file visibility (items 1 and 2; highest risk reduction).
 - [ ] Phase B: cancellation + discovery deduplication cleanup (items 3 and 4; operability/maintainability).
 - [ ] Phase C: model decoupling + documentation alignment (items 6 and 5; long-term evolution).
+- [ ] Phase D: pathmatch hardening (item 8; performance resilience for large repositories).
