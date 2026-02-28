@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/report"
 	internalsanitize "github.com/CunningFatalist/promptinel/internal/sanitize"
 	"github.com/CunningFatalist/promptinel/internal/util"
@@ -58,42 +57,22 @@ func runSanitize(cmd *cobra.Command, args []string) error {
 }
 
 func parseSanitizeOptions(cmd *cobra.Command) (sanitizeOptions, error) {
-	configFile, err := cmd.Flags().GetString("config")
+	common, err := readConfigAndFilterFlags(cmd)
 	if err != nil {
-		return sanitizeOptions{}, fmt.Errorf("read config flag: %w", err)
-	}
-	noConfigDiscovery, err := cmd.Flags().GetBool("no-config-discovery")
-	if err != nil {
-		return sanitizeOptions{}, fmt.Errorf("read no-config-discovery flag: %w", err)
-	}
-
-	includes, err := cmd.Flags().GetStringArray("include")
-	if err != nil {
-		return sanitizeOptions{}, fmt.Errorf("read include flag: %w", err)
-	}
-	excludes, err := cmd.Flags().GetStringArray("exclude")
-	if err != nil {
-		return sanitizeOptions{}, fmt.Errorf("read exclude flag: %w", err)
+		return sanitizeOptions{}, err
 	}
 	apply, err := cmd.Flags().GetBool("apply")
 	if err != nil {
 		return sanitizeOptions{}, fmt.Errorf("read apply flag: %w", err)
 	}
 
-	if err := filters.ValidateGlobPatterns("include", includes); err != nil {
-		return sanitizeOptions{}, err
-	}
-	if err := filters.ValidateGlobPatterns("exclude", excludes); err != nil {
-		return sanitizeOptions{}, err
-	}
-
 	return sanitizeOptions{
-		configFile:        configFile,
-		noConfigDiscovery: noConfigDiscovery,
-		includes:          includes,
-		excludes:          excludes,
-		includeSet:        cmd.Flags().Changed("include"),
-		excludeSet:        cmd.Flags().Changed("exclude"),
+		configFile:        common.configFile,
+		noConfigDiscovery: common.noConfigDiscovery,
+		includes:          common.includes,
+		excludes:          common.excludes,
+		includeSet:        common.includeSet,
+		excludeSet:        common.excludeSet,
 		apply:             apply,
 	}, nil
 }
@@ -113,9 +92,6 @@ func buildSanitizeRequest(args []string, options sanitizeOptions) internalsaniti
 
 func init() {
 	rootCmd.AddCommand(sanitizeCmd)
-	sanitizeCmd.Flags().String("config", "", "Path to a Promptinel config file")
-	sanitizeCmd.Flags().Bool("no-config-discovery", false, "Disable implicit .promptinel.yaml discovery from current directory and $HOME")
-	sanitizeCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
-	sanitizeCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
+	addConfigAndFilterFlags(sanitizeCmd)
 	sanitizeCmd.Flags().Bool("apply", false, "Apply sanitized output to files (default is dry-run preview)")
 }

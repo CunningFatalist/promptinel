@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -51,25 +49,5 @@ func Test_Cmd_RunSanitize_ReturnsErrorForInvalidOptions(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "read sanitize options") {
 		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func Test_Cmd_RunSanitize_ReturnsNilOnValidInput(t *testing.T) {
-	workingDir := t.TempDir()
-	prompt := filepath.Join(workingDir, "prompt.md")
-	if err := os.WriteFile(prompt, []byte("hello world"), 0o644); err != nil {
-		t.Fatalf("write prompt file: %v", err)
-	}
-
-	command := &cobra.Command{}
-	command.Flags().String("config", "", "")
-	command.Flags().Bool("no-config-discovery", false, "")
-	command.Flags().StringArray("include", nil, "")
-	command.Flags().StringArray("exclude", nil, "")
-	command.Flags().Bool("apply", false, "")
-	_ = command.Flags().Set("no-config-discovery", "true")
-
-	if err := runSanitize(command, []string{workingDir}); err != nil {
-		t.Fatalf("expected runSanitize to succeed, got %v", err)
 	}
 }

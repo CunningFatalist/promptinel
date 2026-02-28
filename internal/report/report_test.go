@@ -8,6 +8,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/sanitize"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -153,4 +154,50 @@ func Test_Report_WriteScanText_EscapesControlCharacters(t *testing.T) {
 	rendered := output.String()
 	assert.Contains(t, rendered, "File: bad\\npath.md")
 	assert.Contains(t, rendered, "rule\\tname: hello\\rworld")
+}
+
+func Test_Report_WriteBaselineText_CreateAndUpdate(t *testing.T) {
+	var created bytes.Buffer
+	err := WriteBaselineText(&created, BaselineSummary{
+		File:    ".promptinel-baseline.json",
+		Entries: 7,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "Created baseline .promptinel-baseline.json with 7 entries.\n", created.String())
+
+	var updated bytes.Buffer
+	err = WriteBaselineText(&updated, BaselineSummary{
+		File:            ".promptinel-baseline.json",
+		Entries:         9,
+		Updated:         true,
+		PreviousEntries: 12,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "Updated baseline .promptinel-baseline.json with 9 entries (-3 compared to previous snapshot).\n", updated.String())
+}
+
+func Test_Report_WriteSanitizeText_WritesEventsAndSummary(t *testing.T) {
+	var output bytes.Buffer
+
+	err := WriteSanitizeText(&output, sanitize.Result{
+		Events: []sanitize.Event{
+			{Path: "a.md", Action: sanitize.ActionWouldSanitize, LineEndingsNormalized: 1, ZeroWidthRunesStripped: 2},
+			{Path: "b.md", Action: sanitize.ActionSkipped, Reason: "non-regular file"},
+		},
+		Summary: sanitize.Summary{
+			Files:                  2,
+			Changed:                1,
+			Skipped:                1,
+			LineEndingsNormalized:  1,
+			ZeroWidthRunesStripped: 2,
+			Applied:                false,
+		},
+	})
+	require.NoError(t, err)
+
+	rendered := output.String()
+	assert.Contains(t, rendered, "a.md: would sanitize (line_endings=1, zero_width=2)")
+	assert.Contains(t, rendered, "b.md: skipped (non-regular file)")
+	assert.Contains(t, rendered, "Summary: files=2 changed=1 skipped=1 line_endings=1 zero_width=2")
+	assert.Contains(t, rendered, "Re-run with --apply to persist changes.")
 }

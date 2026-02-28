@@ -3,12 +3,11 @@ package sanitize
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/files"
 	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/normalize"
 )
@@ -174,7 +173,7 @@ type sanitizeSkippedFile struct {
 }
 
 func collectSanitizeFiles(paths []string, includePatterns []string, excludePatterns []string) ([]sanitizeFile, []sanitizeSkippedFile, error) {
-	absolutePaths, skippedPaths, err := collectFiles(paths)
+	absolutePaths, skippedPaths, err := files.Collect(paths, files.SanitizeCollectOptions())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -184,109 +183,26 @@ func collectSanitizeFiles(paths []string, includePatterns []string, excludePatte
 		workingDir = ""
 	}
 
-	files := make([]sanitizeFile, 0, len(absolutePaths))
-	for _, absolutePath := range absolutePaths {
-		relativePath := relativePathFromWorkingDir(workingDir, absolutePath)
-		if !filters.Match(relativePath, includePatterns, excludePatterns) {
-			continue
-		}
-		files = append(files, sanitizeFile{AbsolutePath: absolutePath, RelativePath: relativePath})
+	targets, skippedTargets := files.FilterPaths(workingDir, absolutePaths, skippedPaths, includePatterns, excludePatterns)
+
+	sanitizeFiles := make([]sanitizeFile, 0, len(targets))
+	for _, target := range targets {
+		sanitizeFiles = append(sanitizeFiles, sanitizeFile{
+			AbsolutePath: target.AbsolutePath,
+			RelativePath: target.RelativePath,
+		})
 	}
 
-	skippedFiles := make([]sanitizeSkippedFile, 0, len(skippedPaths))
-	for _, skippedPath := range skippedPaths {
-		relativePath := relativePathFromWorkingDir(workingDir, skippedPath.path)
-		if !filters.Match(relativePath, includePatterns, excludePatterns) {
-			continue
-		}
+	skippedFiles := make([]sanitizeSkippedFile, 0, len(skippedTargets))
+	for _, skippedPath := range skippedTargets {
 		skippedFiles = append(skippedFiles, sanitizeSkippedFile{
-			AbsolutePath: skippedPath.path,
-			RelativePath: relativePath,
-			Reason:       skippedPath.reason,
+			AbsolutePath: skippedPath.AbsolutePath,
+			RelativePath: skippedPath.RelativePath,
+			Reason:       skippedPath.Reason,
 		})
 	}
 
-	return files, skippedFiles, nil
-}
-
-type skippedPath struct {
-	path   string
-	reason string
-}
-
-func collectFiles(inputPaths []string) ([]string, []skippedPath, error) {
-	files := make([]string, 0)
-	skipped := make([]skippedPath, 0)
-	seen := make(map[string]struct{})
-
-	for _, path := range inputPaths {
-		resolvedPath, err := filepath.Abs(path)
-		if err != nil {
-			return nil, nil, fmt.Errorf("resolve path %q: %w", path, err)
-		}
-
-		fileInfo, err := os.Lstat(resolvedPath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("lstat path %q: %w", path, err)
-		}
-
-		if fileInfo.Mode()&os.ModeSymlink != 0 {
-			skipped = append(skipped, skippedPath{path: resolvedPath, reason: "symbolic links are not sanitized"})
-			continue
-		}
-
-		if !fileInfo.IsDir() {
-			if !fileInfo.Mode().IsRegular() {
-				skipped = append(skipped, skippedPath{path: resolvedPath, reason: "non-regular file"})
-				continue
-			}
-			files = appendUniqueFile(files, seen, resolvedPath)
-			continue
-		}
-
-		walkErr := filepath.WalkDir(resolvedPath, func(currentPath string, entry fs.DirEntry, currentErr error) error {
-			if currentErr != nil {
-				skipped = append(skipped, skippedPath{path: currentPath, reason: fmt.Sprintf("walk error: %v", currentErr)})
-				return nil
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			if entry.Type()&os.ModeSymlink != 0 {
-				skipped = append(skipped, skippedPath{path: currentPath, reason: "symbolic links are not sanitized"})
-				return nil
-			}
-			info, infoErr := entry.Info()
-			if infoErr != nil {
-				skipped = append(skipped, skippedPath{path: currentPath, reason: fmt.Sprintf("metadata error: %v", infoErr)})
-				return nil
-			}
-			if !info.Mode().IsRegular() {
-				skipped = append(skipped, skippedPath{path: currentPath, reason: "non-regular file"})
-				return nil
-			}
-			files = appendUniqueFile(files, seen, currentPath)
-			return nil
-		})
-		if walkErr != nil {
-			return nil, nil, fmt.Errorf("walk path %q: %w", path, walkErr)
-		}
-	}
-
-	return files, skipped, nil
-}
-
-func appendUniqueFile(files []string, seen map[string]struct{}, path string) []string {
-	cleanPath := filepath.Clean(path)
-	canonicalPath := cleanPath
-	if resolvedPath, err := filepath.EvalSymlinks(cleanPath); err == nil {
-		canonicalPath = filepath.Clean(resolvedPath)
-	}
-	if _, exists := seen[canonicalPath]; exists {
-		return files
-	}
-	seen[canonicalPath] = struct{}{}
-	return append(files, cleanPath)
+	return sanitizeFiles, skippedFiles, nil
 }
 
 func writeFileAtomically(path string, content []byte, perm os.FileMode) (returnErr error) {
@@ -323,14 +239,4 @@ func writeFileAtomically(path string, content []byte, perm os.FileMode) (returnE
 	}
 
 	return nil
-}
-
-func relativePathFromWorkingDir(workingDir string, filePath string) string {
-	if strings.TrimSpace(workingDir) == "" {
-		return filePath
-	}
-	if rel, err := filepath.Rel(workingDir, filePath); err == nil {
-		return rel
-	}
-	return filePath
 }

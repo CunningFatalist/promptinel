@@ -2,9 +2,7 @@ package engine
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/filters"
+	"github.com/CunningFatalist/promptinel/internal/files"
 	"github.com/CunningFatalist/promptinel/internal/normalize"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 )
@@ -59,56 +57,50 @@ func NewScanner(compiledRules []rules.CompiledRule, cfg *config.Config) *Scanner
 
 // ScanPaths scans provided files or directories and returns findings.
 func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns []string, excludePatterns []string) ([]FileFinding, error) {
-	files, skippedPaths, err := collectFiles(paths)
+	collectedPaths, skippedPaths, err := files.Collect(paths, files.ScanCollectOptions())
 	if err != nil {
 		return nil, err
 	}
 
-	wd, err := os.Getwd()
+	workingDir, err := os.Getwd()
 	if err != nil {
-		wd = ""
+		workingDir = ""
 	}
 
+	targetFiles, skippedTargets := files.FilterPaths(workingDir, collectedPaths, skippedPaths, includePatterns, excludePatterns)
+
 	scopeRoots := resolveScopeRoots(paths)
-	findings := make([]FileFinding, 0, len(skippedPaths))
-	for _, skippedPath := range skippedPaths {
+	findings := make([]FileFinding, 0, len(skippedTargets))
+	for _, skippedPath := range skippedTargets {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
 		}
 
-		relativePath := relativePathFromWorkingDir(wd, skippedPath.path)
-		if !filters.Match(relativePath, includePatterns, excludePatterns) {
-			continue
-		}
 		findings = append(findings, FileFinding{
-			Path: relativePath,
+			Path: skippedPath.RelativePath,
 			Finding: rules.Finding{
 				ID:       unreadableFileFindingID,
 				Severity: config.SeverityLow,
-				Message:  fmt.Sprintf("File skipped: %s", skippedPath.reason),
+				Message:  fmt.Sprintf("File skipped: %s", skippedPath.Reason),
 				Position: rules.Position{Line: 1, Column: 1},
 			},
 		})
 	}
 
-	targets := make([]scanTarget, 0, len(files))
-	for _, filePath := range files {
+	targets := make([]scanTarget, 0, len(targetFiles))
+	for _, filePath := range targetFiles {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
 		}
 
-		relativePath := relativePathFromWorkingDir(wd, filePath)
-		if !filters.Match(relativePath, includePatterns, excludePatterns) {
-			continue
-		}
 		targets = append(targets, scanTarget{
 			index:        len(targets),
-			absolutePath: filePath,
-			relativePath: relativePath,
+			absolutePath: filePath.AbsolutePath,
+			relativePath: filePath.RelativePath,
 		})
 	}
 
@@ -260,125 +252,6 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 	}
 
 	return findings, nil
-}
-
-func relativePathFromWorkingDir(workingDir string, filePath string) string {
-	relativePath := filePath
-	if workingDir == "" {
-		return relativePath
-	}
-	if rel, err := filepath.Rel(workingDir, filePath); err == nil {
-		return rel
-	}
-	return relativePath
-}
-
-type skippedPath struct {
-	path   string
-	reason string
-}
-
-func collectFiles(inputPaths []string) ([]string, []skippedPath, error) {
-	files := make([]string, 0)
-	skipped := make([]skippedPath, 0)
-	seen := make(map[string]struct{})
-	for _, path := range inputPaths {
-		resolvedPath, err := filepath.Abs(path)
-		if err != nil {
-			return nil, nil, fmt.Errorf("resolve path %q: %w", path, err)
-		}
-
-		fileInfo, err := os.Lstat(resolvedPath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("stat path %q: %w", path, err)
-		}
-
-		if fileInfo.Mode()&os.ModeSymlink != 0 {
-			skipped = append(skipped, skippedPath{
-				path:   resolvedPath,
-				reason: "symbolic links are not scanned",
-			})
-			continue
-		}
-
-		if !fileInfo.IsDir() {
-			if !fileInfo.Mode().IsRegular() {
-				skipped = append(skipped, skippedPath{
-					path:   resolvedPath,
-					reason: "non-regular file",
-				})
-				continue
-			}
-			files = appendUniqueFile(files, seen, resolvedPath)
-			continue
-		}
-
-		err = filepath.WalkDir(resolvedPath, func(currentPath string, entry fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				if errors.Is(walkErr, fs.ErrNotExist) {
-					skipped = append(skipped, skippedPath{
-						path:   currentPath,
-						reason: "path does not exist",
-					})
-					return nil
-				}
-				skipped = append(skipped, skippedPath{
-					path:   currentPath,
-					reason: fmt.Sprintf("walk error: %v", walkErr),
-				})
-				return nil
-			}
-			if entry.IsDir() {
-				return nil
-			}
-			if entry.Type()&os.ModeSymlink != 0 {
-				skipped = append(skipped, skippedPath{
-					path:   currentPath,
-					reason: "symbolic links are not scanned",
-				})
-				return nil
-			}
-			info, infoErr := entry.Info()
-			if infoErr != nil {
-				skipped = append(skipped, skippedPath{
-					path:   currentPath,
-					reason: fmt.Sprintf("metadata read failed (%v)", infoErr),
-				})
-				return nil
-			}
-			if !info.Mode().IsRegular() {
-				skipped = append(skipped, skippedPath{
-					path:   currentPath,
-					reason: "non-regular file",
-				})
-				return nil
-			}
-			files = appendUniqueFile(files, seen, currentPath)
-			return nil
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("walk path %q: %w", path, err)
-		}
-	}
-	return files, skipped, nil
-}
-
-func appendUniqueFile(files []string, seen map[string]struct{}, path string) []string {
-	cleanPath := filepath.Clean(path)
-	canonicalPath := canonicalizePath(cleanPath)
-	if _, exists := seen[canonicalPath]; exists {
-		return files
-	}
-	seen[canonicalPath] = struct{}{}
-	return append(files, cleanPath)
-}
-
-func canonicalizePath(path string) string {
-	cleanPath := filepath.Clean(path)
-	if resolvedPath, err := filepath.EvalSymlinks(cleanPath); err == nil {
-		return filepath.Clean(resolvedPath)
-	}
-	return cleanPath
 }
 
 func (s *Scanner) scopeForPath(path string) *config.Scope {

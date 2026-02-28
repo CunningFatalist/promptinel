@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/CunningFatalist/promptinel/internal/baseline"
-	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/report"
 	internalscan "github.com/CunningFatalist/promptinel/internal/scan"
 	"github.com/CunningFatalist/promptinel/internal/util"
@@ -73,42 +72,22 @@ func runBaselineUpdate(cmd *cobra.Command, args []string) error {
 }
 
 func parseBaselineOptions(cmd *cobra.Command) (baselineOptions, error) {
-	configFile, err := cmd.Flags().GetString("config")
+	common, err := readConfigAndFilterFlags(cmd)
 	if err != nil {
-		return baselineOptions{}, fmt.Errorf("read config flag: %w", err)
-	}
-	noConfigDiscovery, err := cmd.Flags().GetBool("no-config-discovery")
-	if err != nil {
-		return baselineOptions{}, fmt.Errorf("read no-config-discovery flag: %w", err)
-	}
-
-	includes, err := cmd.Flags().GetStringArray("include")
-	if err != nil {
-		return baselineOptions{}, fmt.Errorf("read include flag: %w", err)
-	}
-	excludes, err := cmd.Flags().GetStringArray("exclude")
-	if err != nil {
-		return baselineOptions{}, fmt.Errorf("read exclude flag: %w", err)
+		return baselineOptions{}, err
 	}
 	file, err := cmd.Flags().GetString("file")
 	if err != nil {
 		return baselineOptions{}, fmt.Errorf("read file flag: %w", err)
 	}
 
-	if err := filters.ValidateGlobPatterns("include", includes); err != nil {
-		return baselineOptions{}, err
-	}
-	if err := filters.ValidateGlobPatterns("exclude", excludes); err != nil {
-		return baselineOptions{}, err
-	}
-
 	return baselineOptions{
-		configFile:        configFile,
-		noConfigDiscovery: noConfigDiscovery,
-		includes:          includes,
-		excludes:          excludes,
-		includeSet:        cmd.Flags().Changed("include"),
-		excludeSet:        cmd.Flags().Changed("exclude"),
+		configFile:        common.configFile,
+		noConfigDiscovery: common.noConfigDiscovery,
+		includes:          common.includes,
+		excludes:          common.excludes,
+		includeSet:        common.includeSet,
+		excludeSet:        common.excludeSet,
 		file:              file,
 	}, nil
 }
@@ -136,7 +115,7 @@ func runBaselineSnapshot(args []string, options baselineOptions, update bool) er
 		return err
 	}
 
-	snapshot := baseline.BuildSnapshot(result.Findings)
+	snapshot := baseline.BuildSnapshot(result.RawFindings)
 	previousEntryCount := 0
 	if update {
 		previousSnapshot, readErr := baseline.Read(options.file)
@@ -167,15 +146,9 @@ func init() {
 	baselineCmd.AddCommand(baselineCreateCmd)
 	baselineCmd.AddCommand(baselineUpdateCmd)
 
-	baselineCreateCmd.Flags().String("config", "", "Path to a Promptinel config file")
-	baselineCreateCmd.Flags().Bool("no-config-discovery", false, "Disable implicit .promptinel.yaml discovery from current directory and $HOME")
-	baselineCreateCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
-	baselineCreateCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
+	addConfigAndFilterFlags(baselineCreateCmd)
 	baselineCreateCmd.Flags().String("file", baseline.DefaultFileName, "Path to write baseline snapshot file")
 
-	baselineUpdateCmd.Flags().String("config", "", "Path to a Promptinel config file")
-	baselineUpdateCmd.Flags().Bool("no-config-discovery", false, "Disable implicit .promptinel.yaml discovery from current directory and $HOME")
-	baselineUpdateCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
-	baselineUpdateCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
+	addConfigAndFilterFlags(baselineUpdateCmd)
 	baselineUpdateCmd.Flags().String("file", baseline.DefaultFileName, "Path to write baseline snapshot file")
 }

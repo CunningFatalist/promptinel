@@ -21,6 +21,7 @@ The key separation is:
 
 - `cmd`: user interface, flag parsing, command wiring
 - `internal/filters`: glob validation, config/CLI filter resolution, shared filter matching
+- `internal/files`: shared file discovery, deduplication, and include/exclude projection for scan and sanitize
 - `internal/scan`: reusable scan pipeline for `scan` and `baseline`
 - `internal/sanitize`: file discovery and sanitize domain workflow
 - `internal/rulecatalog`: built-in rule catalog listing and describing
@@ -150,6 +151,14 @@ useful even without a config file.
 - `2`: failure threshold reached
 
 Commands return typed `exitcode.Error` values so process exit mapping stays centralized in `util.ExitOnCommandError`.
+
+`internal/scan.Result` now distinguishes:
+
+- `RawFindings`: all findings before `policy.warn-on` filtering
+- `ReportableFindings` (and compatibility alias `Findings`): findings after `policy.warn-on` filtering
+
+`scan` command reporting and exit-policy evaluation operate on reportable findings, while baseline snapshot generation
+uses raw findings to preserve accepted findings across severity thresholds.
 
 ## Notable Tradeoffs and Next Steps
 

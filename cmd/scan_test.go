@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"context"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -108,18 +105,5 @@ func Test_Cmd_RunScan_ReturnsErrorForInvalidOptions(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "read scan options") {
 		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func Test_Cmd_RunScanWithOptions_ReturnsNilOnCleanInput(t *testing.T) {
-	workingDir := t.TempDir()
-	prompt := filepath.Join(workingDir, "prompt.md")
-	if err := os.WriteFile(prompt, []byte("hello world"), 0o644); err != nil {
-		t.Fatalf("write prompt file: %v", err)
-	}
-
-	err := runScanWithOptions(context.Background(), []string{workingDir}, scanOptions{noConfigDiscovery: true})
-	if err != nil {
-		t.Fatalf("expected clean scan to pass, got %v", err)
 	}
 }

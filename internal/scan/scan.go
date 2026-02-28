@@ -23,8 +23,14 @@ type Request struct {
 
 // Result contains findings and effective configuration.
 type Result struct {
+	// Findings contains reportable findings after policy warn-on filtering.
+	// This field is kept for compatibility; prefer ReportableFindings.
 	Findings []engine.FileFinding
-	Config   *config.Config
+	// ReportableFindings contains findings after policy warn-on filtering.
+	ReportableFindings []engine.FileFinding
+	// RawFindings contains all findings before policy warn-on filtering.
+	RawFindings []engine.FileFinding
+	Config      *config.Config
 }
 
 // Run executes the shared scan workflow used by scan and baseline commands.
@@ -46,14 +52,17 @@ func Run(ctx context.Context, req Request) (Result, error) {
 
 	scanner := engine.NewScanner(compiledRules, cfg)
 	includes, excludes := filters.ResolveEffective(cfg, req.Include, req.Exclude, req.IncludeSet, req.ExcludeSet)
-	findings, err := scanner.ScanPaths(ctx, req.Paths, includes, excludes)
+	rawFindings, err := scanner.ScanPaths(ctx, req.Paths, includes, excludes)
 	if err != nil {
 		return Result{}, fmt.Errorf("scan files: %w", err)
 	}
+	reportableFindings := filterFindingsByMinimumSeverity(rawFindings, cfg.Policy.WarnOn)
 
 	return Result{
-		Findings: filterFindingsByMinimumSeverity(findings, cfg.Policy.WarnOn),
-		Config:   cfg,
+		Findings:           reportableFindings,
+		ReportableFindings: reportableFindings,
+		RawFindings:        rawFindings,
+		Config:             cfg,
 	}, nil
 }
 

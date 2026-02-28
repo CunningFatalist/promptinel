@@ -49,30 +49,6 @@ func Test_Engine_ScanPaths_UsesSharedFilterMatching(t *testing.T) {
 	assert.False(t, filters.Match("docs/a/b.md", nil, []string{"docs/**"}))
 }
 
-func Test_Engine_CollectFiles_FilePath(t *testing.T) {
-	tmp := t.TempDir()
-	file := filepath.Join(tmp, "f.md")
-	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
-
-	files, skipped, err := collectFiles([]string{file})
-	require.NoError(t, err)
-	require.Len(t, files, 1)
-	require.Empty(t, skipped)
-	assert.Equal(t, file, files[0])
-}
-
-func Test_Engine_CollectFiles_DeduplicatesOverlappingInputs(t *testing.T) {
-	tmp := t.TempDir()
-	file := filepath.Join(tmp, "f.md")
-	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
-
-	files, skipped, err := collectFiles([]string{tmp, file})
-	require.NoError(t, err)
-	require.Len(t, files, 1)
-	require.Empty(t, skipped)
-	assert.Equal(t, file, files[0])
-}
-
 func Test_Engine_ScanPaths_ContextCanceled(t *testing.T) {
 	tmp := t.TempDir()
 	file := filepath.Join(tmp, "f.md")

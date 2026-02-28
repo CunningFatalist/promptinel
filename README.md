@@ -122,6 +122,9 @@ promptinel scan --baseline .promptinel-baseline.json prompts/
 `baseline create` and `baseline update` write `.promptinel-baseline.json` by default.  
 Use `--file` to select a different baseline path.
 
+Baseline snapshots are generated from raw scan findings (before `policy.warn-on` filtering), so accepted low-severity
+findings can still be tracked and suppressed consistently in CI.
+
 ### Globbing
 
 Promptinel uses glob patterns for:

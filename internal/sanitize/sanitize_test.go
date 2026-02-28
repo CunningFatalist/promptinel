@@ -60,6 +60,9 @@ func Test_Sanitize_Run_ApplyWritesChanges(t *testing.T) {
 	if !result.Summary.Applied {
 		t.Fatal("expected applied summary to be true")
 	}
+	if len(result.Events) != 1 || result.Events[0].Action != ActionSanitized {
+		t.Fatalf("expected sanitized event, got %#v", result.Events)
+	}
 
 	persisted, err := os.ReadFile(file)
 	if err != nil {
@@ -67,6 +70,54 @@ func Test_Sanitize_Run_ApplyWritesChanges(t *testing.T) {
 	}
 	if string(persisted) != "line1\nline2\n" {
 		t.Fatalf("unexpected sanitized content: %q", string(persisted))
+	}
+}
+
+func Test_Sanitize_Run_SkipsOversizedFile(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	if err := os.WriteFile(configPath, []byte("limits:\n  max_file_size_bytes: 1\n"), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	file := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(file, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+
+	result, err := Run(Request{Paths: []string{workingDir}, ConfigFile: configPath, Discover: false})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+
+	foundPromptSizeSkip := false
+	for _, event := range result.Events {
+		if filepath.Base(event.Path) == "prompt.md" &&
+			event.Action == ActionSkipped &&
+			strings.Contains(event.Reason, "exceeds limits.max_file_size_bytes=1") {
+			foundPromptSizeSkip = true
+		}
+	}
+	if !foundPromptSizeSkip {
+		t.Fatalf("expected prompt.md max size skip, got %#v", result.Events)
+	}
+}
+
+func Test_Sanitize_Run_UnchangedFileProducesNoEvents(t *testing.T) {
+	workingDir := t.TempDir()
+	file := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(file, []byte("line1\nline2\n"), 0o644); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+
+	result, err := Run(Request{Paths: []string{workingDir}, Discover: false})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+	if result.Summary.Files != 1 || result.Summary.Changed != 0 {
+		t.Fatalf("unexpected summary: %#v", result.Summary)
+	}
+	if len(result.Events) != 0 {
+		t.Fatalf("expected no events for unchanged file, got %#v", result.Events)
 	}
 }
 
@@ -177,5 +228,32 @@ func Test_Sanitize_WriteFileAtomically_DoesNotWriteThroughSymlink(t *testing.T) 
 	}
 	if string(victimContent) != "victim-original" {
 		t.Fatalf("expected victim file unchanged, got %q", string(victimContent))
+	}
+}
+
+func Test_Sanitize_Run_SkipsSymlinkInput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	target := filepath.Join(workingDir, "target.md")
+	if err := os.WriteFile(target, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write target file: %v", err)
+	}
+	link := filepath.Join(workingDir, "link.md")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	result, err := Run(Request{Paths: []string{link}, Discover: false})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+	if len(result.Events) != 1 || result.Events[0].Action != ActionSkipped {
+		t.Fatalf("expected one skipped event, got %#v", result.Events)
+	}
+	if result.Events[0].Reason != "symbolic links are not sanitized" {
+		t.Fatalf("unexpected skip reason: %#v", result.Events)
 	}
 }

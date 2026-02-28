@@ -3,31 +3,13 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/baseline"
 	"github.com/spf13/cobra"
 )
-
-func Test_Cmd_BaselineSnapshot_CreateWritesFile(t *testing.T) {
-	workingDir := t.TempDir()
-	prompt := filepath.Join(workingDir, "prompt.md")
-	_ = os.WriteFile(prompt, []byte("hello\u200bworld"), 0o644)
-
-	baselinePath := filepath.Join(workingDir, "baseline.json")
-	if err := runBaselineSnapshot([]string{workingDir}, baselineOptions{file: baselinePath, noConfigDiscovery: true}, false); err != nil {
-		t.Fatalf("create baseline snapshot: %v", err)
-	}
-
-	snapshot, err := baseline.Read(baselinePath)
-	if err != nil {
-		t.Fatalf("read baseline snapshot: %v", err)
-	}
-	if len(snapshot.Entries) == 0 {
-		t.Fatal("expected baseline entries to be persisted")
-	}
-}
 
 func Test_Cmd_ParseBaselineOptions_ReadsFlags(t *testing.T) {
 	command := &cobra.Command{}
@@ -67,5 +49,30 @@ func Test_Cmd_RunBaselineUpdate_ReturnsErrorWhenFileMissing(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "stat baseline file") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Cmd_BaselineSnapshot_UsesRawFindings(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	link := filepath.Join(workingDir, "broken.md")
+	if err := os.Symlink(filepath.Join(workingDir, "missing.md"), link); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+	baselinePath := filepath.Join(workingDir, "baseline.json")
+
+	if err := runBaselineSnapshot([]string{link}, baselineOptions{file: baselinePath, noConfigDiscovery: true}, false); err != nil {
+		t.Fatalf("create baseline snapshot: %v", err)
+	}
+
+	snapshot, err := baseline.Read(baselinePath)
+	if err != nil {
+		t.Fatalf("read baseline snapshot: %v", err)
+	}
+	if len(snapshot.Entries) == 0 {
+		t.Fatalf("expected baseline snapshot entries from raw findings, got %#v", snapshot)
 	}
 }

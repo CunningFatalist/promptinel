@@ -7,7 +7,6 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/baseline"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
-	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/report"
 	internalscan "github.com/CunningFatalist/promptinel/internal/scan"
 	"github.com/CunningFatalist/promptinel/internal/util"
@@ -51,42 +50,22 @@ func runScan(cmd *cobra.Command, args []string) error {
 }
 
 func parseScanOptions(cmd *cobra.Command) (scanOptions, error) {
-	configFile, err := cmd.Flags().GetString("config")
+	common, err := readConfigAndFilterFlags(cmd)
 	if err != nil {
-		return scanOptions{}, fmt.Errorf("read config flag: %w", err)
-	}
-	noConfigDiscovery, err := cmd.Flags().GetBool("no-config-discovery")
-	if err != nil {
-		return scanOptions{}, fmt.Errorf("read no-config-discovery flag: %w", err)
-	}
-
-	includes, err := cmd.Flags().GetStringArray("include")
-	if err != nil {
-		return scanOptions{}, fmt.Errorf("read include flag: %w", err)
-	}
-	excludes, err := cmd.Flags().GetStringArray("exclude")
-	if err != nil {
-		return scanOptions{}, fmt.Errorf("read exclude flag: %w", err)
+		return scanOptions{}, err
 	}
 	baselineFile, err := cmd.Flags().GetString("baseline")
 	if err != nil {
 		return scanOptions{}, fmt.Errorf("read baseline flag: %w", err)
 	}
 
-	if err := filters.ValidateGlobPatterns("include", includes); err != nil {
-		return scanOptions{}, err
-	}
-	if err := filters.ValidateGlobPatterns("exclude", excludes); err != nil {
-		return scanOptions{}, err
-	}
-
 	return scanOptions{
-		configFile:        configFile,
-		noConfigDiscovery: noConfigDiscovery,
-		includes:          includes,
-		excludes:          excludes,
-		includeSet:        cmd.Flags().Changed("include"),
-		excludeSet:        cmd.Flags().Changed("exclude"),
+		configFile:        common.configFile,
+		noConfigDiscovery: common.noConfigDiscovery,
+		includes:          common.includes,
+		excludes:          common.excludes,
+		includeSet:        common.includeSet,
+		excludeSet:        common.excludeSet,
 		baselineFile:      baselineFile,
 	}, nil
 }
@@ -109,7 +88,7 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 		return err
 	}
 
-	findings := result.Findings
+	findings := result.ReportableFindings
 	baselineFiltered := 0
 	if options.baselineFile != "" {
 		snapshot, baselineErr := baseline.Read(options.baselineFile)
@@ -139,9 +118,6 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 
 func init() {
 	rootCmd.AddCommand(scanCmd)
-	scanCmd.Flags().String("config", "", "Path to a Promptinel config file")
-	scanCmd.Flags().Bool("no-config-discovery", false, "Disable implicit .promptinel.yaml discovery from current directory and $HOME")
-	scanCmd.Flags().StringArray("include", nil, "Glob pattern to include (can be repeated)")
-	scanCmd.Flags().StringArray("exclude", nil, "Glob pattern to exclude (can be repeated)")
+	addConfigAndFilterFlags(scanCmd)
 	scanCmd.Flags().String("baseline", "", "Path to baseline snapshot file used to suppress accepted findings")
 }

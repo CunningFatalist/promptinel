@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -107,5 +108,35 @@ func Test_Scan_Run_CLIIncludeOverridesConfigFilters(t *testing.T) {
 		if strings.HasSuffix(finding.Path, "excluded-by-cli.md") {
 			t.Fatalf("expected CLI include filter to override config include filter, findings: %#v", result.Findings)
 		}
+	}
+}
+
+func Test_Scan_Run_ReturnsRawAndReportableFindingsSeparately(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	link := filepath.Join(workingDir, "broken.md")
+	if err := os.Symlink(filepath.Join(workingDir, "missing.md"), link); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	result, err := Run(context.Background(), Request{
+		Paths:    []string{link},
+		Discover: false,
+	})
+	if err != nil {
+		t.Fatalf("run scan: %v", err)
+	}
+
+	if len(result.RawFindings) != 1 {
+		t.Fatalf("expected one raw finding, got %#v", result.RawFindings)
+	}
+	if len(result.ReportableFindings) != 0 {
+		t.Fatalf("expected no reportable findings at default warn-on=medium, got %#v", result.ReportableFindings)
+	}
+	if len(result.Findings) != 0 {
+		t.Fatalf("expected compatibility findings to match reportable findings, got %#v", result.Findings)
 	}
 }
