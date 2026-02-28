@@ -257,3 +257,27 @@ func Test_Sanitize_Run_SkipsSymlinkInput(t *testing.T) {
 		t.Fatalf("unexpected skip reason: %#v", result.Events)
 	}
 }
+
+func Test_Sanitize_Run_ReturnsErrorWhenCollectionFails(t *testing.T) {
+	_, err := Run(Request{
+		Paths:    []string{"/definitely/missing/path"},
+		Discover: false,
+	})
+	if err == nil {
+		t.Fatal("expected collect files error")
+	}
+	if !strings.Contains(err.Error(), "collect files") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Sanitize_WriteFileAtomically_ReturnsErrorWhenDirMissing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing", "prompt.md")
+	err := writeFileAtomically(path, []byte("content"), 0o644)
+	if err == nil {
+		t.Fatal("expected error for missing directory")
+	}
+	if !strings.Contains(err.Error(), "create temp file") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

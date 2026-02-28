@@ -154,6 +154,30 @@ func Test_Files_FilterPaths_AppliesIncludeExcludeToFilesAndSkipped(t *testing.T)
 	}
 }
 
+func Test_Files_CollectTargets_CollectsAndFiltersInOneStep(t *testing.T) {
+	workingDir := t.TempDir()
+	includePath := filepath.Join(workingDir, "keep.md")
+	excludePath := filepath.Join(workingDir, "skip.txt")
+	if err := os.WriteFile(includePath, []byte("keep"), 0o644); err != nil {
+		t.Fatalf("write include file: %v", err)
+	}
+	if err := os.WriteFile(excludePath, []byte("skip"), 0o644); err != nil {
+		t.Fatalf("write exclude file: %v", err)
+	}
+
+	targets, skipped, err := CollectTargets([]string{workingDir}, ScanCollectOptions(), []string{"*.md"}, nil)
+	if err != nil {
+		t.Fatalf("collect targets: %v", err)
+	}
+
+	if len(targets) != 1 || filepath.Base(targets[0].RelativePath) != "keep.md" {
+		t.Fatalf("unexpected targets: %#v", targets)
+	}
+	if len(skipped) != 0 {
+		t.Fatalf("unexpected skipped targets: %#v", skipped)
+	}
+}
+
 func Test_Files_RelativePathFromWorkingDir_ReturnsRelativeWhenPossible(t *testing.T) {
 	workingDir := t.TempDir()
 	absolutePath := filepath.Join(workingDir, "nested", "file.md")

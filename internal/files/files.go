@@ -171,6 +171,27 @@ func FilterPaths(
 	return files, skipped
 }
 
+// CollectTargets combines path collection and filter projection for scan/sanitize flows.
+func CollectTargets(
+	inputPaths []string,
+	options CollectOptions,
+	includePatterns []string,
+	excludePatterns []string,
+) ([]TargetFile, []SkippedTarget, error) {
+	absolutePaths, skippedPaths, err := Collect(inputPaths, options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	workingDir, err := os.Getwd()
+	if err != nil {
+		workingDir = ""
+	}
+
+	targets, skippedTargets := FilterPaths(workingDir, absolutePaths, skippedPaths, includePatterns, excludePatterns)
+	return targets, skippedTargets, nil
+}
+
 // RelativePathFromWorkingDir resolves an absolute path relative to workingDir when possible.
 func RelativePathFromWorkingDir(workingDir string, filePath string) string {
 	if strings.TrimSpace(workingDir) == "" {

@@ -66,48 +66,48 @@ func Run(req Request) (Result, error) {
 	}
 
 	includes, excludes := filters.ResolveEffective(cfg, req.Include, req.Exclude, req.IncludeSet, req.ExcludeSet)
-	files, skippedDuringDiscovery, err := collectSanitizeFiles(req.Paths, includes, excludes)
+	targets, skippedDuringDiscovery, err := files.CollectTargets(req.Paths, files.SanitizeCollectOptions(), includes, excludes)
 	if err != nil {
 		return Result{}, fmt.Errorf("collect files: %w", err)
 	}
 
-	result := Result{Events: make([]Event, 0, len(files)+len(skippedDuringDiscovery))}
+	result := Result{Events: make([]Event, 0, len(targets)+len(skippedDuringDiscovery))}
 	for _, skipped := range skippedDuringDiscovery {
 		result.Events = append(result.Events, Event{Path: skipped.RelativePath, Action: ActionSkipped, Reason: skipped.Reason})
 		result.Summary.Skipped++
 	}
 
-	for _, file := range files {
-		info, statErr := os.Lstat(file.AbsolutePath)
+	for _, target := range targets {
+		info, statErr := os.Lstat(target.AbsolutePath)
 		if statErr != nil {
 			if errors.Is(statErr, os.ErrNotExist) {
-				result.Events = append(result.Events, Event{Path: file.RelativePath, Action: ActionSkipped, Reason: "path no longer exists"})
+				result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: "path no longer exists"})
 				result.Summary.Skipped++
 				continue
 			}
-			return Result{}, fmt.Errorf("lstat file %q: %w", file.AbsolutePath, statErr)
+			return Result{}, fmt.Errorf("lstat file %q: %w", target.AbsolutePath, statErr)
 		}
 
 		if info.Mode()&os.ModeSymlink != 0 {
-			result.Events = append(result.Events, Event{Path: file.RelativePath, Action: ActionSkipped, Reason: "symbolic links are not sanitized"})
+			result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: "symbolic links are not sanitized"})
 			result.Summary.Skipped++
 			continue
 		}
 		if !info.Mode().IsRegular() {
-			result.Events = append(result.Events, Event{Path: file.RelativePath, Action: ActionSkipped, Reason: "non-regular file"})
+			result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: "non-regular file"})
 			result.Summary.Skipped++
 			continue
 		}
 
 		if info.Size() > cfg.Limits.MaxFileSizeBytes {
-			result.Events = append(result.Events, Event{Path: file.RelativePath, Action: ActionSkipped, Reason: fmt.Sprintf("size %d exceeds limits.max_file_size_bytes=%d", info.Size(), cfg.Limits.MaxFileSizeBytes)})
+			result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: fmt.Sprintf("size %d exceeds limits.max_file_size_bytes=%d", info.Size(), cfg.Limits.MaxFileSizeBytes)})
 			result.Summary.Skipped++
 			continue
 		}
 
-		content, readErr := os.ReadFile(file.AbsolutePath)
+		content, readErr := os.ReadFile(target.AbsolutePath)
 		if readErr != nil {
-			result.Events = append(result.Events, Event{Path: file.RelativePath, Action: ActionSkipped, Reason: fmt.Sprintf("read error: %v", readErr)})
+			result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: fmt.Sprintf("read error: %v", readErr)})
 			result.Summary.Skipped++
 			continue
 		}
@@ -123,86 +123,42 @@ func Run(req Request) (Result, error) {
 
 		action := ActionWouldSanitize
 		if req.Apply {
-			latestInfo, latestErr := os.Lstat(file.AbsolutePath)
+			latestInfo, latestErr := os.Lstat(target.AbsolutePath)
 			if latestErr != nil {
 				if errors.Is(latestErr, os.ErrNotExist) {
-					result.Events = append(result.Events, Event{Path: file.RelativePath, Action: ActionSkipped, Reason: "path no longer exists"})
+					result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: "path no longer exists"})
 					result.Summary.Skipped++
 					continue
 				}
-				return Result{}, fmt.Errorf("lstat file before write %q: %w", file.AbsolutePath, latestErr)
+				return Result{}, fmt.Errorf("lstat file before write %q: %w", target.AbsolutePath, latestErr)
 			}
 			if latestInfo.Mode()&os.ModeSymlink != 0 {
-				result.Events = append(result.Events, Event{Path: file.RelativePath, Action: ActionSkipped, Reason: "symbolic links are not sanitized"})
+				result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: "symbolic links are not sanitized"})
 				result.Summary.Skipped++
 				continue
 			}
 			if !latestInfo.Mode().IsRegular() {
-				result.Events = append(result.Events, Event{Path: file.RelativePath, Action: ActionSkipped, Reason: "non-regular file"})
+				result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: "non-regular file"})
 				result.Summary.Skipped++
 				continue
 			}
-			if err := writeFileAtomically(file.AbsolutePath, []byte(normalized.Content), info.Mode().Perm()); err != nil {
-				return Result{}, fmt.Errorf("write sanitized file %q: %w", file.AbsolutePath, err)
+			if err := writeFileAtomically(target.AbsolutePath, []byte(normalized.Content), info.Mode().Perm()); err != nil {
+				return Result{}, fmt.Errorf("write sanitized file %q: %w", target.AbsolutePath, err)
 			}
 			action = ActionSanitized
 		}
 
 		result.Events = append(result.Events, Event{
-			Path:                   file.RelativePath,
+			Path:                   target.RelativePath,
 			Action:                 action,
 			LineEndingsNormalized:  normalized.LineEndingsNormalized,
 			ZeroWidthRunesStripped: normalized.ZeroWidthRunesStripped,
 		})
 	}
 
-	result.Summary.Files = len(files)
+	result.Summary.Files = len(targets)
 	result.Summary.Applied = req.Apply
 	return result, nil
-}
-
-type sanitizeFile struct {
-	AbsolutePath string
-	RelativePath string
-}
-
-type sanitizeSkippedFile struct {
-	AbsolutePath string
-	RelativePath string
-	Reason       string
-}
-
-func collectSanitizeFiles(paths []string, includePatterns []string, excludePatterns []string) ([]sanitizeFile, []sanitizeSkippedFile, error) {
-	absolutePaths, skippedPaths, err := files.Collect(paths, files.SanitizeCollectOptions())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	workingDir, err := os.Getwd()
-	if err != nil {
-		workingDir = ""
-	}
-
-	targets, skippedTargets := files.FilterPaths(workingDir, absolutePaths, skippedPaths, includePatterns, excludePatterns)
-
-	sanitizeFiles := make([]sanitizeFile, 0, len(targets))
-	for _, target := range targets {
-		sanitizeFiles = append(sanitizeFiles, sanitizeFile{
-			AbsolutePath: target.AbsolutePath,
-			RelativePath: target.RelativePath,
-		})
-	}
-
-	skippedFiles := make([]sanitizeSkippedFile, 0, len(skippedTargets))
-	for _, skippedPath := range skippedTargets {
-		skippedFiles = append(skippedFiles, sanitizeSkippedFile{
-			AbsolutePath: skippedPath.AbsolutePath,
-			RelativePath: skippedPath.RelativePath,
-			Reason:       skippedPath.Reason,
-		})
-	}
-
-	return sanitizeFiles, skippedFiles, nil
 }
 
 func writeFileAtomically(path string, content []byte, perm os.FileMode) (returnErr error) {

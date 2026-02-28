@@ -62,17 +62,14 @@ func NewScanner(compiledRules []rules.CompiledRule, cfg *config.Config) *Scanner
 
 // ScanPaths scans provided files or directories and returns findings.
 func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns []string, excludePatterns []string) ([]FileFinding, error) {
-	collectedPaths, skippedPaths, err := files.Collect(paths, files.ScanCollectOptions())
-	if err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	workingDir, err := os.Getwd()
+	targetFiles, skippedTargets, err := files.CollectTargets(paths, files.ScanCollectOptions(), includePatterns, excludePatterns)
 	if err != nil {
-		workingDir = ""
+		return nil, err
 	}
-
-	targetFiles, skippedTargets := files.FilterPaths(workingDir, collectedPaths, skippedPaths, includePatterns, excludePatterns)
 
 	scopeRoots := resolveScopeRoots(paths)
 	findings := make([]FileFinding, 0, len(skippedTargets))
@@ -150,28 +147,57 @@ func (s *Scanner) scanTargets(ctx context.Context, targets []scanTarget, scopeRo
 		workerGroup.Add(1)
 		go func() {
 			defer workerGroup.Done()
-			for target := range jobs {
-				findings, err := s.scanSingleTarget(ctx, target, scopeRoots)
-				results <- scanResult{
-					index:    target.index,
-					findings: findings,
-					err:      err,
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case target, ok := <-jobs:
+					if !ok {
+						return
+					}
+					findings, err := s.scanSingleTarget(ctx, target, scopeRoots)
+					select {
+					case results <- scanResult{
+						index:    target.index,
+						findings: findings,
+						err:      err,
+					}:
+					case <-ctx.Done():
+						return
+					}
 				}
 			}
 		}()
 	}
 
+	scheduledCount := 0
+	dispatchCanceled := false
 	for _, target := range targets {
-		jobs <- target
+		select {
+		case <-ctx.Done():
+			dispatchCanceled = true
+		case jobs <- target:
+			scheduledCount++
+		}
+		if dispatchCanceled {
+			break
+		}
 	}
 	close(jobs)
+	if dispatchCanceled {
+		return nil, ctx.Err()
+	}
 
 	orderedFindings := make([][]FileFinding, len(targets))
 	errsByIndex := make([]error, len(targets))
-	for i := 0; i < len(targets); i++ {
-		result := <-results
-		orderedFindings[result.index] = result.findings
-		errsByIndex[result.index] = result.err
+	for i := 0; i < scheduledCount; i++ {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case result := <-results:
+			orderedFindings[result.index] = result.findings
+			errsByIndex[result.index] = result.err
+		}
 	}
 
 	workerGroup.Wait()

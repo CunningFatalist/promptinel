@@ -44,19 +44,19 @@ This is needed because skipped files can currently disappear from default output
 
 This is needed to ensure long scans can stop quickly and predictably when users or CI systems cancel execution.
 
-- [ ] Pass Cobra command context into scan execution (`cmd.Context()`) instead of using `context.Background()`.
-- [ ] Update worker/job orchestration to stop scheduling quickly when context is canceled.
-- [ ] Add tests that verify early cancellation behavior on larger input sets.
-- [ ] Document cancellation guarantees and limitations in architecture docs.
+- [x] Pass Cobra command context into scan execution (`cmd.Context()`) instead of using `context.Background()`.
+- [x] Update worker/job orchestration to stop scheduling quickly when context is canceled.
+- [x] Add tests that verify early cancellation behavior on larger input sets.
+- [x] Document cancellation guarantees and limitations in architecture docs.
 
 ### 4) Remove duplicated file discovery/filtering logic
 
 This is needed to avoid behavioral drift between scan and sanitize, and to reduce long-term maintenance overhead.
 
-- [ ] Extract shared file collection, deduplication, and include/exclude matching into a reusable internal package.
-- [ ] Migrate both scan and sanitize paths to the shared implementation.
-- [ ] Add regression tests that compare scan/sanitize file targeting behavior for the same patterns.
-- [ ] Keep behavior deterministic and backward compatible unless explicitly documented as a breaking change.
+- [x] Extract shared file collection, deduplication, and include/exclude matching into a reusable internal package.
+- [x] Migrate both scan and sanitize paths to the shared implementation.
+- [x] Add regression tests that compare scan/sanitize file targeting behavior for the same patterns.
+- [x] Keep behavior deterministic and backward compatible unless explicitly documented as a breaking change.
 
 ### 5) Align architecture/design documentation with reality
 

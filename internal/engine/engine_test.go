@@ -2,11 +2,14 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/filters"
@@ -65,6 +68,75 @@ func Test_Engine_ScanPaths_ContextCanceled(t *testing.T) {
 	cancel()
 
 	_, err = scanner.ScanPaths(ctx, []string{tmp}, nil, nil)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func Test_Engine_ScanPaths_CancellationReturnsPromptlyOnLargeInputSet(t *testing.T) {
+	tmp := t.TempDir()
+	totalFiles := runtime.GOMAXPROCS(0) * 4
+	if totalFiles < 8 {
+		totalFiles = 8
+	}
+
+	for i := 0; i < totalFiles; i++ {
+		file := filepath.Join(tmp, fmt.Sprintf("file-%03d.md", i))
+		require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
+	}
+
+	var startedChecks atomic.Int32
+	registry := rules.NewRegistry()
+	err := registry.Register(slowRuleForTest{
+		id:            "slow",
+		defaultSev:    config.SeverityLow,
+		sleep:         500 * time.Millisecond,
+		startedChecks: &startedChecks,
+	})
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	scanner := NewScanner(compiled, config.DefaultConfig())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		_, scanErr := scanner.ScanPaths(ctx, []string{tmp}, nil, nil)
+		done <- scanErr
+	}()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for startedChecks.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if startedChecks.Load() == 0 {
+		t.Fatal("expected at least one rule evaluation to start before cancellation")
+	}
+
+	cancelAt := time.Now()
+	cancel()
+
+	select {
+	case err := <-done:
+		require.Error(t, err)
+		assert.ErrorIs(t, err, context.Canceled)
+		assert.Less(t, time.Since(cancelAt), 300*time.Millisecond, "scan should stop promptly after cancellation")
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for scan cancellation")
+	}
+}
+
+func Test_Engine_scanTargets_ContextCanceledBeforeDispatch(t *testing.T) {
+	scanner := NewScanner(nil, config.DefaultConfig())
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := scanner.scanTargets(ctx, []scanTarget{{
+		index:        0,
+		absolutePath: "/tmp/file.md",
+		relativePath: "file.md",
+	}}, nil)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
@@ -215,4 +287,27 @@ func Test_Engine_IsOversizedFileSkipFinding(t *testing.T) {
 	assert.False(t, IsOversizedFileSkipFinding(FileFinding{
 		Finding: rules.Finding{ID: unreadableFileFindingID},
 	}))
+}
+
+type slowRuleForTest struct {
+	id            string
+	defaultSev    config.Severity
+	sleep         time.Duration
+	startedChecks *atomic.Int32
+}
+
+func (r slowRuleForTest) Metadata() rules.Metadata {
+	return rules.Metadata{
+		ID:              r.id,
+		DefaultSeverity: r.defaultSev,
+	}
+}
+
+func (r slowRuleForTest) CheckDocument(_ rules.Context, _ rules.DocumentView) []rules.Finding {
+	r.startedChecks.Add(1)
+	time.Sleep(r.sleep)
+	return []rules.Finding{{
+		Message:  "slow finding",
+		Position: rules.Position{Line: 1, Column: 1},
+	}}
 }

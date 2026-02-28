@@ -5,10 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/engine"
+	internalsanitize "github.com/CunningFatalist/promptinel/internal/sanitize"
 )
 
 func Test_Scan_Run_NoConfigDiscovery_IgnoresLocalConfig(t *testing.T) {
@@ -171,4 +174,86 @@ func Test_Scan_Run_OversizedSkipsRemainInformationalAndVisible(t *testing.T) {
 	if len(result.OversizedSkippedFindings) != 1 {
 		t.Fatalf("expected one oversized skip finding, got %#v", result.OversizedSkippedFindings)
 	}
+}
+
+func Test_Scan_Run_FileTargetingMatchesSanitizeForEquivalentPatterns(t *testing.T) {
+	workingDir := t.TempDir()
+	include := []string{"*.md"}
+
+	markdownFile := filepath.Join(workingDir, "target.md")
+	if err := os.WriteFile(markdownFile, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write markdown file: %v", err)
+	}
+	textFile := filepath.Join(workingDir, "excluded.txt")
+	if err := os.WriteFile(textFile, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write text file: %v", err)
+	}
+
+	expectedScanBasenames := []string{"target.md"}
+	if runtime.GOOS != "windows" {
+		link := filepath.Join(workingDir, "broken.md")
+		if err := os.Symlink(filepath.Join(workingDir, "missing.md"), link); err != nil {
+			t.Fatalf("create symlink: %v", err)
+		}
+		expectedScanBasenames = append(expectedScanBasenames, "broken.md")
+	}
+
+	scanResult, err := Run(context.Background(), Request{
+		Paths:      []string{workingDir},
+		Discover:   false,
+		Include:    include,
+		IncludeSet: true,
+	})
+	if err != nil {
+		t.Fatalf("run scan: %v", err)
+	}
+
+	sanitizeResult, err := internalsanitize.Run(internalsanitize.Request{
+		Paths:      []string{workingDir},
+		Discover:   false,
+		Include:    include,
+		IncludeSet: true,
+	})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+
+	scanBasenames := findingBasenames(scanResult.RawFindings)
+	sanitizeBasenames := sanitizeEventBasenames(sanitizeResult.Events)
+	sort.Strings(expectedScanBasenames)
+
+	if strings.Join(scanBasenames, ",") != strings.Join(expectedScanBasenames, ",") {
+		t.Fatalf("unexpected scan targets: got=%v want=%v", scanBasenames, expectedScanBasenames)
+	}
+	if strings.Join(sanitizeBasenames, ",") != strings.Join(expectedScanBasenames, ",") {
+		t.Fatalf("unexpected sanitize targets: got=%v want=%v", sanitizeBasenames, expectedScanBasenames)
+	}
+}
+
+func findingBasenames(findings []engine.FileFinding) []string {
+	seen := make(map[string]struct{})
+	for _, finding := range findings {
+		seen[filepath.Base(finding.Path)] = struct{}{}
+	}
+
+	basenames := make([]string, 0, len(seen))
+	for name := range seen {
+		basenames = append(basenames, name)
+	}
+	sort.Strings(basenames)
+	return basenames
+}
+
+func sanitizeEventBasenames(events []internalsanitize.Event) []string {
+	seen := make(map[string]struct{})
+	for _, event := range events {
+		seen[filepath.Base(event.Path)] = struct{}{}
+	}
+
+	basenames := make([]string, 0, len(seen))
+	for name := range seen {
+		basenames = append(basenames, name)
+	}
+	sort.Strings(basenames)
+	return basenames
 }

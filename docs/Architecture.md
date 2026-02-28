@@ -23,10 +23,10 @@ The key separation is:
 - `internal/filters`: glob validation, config/CLI filter resolution, shared filter matching
 - `internal/files`: shared file discovery, deduplication, and include/exclude projection for scan and sanitize
 - `internal/scan`: reusable scan pipeline for `scan` and `baseline`
-- `internal/sanitize`: file discovery and sanitize domain workflow
+- `internal/sanitize`: sanitize domain workflow over shared file targets
 - `internal/rulecatalog`: built-in rule catalog listing and describing
 - `internal/config`: typed config model, defaults, validation
-- `internal/engine`: file collection/filtering plus per-file rule execution
+- `internal/engine`: per-file rule execution over shared file targets
 - `internal/rules`: rule contracts, compilation, multi-phase evaluation
 - `internal/lexer`: deterministic lexical + semantic tokenization with byte offsets
 - `internal/exitcode`: policy threshold mapping to process codes
@@ -35,9 +35,7 @@ The key separation is:
 
 `internal/engine.Scanner` is intentionally small and deterministic:
 
-- resolves input paths
-- recursively collects files (deduplicated via canonical path keys while preserving cleaned scan paths)
-- applies include/exclude path filters
+- resolves shared file targets via `internal/files`
 - reads file content in a bounded worker pool
 - evaluates compiled rules with contextual metadata (path, environment, trust) per worker
 - applies scope-based severity overrides from config
@@ -45,7 +43,12 @@ The key separation is:
 
 Important design choices:
 
-- Context cancellation is supported (`context.Context`) and checked during file iteration.
+- Context cancellation is propagated from Cobra command context (`cmd.Context()`) into scan execution for both
+  `scan` and `baseline`.
+- Worker scheduling stops as soon as cancellation is observed; the scanner returns cancellation without waiting for
+  all pending targets to be queued.
+- In-flight file operations and rule evaluation are not forcibly preempted; cancellation guarantees are best-effort
+  and primarily bound scheduling and result collection latency.
 - Paths are matched both relative to working directory and to input roots to reduce surprises in scope matching.
 - Concurrent scanning is bounded by `GOMAXPROCS` and preserves deterministic output ordering.
 - Engine logic avoids side effects beyond reading files, making behavior testable and reproducible.

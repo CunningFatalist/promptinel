@@ -55,7 +55,7 @@ func runBaselineCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("read baseline create options: %w", err)
 	}
 
-	return runBaselineSnapshot(args, options, false)
+	return runBaselineSnapshot(cmd.Context(), args, options, false)
 }
 
 func runBaselineUpdate(cmd *cobra.Command, args []string) error {
@@ -68,7 +68,7 @@ func runBaselineUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("stat baseline file %q: %w", options.file, err)
 	}
 
-	return runBaselineSnapshot(args, options, true)
+	return runBaselineSnapshot(cmd.Context(), args, options, true)
 }
 
 func parseBaselineOptions(cmd *cobra.Command) (baselineOptions, error) {
@@ -109,8 +109,8 @@ func buildBaselineScanRequest(args []string, options baselineOptions) internalsc
 	}
 }
 
-func runBaselineSnapshot(args []string, options baselineOptions, update bool) error {
-	result, err := internalscan.Run(context.Background(), buildBaselineScanRequest(args, options))
+func runBaselineSnapshot(ctx context.Context, args []string, options baselineOptions, update bool) error {
+	result, err := internalscan.Run(ctx, buildBaselineScanRequest(args, options))
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -64,7 +66,7 @@ func Test_Cmd_BaselineSnapshot_UsesRawFindings(t *testing.T) {
 	}
 	baselinePath := filepath.Join(workingDir, "baseline.json")
 
-	if err := runBaselineSnapshot([]string{link}, baselineOptions{file: baselinePath, noConfigDiscovery: true}, false); err != nil {
+	if err := runBaselineSnapshot(context.Background(), []string{link}, baselineOptions{file: baselinePath, noConfigDiscovery: true}, false); err != nil {
 		t.Fatalf("create baseline snapshot: %v", err)
 	}
 
@@ -74,5 +76,32 @@ func Test_Cmd_BaselineSnapshot_UsesRawFindings(t *testing.T) {
 	}
 	if len(snapshot.Entries) == 0 {
 		t.Fatalf("expected baseline snapshot entries from raw findings, got %#v", snapshot)
+	}
+}
+
+func Test_Cmd_RunBaselineCreate_UsesCommandContext(t *testing.T) {
+	workingDir := t.TempDir()
+	file := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(file, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().String("file", baseline.DefaultFileName, "")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	command.SetContext(ctx)
+
+	err := runBaselineCreate(command, []string{file})
+	if err == nil {
+		t.Fatal("expected canceled context error")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
 	}
 }
