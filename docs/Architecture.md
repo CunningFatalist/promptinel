@@ -75,6 +75,28 @@ compiled rule stores only the phase callbacks actually implemented by that rule.
 This avoids no-op methods and keeps extension ergonomic: new rules can be narrowly scoped to one phase or span multiple
 phases.
 
+## Context-Aware Rule Behavior
+
+`rules.Context` is a first-class input to built-in detection and is used with three patterns:
+
+- Environment-only effects:
+  rules that depend on runtime capabilities short-circuit when the capability is disabled.
+  Examples: shell-driven rules (`no-command-chaining`), network-driven rules
+  (`no-insecure-http`, `no-metadata-service-access`), and filesystem-driven rules
+  (`no-sensitive-file-paths`).
+- Trust-only effects:
+  trust level can tighten matching even when environment capabilities are unchanged.
+  Example: `no-prompt-injection-override` always matches strong override phrases and adds
+  weaker phrase matching for `untrusted`/`tainted` sources.
+- Combined effects (environment + trust):
+  some rules use both capability and trust to decide whether and how to match.
+  Example: `no-secret-exfiltration-intent` requires both network access and secret
+  availability, then expands its token-distance window only for `untrusted`/`tainted`
+  inputs.
+
+This model keeps detections aligned with the configured deployment environment while
+remaining conservative for lower-trust inputs.
+
 ## Rule Evaluation Pipeline
 
 `rules.Evaluate(...)` executes rules in deterministic phase order with lazy preparation:

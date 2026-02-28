@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	id               = "no-secret-exfiltration-intent"
-	name             = "No Secret Exfiltration Intent"
-	summary          = "Detects co-occurrence of secret targets and exfiltration actions"
-	description      = "Prompts that combine secret-related terms with transfer actions often indicate data exfiltration intent."
-	maxTokenDistance = 12
+	id                        = "no-secret-exfiltration-intent"
+	name                      = "No Secret Exfiltration Intent"
+	summary                   = "Detects co-occurrence of secret targets and exfiltration actions"
+	description               = "Prompts that combine secret-related terms with transfer actions often indicate data exfiltration intent."
+	maxTokenDistance          = 12
+	maxTokenDistanceUntrusted = 20
 )
 
 // Rule detects secret exfiltration intent patterns.
@@ -43,7 +44,16 @@ func Metadata() rules.Metadata {
 }
 
 // CheckTokens detects close co-occurrence of exfiltration and secret terms.
-func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+	if !ctx.CanAccessNetwork() || !ctx.HasSecrets() {
+		return nil
+	}
+
+	maxDistance := maxTokenDistance
+	if ctx.IsUntrusted() {
+		maxDistance = maxTokenDistanceUntrusted
+	}
+
 	exfilIndices := make([]int, 0)
 	secretIndices := make([]int, 0)
 
@@ -83,7 +93,7 @@ func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) 
 	if best.exfil == -1 || best.secret == -1 {
 		return nil
 	}
-	if best.distance > maxTokenDistance {
+	if best.distance > maxDistance {
 		return nil
 	}
 

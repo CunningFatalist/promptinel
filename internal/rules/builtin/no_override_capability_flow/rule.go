@@ -41,7 +41,7 @@ func Metadata() rules.Metadata {
 }
 
 // CheckFlow detects when override language co-occurs with shell/network/sensitive capability signals.
-func (Rule) CheckFlow(_ rules.Context, doc rules.AnalyzedDocument) []rules.Finding {
+func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Finding {
 	contentLower := strings.ToLower(doc.Document.Content)
 	overrideOffset := -1
 	for _, signal := range signals.OverridePhrases {
@@ -57,31 +57,52 @@ func (Rule) CheckFlow(_ rules.Context, doc rules.AnalyzedDocument) []rules.Findi
 		return nil
 	}
 
-	hasCapabilityAction := false
+	hasNetworkAction := false
+	hasShellAction := false
+	hasFilesystemAction := false
+	hasSecretAction := false
 	for _, tokens := range doc.TokensBySegment {
 		for _, token := range tokens {
-			if token.Type == lexer.TokenURL || token.Type == lexer.TokenShellCommand {
-				hasCapabilityAction = true
-				break
+			if token.Type == lexer.TokenURL {
+				hasNetworkAction = true
+			}
+			if token.Type == lexer.TokenShellCommand {
+				hasShellAction = true
 			}
 
 			lower := strings.ToLower(token.Value)
-			for _, signal := range signals.CapabilitySignals {
+			matchesFilesystemSignal := false
+			for _, signal := range signals.FilesystemCapabilitySignals {
 				if strings.Contains(lower, signal) {
-					hasCapabilityAction = true
-					break
+					hasFilesystemAction = true
+					matchesFilesystemSignal = true
 				}
 			}
-			if hasCapabilityAction {
-				break
+
+			for _, signal := range signals.CapabilitySignals {
+				if strings.Contains(lower, signal) {
+					switch signal {
+					case "metadata", "169.254.169.254":
+						hasNetworkAction = true
+					case "token", "password":
+						if !matchesFilesystemSignal {
+							hasSecretAction = true
+						}
+					}
+				}
 			}
 		}
-		if hasCapabilityAction {
+	}
+
+	// Some capability snippets can be split across token boundaries; check raw content too.
+	for _, signal := range signals.FilesystemCapabilitySignals {
+		if strings.Contains(contentLower, signal) {
+			hasFilesystemAction = true
 			break
 		}
 	}
 
-	if !hasCapabilityAction {
+	if !capabilityAvailableInContext(ctx, hasNetworkAction, hasShellAction, hasFilesystemAction, hasSecretAction) {
 		return nil
 	}
 
@@ -89,4 +110,11 @@ func (Rule) CheckFlow(_ rules.Context, doc rules.AnalyzedDocument) []rules.Findi
 		Message:  "Prompt override combined with capability-oriented actions detected",
 		Position: rules.PositionFromByteOffset(doc.Document.Content, overrideOffset),
 	}}
+}
+
+func capabilityAvailableInContext(ctx rules.Context, hasNetwork bool, hasShell bool, hasFilesystem bool, hasSecrets bool) bool {
+	return (hasNetwork && ctx.CanAccessNetwork()) ||
+		(hasShell && ctx.CanExecuteShell()) ||
+		(hasFilesystem && ctx.CanAccessFilesystem()) ||
+		(hasSecrets && ctx.HasSecrets())
 }

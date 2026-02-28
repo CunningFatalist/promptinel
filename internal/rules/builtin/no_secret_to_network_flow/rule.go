@@ -41,7 +41,11 @@ func Metadata() rules.Metadata {
 }
 
 // CheckFlow detects cross-segment secret-source to outbound-network exfiltration chains.
-func (Rule) CheckFlow(_ rules.Context, doc rules.AnalyzedDocument) []rules.Finding {
+func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Finding {
+	if !ctx.CanAccessNetwork() || !ctx.HasSecrets() {
+		return nil
+	}
+
 	var firstSecret *rules.Token
 	hasAction := false
 	hasSink := false

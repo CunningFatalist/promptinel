@@ -41,18 +41,38 @@ func Metadata() rules.Metadata {
 }
 
 // CheckSegment detects common instruction override phrases.
-func (Rule) CheckSegment(_ rules.Context, segment rules.Segment) []rules.Finding {
+func (Rule) CheckSegment(ctx rules.Context, segment rules.Segment) []rules.Finding {
 	lower := strings.ToLower(segment.Content)
-	for _, phrase := range signals.OverridePhrases {
-		index := strings.Index(lower, phrase)
-		if index == -1 {
-			continue
-		}
+	if index := firstPhraseIndex(lower, signals.OverridePhrases); index >= 0 {
 		return []rules.Finding{{
 			Message:  "Prompt instruction override phrase detected",
 			Position: helpers.AdvancePositionByByteOffset(segment.Position, segment.Content, index),
 		}}
 	}
 
+	if ctx.IsUntrusted() {
+		if index := firstPhraseIndex(lower, signals.UntrustedOverridePhrases); index >= 0 {
+			return []rules.Finding{{
+				Message:  "Prompt instruction override phrase detected",
+				Position: helpers.AdvancePositionByByteOffset(segment.Position, segment.Content, index),
+			}}
+		}
+	}
+
 	return nil
+}
+
+func firstPhraseIndex(content string, phrases []string) int {
+	earliest := -1
+	for _, phrase := range phrases {
+		index := strings.Index(content, phrase)
+		if index == -1 {
+			continue
+		}
+		if earliest == -1 || index < earliest {
+			earliest = index
+		}
+	}
+
+	return earliest
 }

@@ -41,7 +41,11 @@ func Metadata() rules.Metadata {
 }
 
 // CheckTokens detects combined download and execution signals.
-func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+	if !ctx.CanAccessNetwork() || !ctx.CanExecuteShell() {
+		return nil
+	}
+
 	hasURL := false
 	executionToken := -1
 

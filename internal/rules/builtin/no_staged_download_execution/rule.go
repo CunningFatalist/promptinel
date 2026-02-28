@@ -43,7 +43,11 @@ func Metadata() rules.Metadata {
 }
 
 // CheckFlow detects staged download and execution operations split across segments.
-func (Rule) CheckFlow(_ rules.Context, doc rules.AnalyzedDocument) []rules.Finding {
+func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Finding {
+	if !ctx.CanAccessNetwork() || !ctx.CanExecuteShell() {
+		return nil
+	}
+
 	downloadSegment := -1
 	var downloadToken *rules.Token
 	downloadTokenIndex := -1

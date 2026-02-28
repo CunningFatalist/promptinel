@@ -56,4 +56,8 @@ func Test_Signals_ComposedSignalSets_ContainExpectedValues(t *testing.T) {
 
 	assert.Contains(t, SecretTerms, "token")
 	assert.Contains(t, SecretTerms, "credential")
+
+	assert.Contains(t, FilesystemCapabilitySignals, "/etc/passwd")
+	assert.Contains(t, FilesystemCapabilitySignals, "/run/secrets/")
+	assert.Contains(t, FilesystemCapabilitySignals, ".docker/config.json")
 }

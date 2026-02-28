@@ -21,13 +21,13 @@ maintenance gaps.
 This is needed because context values are currently passed through the pipeline but mostly not used by rules, which
 weakens policy relevance.
 
-- [ ] Define and document the expected behavior for `rules.Context` usage:
+- [x] Define and document the expected behavior for `rules.Context` usage:
   environment-only effects, trust-only effects, and combined effects.
-- [ ] Update built-in rules to consume `ctx Environment` and/or `ctx TrustLevel` where applicable
+- [x] Update built-in rules to consume `ctx Environment` and/or `ctx TrustLevel` where applicable
   instead of ignoring context parameters.
-- [ ] Add focused tests proving findings change (or severity changes) based on:
+- [x] Add focused tests proving findings change (or severity changes) based on:
   capability flags and trust levels.
-- [ ] Update architecture docs so claims about context-aware detection match implementation.
+- [x] Update architecture docs so claims about context-aware detection match implementation.
 
 ### 2) Ensure oversized-file skips are always visible to operators
 

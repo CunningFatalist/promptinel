@@ -38,7 +38,11 @@ func Metadata() rules.Metadata {
 }
 
 // CheckTokens detects chained shell command operators.
-func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+	if !ctx.CanExecuteShell() {
+		return nil
+	}
+
 	for i := 0; i < len(tokens); i++ {
 		token := tokens[i]
 		if token.Value == ";" {

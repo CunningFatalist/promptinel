@@ -41,7 +41,11 @@ func Metadata() rules.Metadata {
 }
 
 // CheckSegment detects references to sensitive file paths.
-func (Rule) CheckSegment(_ rules.Context, segment rules.Segment) []rules.Finding {
+func (Rule) CheckSegment(ctx rules.Context, segment rules.Segment) []rules.Finding {
+	if !ctx.CanAccessFilesystem() {
+		return nil
+	}
+
 	lower := strings.ToLower(segment.Content)
 	for _, snippet := range signals.SensitivePathSnippets {
 		index := strings.Index(lower, snippet)

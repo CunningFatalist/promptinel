@@ -41,7 +41,11 @@ func Metadata() rules.Metadata {
 }
 
 // CheckTokens detects curl/wget piped directly to shell interpreters.
-func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+	if !ctx.CanAccessNetwork() || !ctx.CanExecuteShell() {
+		return nil
+	}
+
 	for i := 0; i < len(tokens); i++ {
 		token := tokens[i]
 		if token.Type != lexer.TokenShellCommand {

@@ -352,16 +352,16 @@ The trust model defines how Promptinel treats different input sources during ana
 There are three levels:
 
 1. `trusted`
-   – Fully controlled by you. No automatic severity escalation.
+   – Fully controlled by you. Base matching behavior applies.
 2. `untrusted`
-   – External but static content. Findings may be escalated.
+   – External but static content. Some rules use stricter matching.
 3. `tainted`
-   – Dynamically influenced input (e.g. user data). Findings are treated conservatively.
+   – Dynamically influenced input (e.g. user data). Rules match conservatively.
 
 This matters, because LLMs cannot reliably distinguish between instructions and data.
 If user- (or otherwise externally) controlled content is embedded into a prompt template,
 it may override instructions or introduce hidden behavior. Trust boundaries allow Promptinel
-to escalate findings.
+to apply stricter rule behavior where needed.
 
 ```yaml
 trust:

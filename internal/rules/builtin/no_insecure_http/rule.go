@@ -40,7 +40,11 @@ func Metadata() rules.Metadata {
 }
 
 // CheckTokens detects plaintext HTTP URLs.
-func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+	if !ctx.CanAccessNetwork() {
+		return nil
+	}
+
 	findings := make([]rules.Finding, 0)
 	for _, token := range tokens {
 		if token.Type != lexer.TokenURL {

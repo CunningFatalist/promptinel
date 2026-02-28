@@ -11,6 +11,11 @@ var (
 		"show the system prompt",
 		"print the system prompt",
 	}
+	untrustedPromptOverridePhrases = []string{
+		"ignore instructions",
+		"override instructions",
+		"bypass safety",
+	}
 	sensitivePathSignals = []string{
 		"/etc/passwd",
 		"/etc/shadow",
@@ -105,8 +110,34 @@ var (
 // OverridePhrases are common prompt-injection instruction override phrases.
 var OverridePhrases = mergeUniqueSlices(promptOverridePhrases...)
 
+// UntrustedOverridePhrases are additional weaker override phrases that are
+// only considered for untrusted or tainted content.
+var UntrustedOverridePhrases = mergeUniqueSlices(untrustedPromptOverridePhrases...)
+
 // SensitivePathSnippets are commonly targeted local file path snippets.
 var SensitivePathSnippets = mergeUniqueSlices(sensitivePathSignals...)
+
+// FilesystemCapabilitySignals are path snippets that imply local file access capability.
+var FilesystemCapabilitySignals = mergeUniqueSlices(
+	"/etc/passwd",
+	"/etc/shadow",
+	".aws/credentials",
+	"/root/.ssh/",
+	"/var/run/secrets/kubernetes.io/",
+	"/run/secrets/",
+	"/proc/self/environ",
+	"/proc/1/environ",
+	"/etc/ssl/private/",
+	"/etc/pki/private/",
+	"/etc/krb5.keytab",
+	"/var/lib/kubelet/pki/",
+	".env",
+	".docker/config.json",
+	".netrc",
+	".git-credentials",
+	"id_ecdsa",
+	"known_hosts",
+)
 
 // CapabilitySignals are file/system indicators often used in capability escalation prompts.
 var CapabilitySignals = mergeUniqueSlices(
