@@ -8,14 +8,14 @@ import (
 	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
+	"github.com/CunningFatalist/promptinel/internal/finding"
 )
 
 // ScanSummary contains rendered scan outcome data.
 type ScanSummary struct {
-	Findings         []engine.FileFinding
-	OversizedSkipped []engine.FileFinding
+	Findings         []finding.FileFinding
+	OversizedSkipped []finding.FileFinding
 	Environment      config.Environment
 	BaselineFiltered int
 	PolicyOutcome    exitcode.Code
@@ -122,7 +122,7 @@ type groupedFinding struct {
 	lines    []int
 }
 
-func groupFindings(findings []engine.FileFinding) []groupedFinding {
+func groupFindings(findings []finding.FileFinding) []groupedFinding {
 	groupedByKey := make(map[string]*groupedFinding, len(findings))
 	order := make([]string, 0, len(findings))
 

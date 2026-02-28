@@ -7,6 +7,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/filters"
+	"github.com/CunningFatalist/promptinel/internal/finding"
 	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 )
 
@@ -25,15 +26,15 @@ type Request struct {
 type Result struct {
 	// Findings contains reportable findings after policy warn-on filtering.
 	// This field is kept for compatibility; prefer ReportableFindings.
-	Findings []engine.FileFinding
+	Findings []finding.FileFinding
 	// ReportableFindings contains findings after policy warn-on filtering.
-	ReportableFindings []engine.FileFinding
+	ReportableFindings []finding.FileFinding
 	// RawFindings contains all findings before policy warn-on filtering.
-	RawFindings []engine.FileFinding
+	RawFindings []finding.FileFinding
 	// OversizedSkippedFindings contains diagnostics for files skipped because
 	// they exceeded limits.max_file_size_bytes. These are always surfaced in scan output
 	// and remain informational (they do not affect policy exit code).
-	OversizedSkippedFindings []engine.FileFinding
+	OversizedSkippedFindings []finding.FileFinding
 	Config                   *config.Config
 }
 
@@ -72,24 +73,24 @@ func Run(ctx context.Context, req Request) (Result, error) {
 	}, nil
 }
 
-func filterFindingsByMinimumSeverity(findings []engine.FileFinding, minSeverity config.Severity) []engine.FileFinding {
-	filtered := make([]engine.FileFinding, 0, len(findings))
-	for _, finding := range findings {
-		if engine.IsOversizedFileSkipFinding(finding) {
+func filterFindingsByMinimumSeverity(findings []finding.FileFinding, minSeverity config.Severity) []finding.FileFinding {
+	filtered := make([]finding.FileFinding, 0, len(findings))
+	for _, item := range findings {
+		if finding.IsOversizedFileSkip(item) {
 			continue
 		}
-		if config.SeverityAtLeast(finding.Severity, minSeverity) {
-			filtered = append(filtered, finding)
+		if config.SeverityAtLeast(item.Severity, minSeverity) {
+			filtered = append(filtered, item)
 		}
 	}
 	return filtered
 }
 
-func filterOversizedSkippedFindings(findings []engine.FileFinding) []engine.FileFinding {
-	filtered := make([]engine.FileFinding, 0, len(findings))
-	for _, finding := range findings {
-		if engine.IsOversizedFileSkipFinding(finding) {
-			filtered = append(filtered, finding)
+func filterOversizedSkippedFindings(findings []finding.FileFinding) []finding.FileFinding {
+	filtered := make([]finding.FileFinding, 0, len(findings))
+	for _, item := range findings {
+		if finding.IsOversizedFileSkip(item) {
+			filtered = append(filtered, item)
 		}
 	}
 	return filtered

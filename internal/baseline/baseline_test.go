@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/engine"
+	"github.com/CunningFatalist/promptinel/internal/finding"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_Baseline_BuildSnapshot_DeduplicatesAndSortsDeterministically(t *testing.T) {
-	findings := []engine.FileFinding{
+	findings := []finding.FileFinding{
 		{
 			Path: "b.md",
 			Finding: rules.Finding{
@@ -50,7 +50,7 @@ func Test_Baseline_BuildSnapshot_DeduplicatesAndSortsDeterministically(t *testin
 }
 
 func Test_Baseline_FilterFindings_RemovesAcceptedEntries(t *testing.T) {
-	accepted := engine.FileFinding{
+	accepted := finding.FileFinding{
 		Path: "a.md",
 		Finding: rules.Finding{
 			ID:       "rule-a",
@@ -59,7 +59,7 @@ func Test_Baseline_FilterFindings_RemovesAcceptedEntries(t *testing.T) {
 			Position: rules.Position{Line: 1, Column: 1},
 		},
 	}
-	newFinding := engine.FileFinding{
+	newFinding := finding.FileFinding{
 		Path: "b.md",
 		Finding: rules.Finding{
 			ID:       "rule-b",
@@ -69,8 +69,8 @@ func Test_Baseline_FilterFindings_RemovesAcceptedEntries(t *testing.T) {
 		},
 	}
 
-	snapshot := BuildSnapshot([]engine.FileFinding{accepted})
-	filtered := FilterFindings([]engine.FileFinding{accepted, newFinding}, snapshot)
+	snapshot := BuildSnapshot([]finding.FileFinding{accepted})
+	filtered := FilterFindings([]finding.FileFinding{accepted, newFinding}, snapshot)
 
 	require.Len(t, filtered, 1)
 	assert.Equal(t, newFinding.Path, filtered[0].Path)
@@ -103,7 +103,7 @@ func Test_Baseline_ReadWrite_RoundTrip(t *testing.T) {
 }
 
 func Test_Baseline_HashFinding_IsDeterministic(t *testing.T) {
-	finding := engine.FileFinding{
+	finding := finding.FileFinding{
 		Path: "a.md",
 		Finding: rules.Finding{
 			ID:       "rule-a",

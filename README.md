@@ -157,6 +157,12 @@ docs/**         # All files under docs/ recursively
 agents/**/prod* # Any file/dir starting with "prod" at any depth under agents/
 ```
 
+#### Practical Guidance
+
+- Prefer anchored patterns like `docs/**` over broad top-level patterns such as `**/*.md`.
+- Keep include/exclude lists focused and specific in large repositories.
+- Use `**` only when recursive matching is needed; prefer `*` for single-segment matches.
+
 ---
 
 ## Exit Codes

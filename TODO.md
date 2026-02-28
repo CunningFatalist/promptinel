@@ -62,10 +62,10 @@ This is needed to avoid behavioral drift between scan and sanitize, and to reduc
 
 This is needed to reduce cross-package coupling and make future scanner/reporting evolution easier.
 
-- [ ] Introduce a shared finding model package that is not owned by `internal/engine`.
-- [ ] Refactor `internal/exitcode`, `internal/report`, and `internal/baseline` to consume the shared model.
-- [ ] Keep scan behavior and output stable while refactoring type boundaries.
-- [ ] Add tests ensuring no behavioral regressions in exit code resolution, report grouping, and baseline filtering.
+- [x] Introduce a shared finding model package that is not owned by `internal/engine`.
+- [x] Refactor `internal/exitcode`, `internal/report`, and `internal/baseline` to consume the shared model.
+- [x] Keep scan behavior and output stable while refactoring type boundaries.
+- [x] Add tests ensuring no behavioral regressions in exit code resolution, report grouping, and baseline filtering.
 
 ### 6) Harden `**` path matching worst-case complexity
 
@@ -73,11 +73,11 @@ This is needed because the current recursive `**` matcher can branch heavily on 
 In large repositories or CI runs with broad include/exclude patterns, this can create avoidable CPU spikes and
 slow scans even when behavior is functionally correct.
 
-- [ ] Replace recursive backtracking in `internal/pathmatch` with a memoized or iterative DP matcher for
+- [x] Replace recursive backtracking in `internal/pathmatch` with a memoized or iterative DP matcher for
   `**` semantics.
-- [ ] Add targeted tests/benchmarks that exercise adversarial pattern/path combinations and verify bounded runtime.
-- [ ] Keep matching semantics backward compatible for existing include/exclude and scope patterns.
-- [ ] Document supported glob behavior and practical pattern guidance to avoid pathological configurations.
+- [x] Add targeted tests/benchmarks that exercise adversarial pattern/path combinations and verify bounded runtime.
+- [x] Keep matching semantics backward compatible for existing include/exclude and scope patterns.
+- [x] Document supported glob behavior and practical pattern guidance to avoid pathological configurations.
 
 ### 7) Add machine-readable output modes (JSON and SARIF)
 

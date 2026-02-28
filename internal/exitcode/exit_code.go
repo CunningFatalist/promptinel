@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/engine"
+	"github.com/CunningFatalist/promptinel/internal/finding"
 )
 
 // Code represents process exit codes returned by CLI commands.
@@ -29,7 +29,7 @@ func (e Error) Error() string {
 }
 
 // Resolve maps findings and configured policy thresholds to an exit code.
-func Resolve(policy config.Policy, findings []engine.FileFinding) Code {
+func Resolve(policy config.Policy, findings []finding.FileFinding) Code {
 	if len(findings) == 0 {
 		return CodePass
 	}
@@ -47,7 +47,7 @@ func Resolve(policy config.Policy, findings []engine.FileFinding) Code {
 	return CodePass
 }
 
-func maxFindingSeverity(findings []engine.FileFinding) config.Severity {
+func maxFindingSeverity(findings []finding.FileFinding) config.Severity {
 	maxSeverity := config.SeverityLow
 	for _, finding := range findings {
 		if config.SeverityRank(finding.Severity) > config.SeverityRank(maxSeverity) {

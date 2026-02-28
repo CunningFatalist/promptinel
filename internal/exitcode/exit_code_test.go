@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/engine"
+	"github.com/CunningFatalist/promptinel/internal/finding"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 )
 
@@ -49,7 +49,7 @@ func Test_Exitcode_SeverityAtLeast(t *testing.T) {
 }
 
 func Test_Exitcode_MaxFindingSeverity(t *testing.T) {
-	findings := []engine.FileFinding{
+	findings := []finding.FileFinding{
 		{Finding: rules.Finding{Severity: config.SeverityLow}},
 		{Finding: rules.Finding{Severity: config.SeverityHigh}},
 		{Finding: rules.Finding{Severity: config.SeverityMedium}},
@@ -68,7 +68,7 @@ func Test_Exitcode_Resolve_NoFindings(t *testing.T) {
 
 func Test_Exitcode_Resolve_LowSeverityFindingsPass(t *testing.T) {
 	p := config.Policy{FailOn: config.SeverityHigh, WarnOn: config.SeverityMedium}
-	findings := []engine.FileFinding{{Finding: rules.Finding{Severity: config.SeverityLow}}}
+	findings := []finding.FileFinding{{Finding: rules.Finding{Severity: config.SeverityLow}}}
 	if got := Resolve(p, findings); got != CodePass {
 		t.Fatalf("expected CodePass, got %d", got)
 	}
@@ -76,7 +76,7 @@ func Test_Exitcode_Resolve_LowSeverityFindingsPass(t *testing.T) {
 
 func Test_Exitcode_Resolve_Warn(t *testing.T) {
 	p := config.Policy{FailOn: config.SeverityHigh, WarnOn: config.SeverityMedium}
-	findings := []engine.FileFinding{{Finding: rules.Finding{Severity: config.SeverityMedium}}}
+	findings := []finding.FileFinding{{Finding: rules.Finding{Severity: config.SeverityMedium}}}
 	if got := Resolve(p, findings); got != CodeWarn {
 		t.Fatalf("expected CodeWarn, got %d", got)
 	}
@@ -84,7 +84,7 @@ func Test_Exitcode_Resolve_Warn(t *testing.T) {
 
 func Test_Exitcode_Resolve_Fail(t *testing.T) {
 	p := config.Policy{FailOn: config.SeverityHigh, WarnOn: config.SeverityMedium}
-	findings := []engine.FileFinding{{Finding: rules.Finding{Severity: config.SeverityHigh}}}
+	findings := []finding.FileFinding{{Finding: rules.Finding{Severity: config.SeverityHigh}}}
 	if got := Resolve(p, findings); got != CodeFail {
 		t.Fatalf("expected CodeFail, got %d", got)
 	}

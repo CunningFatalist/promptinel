@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
+	"github.com/CunningFatalist/promptinel/internal/finding"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/CunningFatalist/promptinel/internal/sanitize"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +29,7 @@ func (w *failAfterNWriter) Write(p []byte) (int, error) {
 func Test_Report_WriteScanText_GroupsFindingsByFileAndIncludesSummary(t *testing.T) {
 	var output bytes.Buffer
 
-	findings := []engine.FileFinding{
+	findings := []finding.FileFinding{
 		{
 			Path: "a.md",
 			Finding: rules.Finding{
@@ -78,7 +78,7 @@ func Test_Report_WriteScanText_GroupsFindingsByFileAndIncludesSummary(t *testing
 func Test_Report_WriteScanText_DeduplicatesRulePerFileAndShowsAllLines(t *testing.T) {
 	var output bytes.Buffer
 
-	findings := []engine.FileFinding{
+	findings := []finding.FileFinding{
 		{
 			Path: "dup.md",
 			Finding: rules.Finding{
@@ -152,7 +152,7 @@ func Test_Report_WriteScanText_EscapesControlCharacters(t *testing.T) {
 	var output bytes.Buffer
 
 	err := WriteScanText(&output, ScanSummary{
-		Findings: []engine.FileFinding{
+		Findings: []finding.FileFinding{
 			{
 				Path: "bad\npath.md",
 				Finding: rules.Finding{
@@ -178,7 +178,7 @@ func Test_Report_WriteScanText_IncludesOversizedSkipsIndependentlyFromFindings(t
 	var output bytes.Buffer
 
 	err := WriteScanText(&output, ScanSummary{
-		OversizedSkipped: []engine.FileFinding{
+		OversizedSkipped: []finding.FileFinding{
 			{
 				Path: "huge.md",
 				Finding: rules.Finding{
@@ -204,7 +204,7 @@ func Test_Report_WriteScanText_IncludesOversizedSkipsIndependentlyFromFindings(t
 
 func Test_Report_WriteScanText_ReturnsErrorAcrossWritePoints_WithFindingsAndOversizedSkips(t *testing.T) {
 	summary := ScanSummary{
-		Findings: []engine.FileFinding{
+		Findings: []finding.FileFinding{
 			{
 				Path: "a.md",
 				Finding: rules.Finding{
@@ -215,7 +215,7 @@ func Test_Report_WriteScanText_ReturnsErrorAcrossWritePoints_WithFindingsAndOver
 				},
 			},
 		},
-		OversizedSkipped: []engine.FileFinding{
+		OversizedSkipped: []finding.FileFinding{
 			{
 				Path: "huge.md",
 				Finding: rules.Finding{

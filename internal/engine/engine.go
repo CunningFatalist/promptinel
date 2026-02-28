@@ -11,12 +11,13 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/files"
+	"github.com/CunningFatalist/promptinel/internal/finding"
 	"github.com/CunningFatalist/promptinel/internal/normalize"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 )
 
-const oversizedFileFindingID = "scan-file-too-large"
-const unreadableFileFindingID = "scan-file-unreadable"
+const oversizedFileFindingID = finding.OversizedFileSkipID
+const unreadableFileFindingID = finding.UnreadableFileSkipID
 
 // Scanner evaluates configured rules against files.
 type Scanner struct {
@@ -28,14 +29,11 @@ type Scanner struct {
 }
 
 // FileFinding links a finding with its source file.
-type FileFinding struct {
-	Path string
-	rules.Finding
-}
+type FileFinding = finding.FileFinding
 
 // IsOversizedFileSkipFinding reports whether a finding indicates a file was skipped due to size.
-func IsOversizedFileSkipFinding(finding FileFinding) bool {
-	return finding.ID == oversizedFileFindingID
+func IsOversizedFileSkipFinding(fileFinding FileFinding) bool {
+	return finding.IsOversizedFileSkip(fileFinding)
 }
 
 // NewScanner creates a scanner from compiled rules and configuration.
@@ -272,13 +270,13 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 
 	scope := s.scopeForFile(target.relativePath, target.absolutePath, scopeRoots)
 	findings := make([]FileFinding, 0, len(ruleFindings))
-	for _, finding := range ruleFindings {
+	for _, ruleFinding := range ruleFindings {
 		if scope != nil {
-			finding.Severity = scope.Severity
+			ruleFinding.Severity = scope.Severity
 		}
 		findings = append(findings, FileFinding{
 			Path:    target.relativePath,
-			Finding: finding,
+			Finding: ruleFinding,
 		})
 	}
 

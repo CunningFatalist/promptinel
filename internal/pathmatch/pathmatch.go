@@ -34,31 +34,46 @@ func split(value string) []string {
 }
 
 func matchSegments(patternParts []string, pathParts []string) bool {
-	if len(patternParts) == 0 {
-		return len(pathParts) == 0
+	patternLen := len(patternParts)
+	pathLen := len(pathParts)
+	if patternLen == 0 {
+		return pathLen == 0
 	}
 
-	current := patternParts[0]
-	if current == "**" {
-		if len(patternParts) == 1 {
-			return true
-		}
-		for i := 0; i <= len(pathParts); i++ {
-			if matchSegments(patternParts[1:], pathParts[i:]) {
-				return true
+	dp := make([][]bool, patternLen+1)
+	for i := range dp {
+		dp[i] = make([]bool, pathLen+1)
+	}
+	dp[0][0] = true
+
+	for i := 0; i < patternLen; i++ {
+		segment := patternParts[i]
+		if segment == "**" {
+			for j := 0; j <= pathLen; j++ {
+				if !dp[i][j] {
+					continue
+				}
+				// "**" can match zero segments.
+				dp[i+1][j] = true
+				// Or consume one segment and keep matching with the same "**".
+				if j < pathLen {
+					dp[i][j+1] = true
+				}
 			}
+			continue
 		}
-		return false
+
+		for j := 0; j < pathLen; j++ {
+			if !dp[i][j] {
+				continue
+			}
+			matched, err := filepath.Match(segment, pathParts[j])
+			if err != nil || !matched {
+				continue
+			}
+			dp[i+1][j+1] = true
+		}
 	}
 
-	if len(pathParts) == 0 {
-		return false
-	}
-
-	matched, err := filepath.Match(current, pathParts[0])
-	if err != nil || !matched {
-		return false
-	}
-
-	return matchSegments(patternParts[1:], pathParts[1:])
+	return dp[patternLen][pathLen]
 }

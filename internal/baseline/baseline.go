@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/engine"
+	"github.com/CunningFatalist/promptinel/internal/finding"
 )
 
 const (
@@ -39,7 +39,7 @@ type Entry struct {
 }
 
 // BuildSnapshot converts findings into a deterministic baseline snapshot.
-func BuildSnapshot(findings []engine.FileFinding) Snapshot {
+func BuildSnapshot(findings []finding.FileFinding) Snapshot {
 	entriesByHash := make(map[string]Entry, len(findings))
 	for _, finding := range findings {
 		hash := HashFinding(finding)
@@ -88,7 +88,7 @@ func BuildSnapshot(findings []engine.FileFinding) Snapshot {
 }
 
 // HashFinding returns a deterministic hash for one finding.
-func HashFinding(finding engine.FileFinding) string {
+func HashFinding(finding finding.FileFinding) string {
 	payload := strings.Join([]string{
 		finding.Path,
 		finding.ID,
@@ -103,7 +103,7 @@ func HashFinding(finding engine.FileFinding) string {
 }
 
 // FilterFindings removes findings already accepted by the provided snapshot.
-func FilterFindings(findings []engine.FileFinding, snapshot Snapshot) []engine.FileFinding {
+func FilterFindings(findings []finding.FileFinding, snapshot Snapshot) []finding.FileFinding {
 	if len(snapshot.Entries) == 0 {
 		return findings
 	}
@@ -113,7 +113,7 @@ func FilterFindings(findings []engine.FileFinding, snapshot Snapshot) []engine.F
 		accepted[entry.Hash] = struct{}{}
 	}
 
-	filtered := make([]engine.FileFinding, 0, len(findings))
+	filtered := make([]finding.FileFinding, 0, len(findings))
 	for _, finding := range findings {
 		if _, ok := accepted[HashFinding(finding)]; ok {
 			continue
