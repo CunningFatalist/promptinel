@@ -30,7 +30,11 @@ type Result struct {
 	ReportableFindings []engine.FileFinding
 	// RawFindings contains all findings before policy warn-on filtering.
 	RawFindings []engine.FileFinding
-	Config      *config.Config
+	// OversizedSkippedFindings contains diagnostics for files skipped because
+	// they exceeded limits.max_file_size_bytes. These are always surfaced in scan output
+	// and remain informational (they do not affect policy exit code).
+	OversizedSkippedFindings []engine.FileFinding
+	Config                   *config.Config
 }
 
 // Run executes the shared scan workflow used by scan and baseline commands.
@@ -57,19 +61,34 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		return Result{}, fmt.Errorf("scan files: %w", err)
 	}
 	reportableFindings := filterFindingsByMinimumSeverity(rawFindings, cfg.Policy.WarnOn)
+	oversizedSkippedFindings := filterOversizedSkippedFindings(rawFindings)
 
 	return Result{
-		Findings:           reportableFindings,
-		ReportableFindings: reportableFindings,
-		RawFindings:        rawFindings,
-		Config:             cfg,
+		Findings:                 reportableFindings,
+		ReportableFindings:       reportableFindings,
+		RawFindings:              rawFindings,
+		OversizedSkippedFindings: oversizedSkippedFindings,
+		Config:                   cfg,
 	}, nil
 }
 
 func filterFindingsByMinimumSeverity(findings []engine.FileFinding, minSeverity config.Severity) []engine.FileFinding {
 	filtered := make([]engine.FileFinding, 0, len(findings))
 	for _, finding := range findings {
+		if engine.IsOversizedFileSkipFinding(finding) {
+			continue
+		}
 		if config.SeverityAtLeast(finding.Severity, minSeverity) {
+			filtered = append(filtered, finding)
+		}
+	}
+	return filtered
+}
+
+func filterOversizedSkippedFindings(findings []engine.FileFinding) []engine.FileFinding {
+	filtered := make([]engine.FileFinding, 0, len(findings))
+	for _, finding := range findings {
+		if engine.IsOversizedFileSkipFinding(finding) {
 			filtered = append(filtered, finding)
 		}
 	}

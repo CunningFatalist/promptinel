@@ -29,4 +29,3 @@ func Test_Rules_Context_IsUntrusted(t *testing.T) {
 	assert.True(t, Context{TrustLevel: config.TrustLevelUntrusted}.IsUntrusted())
 	assert.True(t, Context{TrustLevel: config.TrustLevelTainted}.IsUntrusted())
 }
-

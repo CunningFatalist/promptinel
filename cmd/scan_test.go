@@ -1,10 +1,16 @@
 package cmd
 
 import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/CunningFatalist/promptinel/internal/baseline"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
+	internalscan "github.com/CunningFatalist/promptinel/internal/scan"
 	"github.com/spf13/cobra"
 )
 
@@ -105,5 +111,165 @@ func Test_Cmd_RunScan_ReturnsErrorForInvalidOptions(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "read scan options") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_ReportsOversizedSkipsAtDefaultWarnOn(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := "limits:\n  max_file_size_bytes: 1\n"
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	filePath := filepath.Join(workingDir, "big.md")
+	if err := os.WriteFile(filePath, []byte("oversized content"), 0o644); err != nil {
+		t.Fatalf("write oversized file: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		err := runScanWithOptions(context.Background(), []string{filePath}, scanOptions{
+			configFile:        configPath,
+			noConfigDiscovery: true,
+		})
+		if err != nil {
+			t.Fatalf("run scan with options: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "Oversized Skips:") {
+		t.Fatalf("expected oversized skip section, got output:\n%s", output)
+	}
+	if !strings.Contains(output, "scan-file-too-large") {
+		t.Fatalf("expected oversized skip finding ID in output, got output:\n%s", output)
+	}
+	if !strings.Contains(output, "- policy: PASS") {
+		t.Fatalf("expected oversized skip to remain informational, got output:\n%s", output)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_ReturnsExitcodeErrorWhenPolicyThresholdReached(t *testing.T) {
+	workingDir := t.TempDir()
+	filePath := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(filePath, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	var err error
+	_ = captureStdout(t, func() {
+		err = runScanWithOptions(context.Background(), []string{filePath}, scanOptions{
+			noConfigDiscovery: true,
+		})
+	})
+	if err == nil {
+		t.Fatal("expected non-pass exit error")
+	}
+
+	var codeErr exitcode.Error
+	if !errors.As(err, &codeErr) {
+		t.Fatalf("expected exitcode.Error, got %T (%v)", err, err)
+	}
+	if codeErr.Code != exitcode.CodeFail {
+		t.Fatalf("expected fail exit code, got %d", codeErr.Code)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_ReturnsErrorWhenBaselineLoadFails(t *testing.T) {
+	workingDir := t.TempDir()
+	filePath := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(filePath, []byte("plain content"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	err := runScanWithOptions(context.Background(), []string{filePath}, scanOptions{
+		noConfigDiscovery: true,
+		baselineFile:      filepath.Join(workingDir, "missing-baseline.json"),
+	})
+	if err == nil {
+		t.Fatal("expected baseline load error")
+	}
+	if !strings.Contains(err.Error(), "load baseline") {
+		t.Fatalf("expected load baseline error, got %v", err)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_ReturnsErrorWhenScanRunFails(t *testing.T) {
+	err := runScanWithOptions(context.Background(), []string{filepath.Join(t.TempDir(), "missing.md")}, scanOptions{
+		noConfigDiscovery: true,
+	})
+	if err == nil {
+		t.Fatal("expected scan run error")
+	}
+	if !strings.Contains(err.Error(), "scan files") {
+		t.Fatalf("expected scan files error, got %v", err)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_AppliesBaselineAndStaysPass(t *testing.T) {
+	workingDir := t.TempDir()
+	filePath := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(filePath, []byte("hello\u200bworld"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	baselinePath := filepath.Join(workingDir, "baseline.json")
+	initialResult, err := internalscan.Run(context.Background(), internalscan.Request{
+		Paths:    []string{filePath},
+		Discover: false,
+	})
+	if err != nil {
+		t.Fatalf("run initial scan: %v", err)
+	}
+	if len(initialResult.ReportableFindings) == 0 {
+		t.Fatal("expected reportable findings before applying baseline")
+	}
+	if err := baseline.Write(baselinePath, baseline.BuildSnapshot(initialResult.ReportableFindings)); err != nil {
+		t.Fatalf("write baseline snapshot: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		err := runScanWithOptions(context.Background(), []string{filePath}, scanOptions{
+			noConfigDiscovery: true,
+			baselineFile:      baselinePath,
+		})
+		if err != nil {
+			t.Fatalf("run scan with baseline: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "- filtered_by_baseline: 1") {
+		t.Fatalf("expected baseline filtering summary, got output:\n%s", output)
+	}
+	if !strings.Contains(output, "- policy: PASS") {
+		t.Fatalf("expected pass policy with filtered findings, got output:\n%s", output)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_ReturnsErrorWhenReportWriteFails(t *testing.T) {
+	workingDir := t.TempDir()
+	filePath := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(filePath, []byte("plain content"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	previousStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("create stdout pipe: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = previousStdout
+		_ = reader.Close()
+	}()
+
+	err = runScanWithOptions(context.Background(), []string{filePath}, scanOptions{noConfigDiscovery: true})
+	if err == nil {
+		t.Fatal("expected write scan report error")
+	}
+	if !strings.Contains(err.Error(), "write scan report") {
+		t.Fatalf("expected write scan report error, got %v", err)
 	}
 }

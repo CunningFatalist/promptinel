@@ -15,6 +15,7 @@ import (
 // ScanSummary contains rendered scan outcome data.
 type ScanSummary struct {
 	Findings         []engine.FileFinding
+	OversizedSkipped []engine.FileFinding
 	Environment      config.Environment
 	BaselineFiltered int
 	PolicyOutcome    exitcode.Code
@@ -23,6 +24,7 @@ type ScanSummary struct {
 // WriteScanText writes a deterministic text report for scan findings.
 func WriteScanText(w io.Writer, summary ScanSummary) error {
 	groupedFindings := groupFindings(summary.Findings)
+	groupedOversizedSkipped := groupFindings(summary.OversizedSkipped)
 
 	if _, err := fmt.Fprintln(w, "Capabilities:"); err != nil {
 		return err
@@ -68,10 +70,36 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 		}
 	}
 
+	if len(groupedOversizedSkipped) == 0 {
+		if _, err := fmt.Fprintln(w, "\nOversized Skips: none"); err != nil {
+			return err
+		}
+	} else {
+		if _, err := fmt.Fprintln(w, "\nOversized Skips:"); err != nil {
+			return err
+		}
+
+		for _, skipped := range groupedOversizedSkipped {
+			if _, err := fmt.Fprintf(
+				w,
+				" - %s [%s] %s: %s\n",
+				sanitizeForTerminal(skipped.path),
+				skipped.severity,
+				sanitizeForTerminal(skipped.id),
+				sanitizeForTerminal(skipped.message),
+			); err != nil {
+				return err
+			}
+		}
+	}
+
 	if _, err := fmt.Fprintln(w, "\nSummary:"); err != nil {
 		return err
 	}
 	if _, err := fmt.Fprintf(w, " - findings: %d\n", len(groupedFindings)); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, " - oversized_skips: %d\n", len(groupedOversizedSkipped)); err != nil {
 		return err
 	}
 	if summary.BaselineFiltered > 0 {

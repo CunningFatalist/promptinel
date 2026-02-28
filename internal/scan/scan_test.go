@@ -140,3 +140,35 @@ func Test_Scan_Run_ReturnsRawAndReportableFindingsSeparately(t *testing.T) {
 		t.Fatalf("expected compatibility findings to match reportable findings, got %#v", result.Findings)
 	}
 }
+
+func Test_Scan_Run_OversizedSkipsRemainInformationalAndVisible(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, ".promptinel.yaml")
+	configContent := "policy:\n  fail-on: low\n  warn-on: low\nlimits:\n  max_file_size_bytes: 1\n"
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	filePath := filepath.Join(workingDir, "big.md")
+	if err := os.WriteFile(filePath, []byte("this file is larger than one byte"), 0o644); err != nil {
+		t.Fatalf("write oversized file: %v", err)
+	}
+
+	result, err := Run(context.Background(), Request{
+		Paths:      []string{filePath},
+		ConfigFile: configPath,
+		Discover:   false,
+	})
+	if err != nil {
+		t.Fatalf("run scan: %v", err)
+	}
+
+	if len(result.RawFindings) != 1 {
+		t.Fatalf("expected one raw finding, got %#v", result.RawFindings)
+	}
+	if len(result.ReportableFindings) != 0 {
+		t.Fatalf("expected oversized skip to stay informational and excluded from reportable findings, got %#v", result.ReportableFindings)
+	}
+	if len(result.OversizedSkippedFindings) != 1 {
+		t.Fatalf("expected one oversized skip finding, got %#v", result.OversizedSkippedFindings)
+	}
+}

@@ -33,6 +33,11 @@ type FileFinding struct {
 	rules.Finding
 }
 
+// IsOversizedFileSkipFinding reports whether a finding indicates a file was skipped due to size.
+func IsOversizedFileSkipFinding(finding FileFinding) bool {
+	return finding.ID == oversizedFileFindingID
+}
+
 // NewScanner creates a scanner from compiled rules and configuration.
 func NewScanner(compiledRules []rules.CompiledRule, cfg *config.Config) *Scanner {
 	environment := config.Environment{}

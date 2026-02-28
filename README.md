@@ -320,8 +320,13 @@ policy:
 
 `fail-on` must be greater than or equal to `warn-on`.
 
-`warn-on` also acts as the minimum reported severity. Findings below `warn-on`
-are ignored by scan and baseline commands.
+`warn-on` acts as the minimum severity for policy findings shown in `Findings` and
+used for `WARN`/`FAIL` exit outcomes.
+
+Oversized-file skips (`scan-file-too-large`) are always printed in a separate
+`Oversized Skips` section and remain informational-only (they do not affect exit code).
+
+Baseline snapshots are built from raw findings before `warn-on` filtering.
 
 ### Environment
 
@@ -379,7 +384,8 @@ limits:
   max_file_size_bytes: 5242880 # 5 MiB
 ```
 
-Files above the limit are skipped and reported with a low-severity scanner finding.
+Files above the limit are skipped and always surfaced in scan output under
+`Oversized Skips` so operators can see analysis blind spots in local runs and CI logs.
 
 ### Scopes
 

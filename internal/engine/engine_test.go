@@ -207,3 +207,12 @@ func Test_Engine_ScanPaths_NonRegularInputBecomesSkipFinding(t *testing.T) {
 	assert.Equal(t, unreadableFileFindingID, findings[0].ID)
 	assert.Contains(t, findings[0].Message, "non-regular file")
 }
+
+func Test_Engine_IsOversizedFileSkipFinding(t *testing.T) {
+	assert.True(t, IsOversizedFileSkipFinding(FileFinding{
+		Finding: rules.Finding{ID: oversizedFileFindingID},
+	}))
+	assert.False(t, IsOversizedFileSkipFinding(FileFinding{
+		Finding: rules.Finding{ID: unreadableFileFindingID},
+	}))
+}

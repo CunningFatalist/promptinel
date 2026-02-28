@@ -33,12 +33,12 @@ weakens policy relevance.
 
 This is needed because skipped files can currently disappear from default output, creating silent analysis blind spots.
 
-- [ ] Redesign oversized file handling so skip diagnostics are never silently dropped by
+- [x] Redesign oversized file handling so skip diagnostics are never silently dropped by
   `warn-on` severity filtering.
-- [ ] Implement scanner/report changes so skipped files are always surfaced in scan output
+- [x] Implement scanner/report changes so skipped files are always surfaced in scan output
   (and visible in CI logs).
-- [ ] Add tests for default policy (`warn-on: medium`) proving oversized file skips are reported.
-- [ ] Decide and document whether oversized files should affect exit code policy or remain informational only.
+- [x] Add tests for default policy (`warn-on: medium`) proving oversized file skips are reported.
+- [x] Decide and document whether oversized files should affect exit code policy or remain informational only.
 
 ### 3) Improve cancellation propagation and responsiveness
 

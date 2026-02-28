@@ -2,6 +2,7 @@ package report
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
@@ -12,6 +13,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type failAfterNWriter struct {
+	remainingWrites int
+}
+
+func (w *failAfterNWriter) Write(p []byte) (int, error) {
+	if w.remainingWrites == 0 {
+		return 0, errors.New("forced write failure")
+	}
+	w.remainingWrites--
+	return len(p), nil
+}
 
 func Test_Report_WriteScanText_GroupsFindingsByFileAndIncludesSummary(t *testing.T) {
 	var output bytes.Buffer
@@ -57,6 +70,7 @@ func Test_Report_WriteScanText_GroupsFindingsByFileAndIncludesSummary(t *testing
 	assert.Contains(t, rendered, "lines 2 [high] rule-a: message a")
 	assert.Contains(t, rendered, "lines 1 [low] rule-b: message b")
 	assert.Contains(t, rendered, "- findings: 2")
+	assert.Contains(t, rendered, "- oversized_skips: 0")
 	assert.Contains(t, rendered, "- filtered_by_baseline: 1")
 	assert.Contains(t, rendered, "- policy: FAIL")
 }
@@ -114,6 +128,7 @@ func Test_Report_WriteScanText_DeduplicatesRulePerFileAndShowsAllLines(t *testin
 	assert.Contains(t, rendered, "File: dup.md")
 	assert.Contains(t, rendered, "lines 1, 4, 5, and 18 [medium] rule-a: duplicate")
 	assert.Contains(t, rendered, "- findings: 1")
+	assert.Contains(t, rendered, "- oversized_skips: 0")
 	assert.Contains(t, rendered, "- policy: WARN")
 }
 
@@ -128,6 +143,8 @@ func Test_Report_WriteScanText_PrintsNoneWhenNoFindings(t *testing.T) {
 
 	rendered := output.String()
 	assert.Contains(t, rendered, "Findings: none")
+	assert.Contains(t, rendered, "Oversized Skips: none")
+	assert.Contains(t, rendered, "- oversized_skips: 0")
 	assert.Contains(t, rendered, "- policy: PASS")
 }
 
@@ -154,6 +171,82 @@ func Test_Report_WriteScanText_EscapesControlCharacters(t *testing.T) {
 	rendered := output.String()
 	assert.Contains(t, rendered, "File: bad\\npath.md")
 	assert.Contains(t, rendered, "rule\\tname: hello\\rworld")
+	assert.Contains(t, rendered, "- oversized_skips: 0")
+}
+
+func Test_Report_WriteScanText_IncludesOversizedSkipsIndependentlyFromFindings(t *testing.T) {
+	var output bytes.Buffer
+
+	err := WriteScanText(&output, ScanSummary{
+		OversizedSkipped: []engine.FileFinding{
+			{
+				Path: "huge.md",
+				Finding: rules.Finding{
+					ID:       "scan-file-too-large",
+					Severity: config.SeverityLow,
+					Message:  "File skipped: size 99 bytes exceeds limits.max_file_size_bytes (10)",
+					Position: rules.Position{Line: 1, Column: 1},
+				},
+			},
+		},
+		Environment:   config.Environment{},
+		PolicyOutcome: exitcode.CodePass,
+	})
+	require.NoError(t, err)
+
+	rendered := output.String()
+	assert.Contains(t, rendered, "Findings: none")
+	assert.Contains(t, rendered, "Oversized Skips:")
+	assert.Contains(t, rendered, "huge.md [low] scan-file-too-large")
+	assert.Contains(t, rendered, "- oversized_skips: 1")
+	assert.Contains(t, rendered, "- policy: PASS")
+}
+
+func Test_Report_WriteScanText_ReturnsErrorAcrossWritePoints_WithFindingsAndOversizedSkips(t *testing.T) {
+	summary := ScanSummary{
+		Findings: []engine.FileFinding{
+			{
+				Path: "a.md",
+				Finding: rules.Finding{
+					ID:       "rule-a",
+					Severity: config.SeverityHigh,
+					Message:  "message a",
+					Position: rules.Position{Line: 2, Column: 4},
+				},
+			},
+		},
+		OversizedSkipped: []engine.FileFinding{
+			{
+				Path: "huge.md",
+				Finding: rules.Finding{
+					ID:       "scan-file-too-large",
+					Severity: config.SeverityLow,
+					Message:  "File skipped: size 99 bytes exceeds limits.max_file_size_bytes (10)",
+					Position: rules.Position{Line: 1, Column: 1},
+				},
+			},
+		},
+		Environment:      config.Environment{},
+		BaselineFiltered: 1,
+		PolicyOutcome:    exitcode.CodeFail,
+	}
+
+	for failAt := 0; failAt <= 13; failAt++ {
+		err := WriteScanText(&failAfterNWriter{remainingWrites: failAt}, summary)
+		require.Error(t, err)
+	}
+}
+
+func Test_Report_WriteScanText_ReturnsErrorAcrossWritePoints_WithNoFindingsNoOversizedSkips(t *testing.T) {
+	summary := ScanSummary{
+		Environment:   config.Environment{},
+		PolicyOutcome: exitcode.CodePass,
+	}
+
+	for failAt := 0; failAt <= 9; failAt++ {
+		err := WriteScanText(&failAfterNWriter{remainingWrites: failAt}, summary)
+		require.Error(t, err)
+	}
 }
 
 func Test_Report_WriteBaselineText_CreateAndUpdate(t *testing.T) {

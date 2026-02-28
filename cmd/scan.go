@@ -103,6 +103,7 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 	code := exitcode.Resolve(result.Config.Policy, findings)
 	if err := report.WriteScanText(os.Stdout, report.ScanSummary{
 		Findings:         findings,
+		OversizedSkipped: result.OversizedSkippedFindings,
 		Environment:      result.Config.Environment,
 		BaselineFiltered: baselineFiltered,
 		PolicyOutcome:    code,

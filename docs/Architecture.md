@@ -177,10 +177,13 @@ Commands return typed `exitcode.Error` values so process exit mapping stays cent
 `internal/scan.Result` now distinguishes:
 
 - `RawFindings`: all findings before `policy.warn-on` filtering
-- `ReportableFindings` (and compatibility alias `Findings`): findings after `policy.warn-on` filtering
+- `ReportableFindings` (and compatibility alias `Findings`): findings after `policy.warn-on` filtering,
+  excluding informational oversized-file skips
+- `OversizedSkippedFindings`: files skipped because `limits.max_file_size_bytes` was exceeded
 
 `scan` command reporting and exit-policy evaluation operate on reportable findings, while baseline snapshot generation
-uses raw findings to preserve accepted findings across severity thresholds.
+uses raw findings to preserve accepted findings across severity thresholds. Oversized-file skips are always rendered in
+their own report section so operator visibility does not depend on `warn-on`.
 
 ## Notable Tradeoffs and Next Steps
 
