@@ -58,17 +58,7 @@ This is needed to avoid behavioral drift between scan and sanitize, and to reduc
 - [x] Add regression tests that compare scan/sanitize file targeting behavior for the same patterns.
 - [x] Keep behavior deterministic and backward compatible unless explicitly documented as a breaking change.
 
-### 5) Align architecture/design documentation with reality
-
-This is needed because current docs mix implemented and planned states, which can mislead contributors and future
-agents.
-
-- [ ] Reconcile `docs/Design.md` and `docs/Architecture.md` with the actual package layout and implemented phases.
-- [ ] Clearly mark sections as `current state` vs `planned/roadmap` to avoid ambiguity.
-- [ ] Remove or relabel segment/package descriptions that are not implemented yet.
-- [ ] Add a short changelog section for architecture doc updates.
-
-### 6) Decouple policy/report/baseline layers from engine-specific types
+### 5) Decouple policy/report/baseline layers from engine-specific types
 
 This is needed to reduce cross-package coupling and make future scanner/reporting evolution easier.
 
@@ -76,6 +66,18 @@ This is needed to reduce cross-package coupling and make future scanner/reportin
 - [ ] Refactor `internal/exitcode`, `internal/report`, and `internal/baseline` to consume the shared model.
 - [ ] Keep scan behavior and output stable while refactoring type boundaries.
 - [ ] Add tests ensuring no behavioral regressions in exit code resolution, report grouping, and baseline filtering.
+
+### 6) Harden `**` path matching worst-case complexity
+
+This is needed because the current recursive `**` matcher can branch heavily on some pattern/path combinations.
+In large repositories or CI runs with broad include/exclude patterns, this can create avoidable CPU spikes and
+slow scans even when behavior is functionally correct.
+
+- [ ] Replace recursive backtracking in `internal/pathmatch` with a memoized or iterative DP matcher for
+  `**` semantics.
+- [ ] Add targeted tests/benchmarks that exercise adversarial pattern/path combinations and verify bounded runtime.
+- [ ] Keep matching semantics backward compatible for existing include/exclude and scope patterns.
+- [ ] Document supported glob behavior and practical pattern guidance to avoid pathological configurations.
 
 ### 7) Add machine-readable output modes (JSON and SARIF)
 
@@ -87,17 +89,15 @@ This is needed to support CI integrations and security tooling pipelines that re
 - [ ] Add tests that validate schema shape, deterministic ordering, and parity with text-mode findings.
 - [ ] Document output format semantics and compatibility expectations in `README.md` and architecture docs.
 
-### 8) Harden `**` path matching worst-case complexity
+### 8) Align architecture/design documentation with reality
 
-This is needed because the current recursive `**` matcher can branch heavily on some pattern/path combinations.
-In large repositories or CI runs with broad include/exclude patterns, this can create avoidable CPU spikes and
-slow scans even when behavior is functionally correct.
+This is needed because current docs mix implemented and planned states, which can mislead contributors and future
+agents.
 
-- [ ] Replace recursive backtracking in `internal/pathmatch` with a memoized or iterative DP matcher for
-  `**` semantics.
-- [ ] Add targeted tests/benchmarks that exercise adversarial pattern/path combinations and verify bounded runtime.
-- [ ] Keep matching semantics backward compatible for existing include/exclude and scope patterns.
-- [ ] Document supported glob behavior and practical pattern guidance to avoid pathological configurations.
+- [ ] Reconcile `docs/Design.md` and `docs/Architecture.md` with the actual package layout and implemented phases.
+- [ ] Clearly mark sections as `current state` vs `planned/roadmap` to avoid ambiguity.
+- [ ] Remove or relabel segment/package descriptions that are not implemented yet.
+- [ ] Add a short changelog section for architecture doc updates.
 
 ### Suggested implementation order
 
