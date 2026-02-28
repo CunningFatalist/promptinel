@@ -4,8 +4,8 @@
 
 These items improve project onboarding, contributor consistency, and release reliability.
 
-- [ ] Write the `Installation` section in `README.md` (currently `_TODO_`).
-- [ ] Add a documented release process (versioning, build artifacts, and publish steps).
+- [x] Write the `Installation` section in `README.md` (currently `_TODO_`).
+- [x] Add a documented release process (versioning, build artifacts, and publish steps).
 - [ ] Add a `CODE_OF_CONDUCT.md`.
 - [ ] Add GitHub issue templates.
 - [ ] Add a GitHub pull request template.
