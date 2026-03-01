@@ -70,6 +70,12 @@ promptinel scan --include "*.md" prompts/
 
 # Scan all files except YAML files
 promptinel scan --exclude "*.yaml" prompts/
+
+# Emit structured JSON output (for CI parsers)
+promptinel scan --output json prompts/
+
+# Emit SARIF output (for GitHub/code-scanning ingestion)
+promptinel scan --output sarif prompts/ > promptinel.sarif
 ```
 
 ### Sanitize Prompts
@@ -481,6 +487,28 @@ custom-rules:
 
 ## Output Example
 
+### Output Formats
+
+`scan` supports three output formats via `--output`:
+
+- `text` (default): human-readable report for local usage and CI logs
+- `json`: machine-readable Promptinel schema for custom integrations
+- `sarif`: SARIF 2.1.0 report for security/code-scanning platforms
+
+JSON compatibility expectations:
+
+- `schema_version` uses semantic versioning
+- additive fields are backward-compatible within the same major version
+- breaking schema changes require a major version bump
+
+Deterministic ordering guarantees:
+
+- findings are grouped and sorted by file path and rule ID
+- line lists are deduplicated and sorted numerically
+- SARIF rule descriptors are sorted by rule ID
+
+### Text Mode (`--output text`)
+
 ```
 Capabilities:
  - can_execute_shell: true
@@ -491,6 +519,8 @@ Capabilities:
 File: agents/build.md
  - lines 12 [high] no-zero-width: Zero-width character detected
  - lines 18 [medium] no-unsafe-templates: Unsafe template expression detected
+
+Oversized Skips: none
 
 Summary:
  - findings: 2

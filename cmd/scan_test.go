@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -34,17 +35,13 @@ func Test_Cmd_ExitCodeError_ReturnsExpectedMessage(t *testing.T) {
 }
 
 func Test_Cmd_ParseScanOptions_ReadsFlagValues(t *testing.T) {
-	command := &cobra.Command{}
-	command.Flags().String("config", "", "")
-	command.Flags().Bool("no-config-discovery", false, "")
-	command.Flags().StringArray("include", nil, "")
-	command.Flags().StringArray("exclude", nil, "")
-	command.Flags().String("baseline", "", "")
+	command := newScanFlagCommandForTest()
 
 	_ = command.Flags().Set("config", "custom.yaml")
 	_ = command.Flags().Set("include", "*.md")
 	_ = command.Flags().Set("exclude", "*.txt")
 	_ = command.Flags().Set("baseline", "baseline.json")
+	_ = command.Flags().Set("output", "sarif")
 	_ = command.Flags().Set("no-config-discovery", "true")
 
 	options, err := parseScanOptions(command)
@@ -58,15 +55,13 @@ func Test_Cmd_ParseScanOptions_ReadsFlagValues(t *testing.T) {
 	if !options.includeSet || !options.excludeSet || !options.noConfigDiscovery {
 		t.Fatalf("unexpected flag state: %#v", options)
 	}
+	if options.output != scanOutputSARIF {
+		t.Fatalf("unexpected output format: %s", options.output)
+	}
 }
 
 func Test_Cmd_ParseScanOptions_ReturnsErrorForInvalidIncludeGlob(t *testing.T) {
-	command := &cobra.Command{}
-	command.Flags().String("config", "", "")
-	command.Flags().Bool("no-config-discovery", false, "")
-	command.Flags().StringArray("include", nil, "")
-	command.Flags().StringArray("exclude", nil, "")
-	command.Flags().String("baseline", "", "")
+	command := newScanFlagCommandForTest()
 	_ = command.Flags().Set("include", "invalid[")
 
 	_, err := parseScanOptions(command)
@@ -75,6 +70,55 @@ func Test_Cmd_ParseScanOptions_ReturnsErrorForInvalidIncludeGlob(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "invalid include pattern") {
 		t.Fatalf("expected include validation error, got %v", err)
+	}
+}
+
+func Test_Cmd_ParseScanOptions_ReturnsErrorForInvalidOutputFormat(t *testing.T) {
+	command := newScanFlagCommandForTest()
+	_ = command.Flags().Set("output", "xml")
+
+	_, err := parseScanOptions(command)
+	if err == nil {
+		t.Fatal("expected invalid output format error")
+	}
+	if !strings.Contains(err.Error(), "invalid output format") {
+		t.Fatalf("expected invalid output format error, got %v", err)
+	}
+}
+
+func Test_Cmd_ParseScanOptions_DefaultsOutputToText(t *testing.T) {
+	command := newScanFlagCommandForTest()
+
+	options, err := parseScanOptions(command)
+	if err != nil {
+		t.Fatalf("parse scan options: %v", err)
+	}
+	if options.output != scanOutputText {
+		t.Fatalf("expected default output %q, got %q", scanOutputText, options.output)
+	}
+}
+
+func Test_Cmd_ParseScanOutputFormat_AcceptsSupportedValues(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected scanOutputFormat
+	}{
+		{name: "text", input: "text", expected: scanOutputText},
+		{name: "json uppercase", input: " JSON ", expected: scanOutputJSON},
+		{name: "sarif mixed case", input: "SaRiF", expected: scanOutputSARIF},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			actual, err := parseScanOutputFormat(testCase.input)
+			if err != nil {
+				t.Fatalf("parse output format: %v", err)
+			}
+			if actual != testCase.expected {
+				t.Fatalf("unexpected output format: got %q, want %q", actual, testCase.expected)
+			}
+		})
 	}
 }
 
@@ -97,12 +141,7 @@ func Test_Cmd_BuildScanRequest_MapsOptions(t *testing.T) {
 }
 
 func Test_Cmd_RunScan_ReturnsErrorForInvalidOptions(t *testing.T) {
-	command := &cobra.Command{}
-	command.Flags().String("config", "", "")
-	command.Flags().Bool("no-config-discovery", false, "")
-	command.Flags().StringArray("include", nil, "")
-	command.Flags().StringArray("exclude", nil, "")
-	command.Flags().String("baseline", "", "")
+	command := newScanFlagCommandForTest()
 	_ = command.Flags().Set("include", "invalid[")
 
 	err := runScan(command, []string{"."})
@@ -111,6 +150,58 @@ func Test_Cmd_RunScan_ReturnsErrorForInvalidOptions(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "read scan options") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_WritesJSONOutput(t *testing.T) {
+	workingDir := t.TempDir()
+	filePath := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(filePath, []byte("plain content"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		err := runScanWithOptions(context.Background(), []string{filePath}, scanOptions{
+			noConfigDiscovery: true,
+			output:            scanOutputJSON,
+		})
+		if err != nil {
+			t.Fatalf("run scan with json output: %v", err)
+		}
+	})
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(output), &payload); err != nil {
+		t.Fatalf("expected json output, got error: %v\noutput:\n%s", err, output)
+	}
+	if payload["schema_version"] != "1.0.0" {
+		t.Fatalf("unexpected schema version: %#v", payload["schema_version"])
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_WritesSARIFOutput(t *testing.T) {
+	workingDir := t.TempDir()
+	filePath := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(filePath, []byte("plain content"), 0o644); err != nil {
+		t.Fatalf("write prompt file: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		err := runScanWithOptions(context.Background(), []string{filePath}, scanOptions{
+			noConfigDiscovery: true,
+			output:            scanOutputSARIF,
+		})
+		if err != nil {
+			t.Fatalf("run scan with sarif output: %v", err)
+		}
+	})
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(output), &payload); err != nil {
+		t.Fatalf("expected sarif output, got error: %v\noutput:\n%s", err, output)
+	}
+	if payload["version"] != "2.1.0" {
+		t.Fatalf("unexpected sarif version: %#v", payload["version"])
 	}
 }
 
@@ -272,4 +363,15 @@ func Test_Cmd_RunScanWithOptions_ReturnsErrorWhenReportWriteFails(t *testing.T) 
 	if !strings.Contains(err.Error(), "write scan report") {
 		t.Fatalf("expected write scan report error, got %v", err)
 	}
+}
+
+func newScanFlagCommandForTest() *cobra.Command {
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().String("baseline", "", "")
+	command.Flags().String("output", string(scanOutputText), "")
+	return command
 }

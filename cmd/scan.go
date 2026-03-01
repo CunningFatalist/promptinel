@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/baseline"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
@@ -21,7 +22,16 @@ type scanOptions struct {
 	includeSet        bool
 	excludeSet        bool
 	baselineFile      string
+	output            scanOutputFormat
 }
+
+type scanOutputFormat string
+
+const (
+	scanOutputText  scanOutputFormat = "text"
+	scanOutputJSON  scanOutputFormat = "json"
+	scanOutputSARIF scanOutputFormat = "sarif"
+)
 
 // scanCmd represents the scan command.
 var scanCmd = &cobra.Command{
@@ -33,7 +43,8 @@ Examples:
   promptinel scan prompts/
   promptinel scan --config .promptinel.yaml prompts/
   promptinel scan --include "*.md" prompts/
-  promptinel scan --exclude "*.yaml" prompts/`,
+  promptinel scan --exclude "*.yaml" prompts/
+  promptinel scan --output sarif prompts/`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		util.ExitOnCommandError("scan command failed", runScan(cmd, args))
@@ -58,6 +69,14 @@ func parseScanOptions(cmd *cobra.Command) (scanOptions, error) {
 	if err != nil {
 		return scanOptions{}, fmt.Errorf("read baseline flag: %w", err)
 	}
+	outputValue, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return scanOptions{}, fmt.Errorf("read output flag: %w", err)
+	}
+	output, err := parseScanOutputFormat(outputValue)
+	if err != nil {
+		return scanOptions{}, err
+	}
 
 	return scanOptions{
 		configFile:        common.configFile,
@@ -67,7 +86,21 @@ func parseScanOptions(cmd *cobra.Command) (scanOptions, error) {
 		includeSet:        common.includeSet,
 		excludeSet:        common.excludeSet,
 		baselineFile:      baselineFile,
+		output:            output,
 	}, nil
+}
+
+func parseScanOutputFormat(raw string) (scanOutputFormat, error) {
+	switch scanOutputFormat(strings.ToLower(strings.TrimSpace(raw))) {
+	case scanOutputText:
+		return scanOutputText, nil
+	case scanOutputJSON:
+		return scanOutputJSON, nil
+	case scanOutputSARIF:
+		return scanOutputSARIF, nil
+	default:
+		return "", fmt.Errorf("invalid output format %q: expected one of text, json, sarif", raw)
+	}
 }
 
 func buildScanRequest(args []string, options scanOptions) internalscan.Request {
@@ -101,14 +134,26 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 	}
 
 	code := exitcode.Resolve(result.Config.Policy, findings)
-	if err := report.WriteScanText(os.Stdout, report.ScanSummary{
+	summary := report.ScanSummary{
 		Findings:         findings,
 		OversizedSkipped: result.OversizedSkippedFindings,
 		Environment:      result.Config.Environment,
 		BaselineFiltered: baselineFiltered,
 		PolicyOutcome:    code,
-	}); err != nil {
-		return fmt.Errorf("write scan report: %w", err)
+	}
+
+	var writeErr error
+	switch options.output {
+	case scanOutputJSON:
+		writeErr = report.WriteScanJSON(os.Stdout, summary)
+	case scanOutputSARIF:
+		writeErr = report.WriteScanSARIF(os.Stdout, summary)
+	default:
+		writeErr = report.WriteScanText(os.Stdout, summary)
+	}
+
+	if writeErr != nil {
+		return fmt.Errorf("write scan report: %w", writeErr)
 	}
 
 	if code != exitcode.CodePass {
@@ -121,4 +166,5 @@ func init() {
 	rootCmd.AddCommand(scanCmd)
 	addConfigAndFilterFlags(scanCmd)
 	scanCmd.Flags().String("baseline", "", "Path to baseline snapshot file used to suppress accepted findings")
+	scanCmd.Flags().String("output", string(scanOutputText), "Output format: text, json, sarif")
 }

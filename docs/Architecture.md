@@ -1,12 +1,17 @@
 # Promptinel Architecture
 
-Promptinel is a deterministic, static scanner for prompt files. The codebase is organized to keep CLI concerns thin,
-isolate domain logic in `internal`, and make command execution predictable and extensible.
+This document describes the implemented architecture of Promptinel and the near-term roadmap.
 
-## High-Level Architecture
+## Architecture Doc Changelog
 
-At runtime, commands in `cmd/` only orchestrate CLI flow: parse flags/args, build internal requests, call internal
-services, render output, and map errors to process exit codes.
+- 2026-02-28: Split content into `Current State` and `Planned Roadmap`; documented machine-readable `scan` outputs (`json`, `sarif`) and deterministic ordering guarantees; removed outdated "future" claims that are now implemented.
+
+## Current State (Implemented)
+
+### High-Level Runtime Flow
+
+Commands in `cmd/` are intentionally thin: parse CLI flags and args, build internal requests,
+call internal services, render output, and map errors to process exit codes.
 
 ```mermaid
 flowchart TD
@@ -17,187 +22,99 @@ flowchart TD
     E --> F["exitcode/util.ExitOnCommandError"]
 ```
 
-The key separation is:
+### Package Boundaries
 
-- `cmd`: user interface, flag parsing, command wiring
-- `internal/filters`: glob validation, config/CLI filter resolution, shared filter matching
-- `internal/files`: shared file discovery, deduplication, and include/exclude projection for scan and sanitize
-- `internal/scan`: reusable scan pipeline for `scan` and `baseline`
-- `internal/sanitize`: sanitize domain workflow over shared file targets
-- `internal/rulecatalog`: built-in rule catalog listing and describing
+- `cmd`: command wiring, flag parsing, CLI orchestration
 - `internal/config`: typed config model, defaults, validation
-- `internal/engine`: per-file rule execution over shared file targets
-- `internal/rules`: rule contracts, compilation, multi-phase evaluation
-- `internal/lexer`: deterministic lexical + semantic tokenization with byte offsets
-- `internal/exitcode`: policy threshold mapping to process codes
+- `internal/filters`: glob validation and include/exclude resolution
+- `internal/files`: shared file discovery and deterministic target collection
+- `internal/scan`: shared scan workflow used by `scan` and `baseline`
+- `internal/engine`: concurrent per-file scanning and scope severity override application
+- `internal/rules`: rule contracts, compilation, and deterministic phase-based evaluation
+- `internal/rules/builtin`: built-in security rule implementations and registry
+- `internal/lexer`: UTF-8 lexical analysis and token classification
+- `internal/report`: text/JSON/SARIF rendering and sanitize/baseline report text
+- `internal/baseline`: baseline snapshot creation and filtering
+- `internal/exitcode`: policy threshold to process exit code mapping
 
-## Engine Design
+### Scan Pipeline
 
-`internal/engine.Scanner` is intentionally small and deterministic:
+`internal/scan.Run` performs:
 
-- resolves shared file targets via `internal/files`
-- reads file content in a bounded worker pool
-- evaluates compiled rules with contextual metadata (path, environment, trust) per worker
-- applies scope-based severity overrides from config
-- returns file-qualified findings in stable file order
+1. configuration load (explicit file or optional discovery)
+2. built-in/custom rule compilation
+3. scanner execution through `internal/engine`
+4. separation into:
+   - `RawFindings` (pre-`warn-on` filtering)
+   - `ReportableFindings` (post-`warn-on`, excluding oversized skips)
+   - `OversizedSkippedFindings` (always informational)
 
-Important design choices:
+`scan` command behavior:
 
-- Context cancellation is propagated from Cobra command context (`cmd.Context()`) into scan execution for both
-  `scan` and `baseline`.
-- Worker scheduling stops as soon as cancellation is observed; the scanner returns cancellation without waiting for
-  all pending targets to be queued.
-- In-flight file operations and rule evaluation are not forcibly preempted; cancellation guarantees are best-effort
-  and primarily bound scheduling and result collection latency.
-- Paths are matched both relative to working directory and to input roots to reduce surprises in scope matching.
-- Concurrent scanning is bounded by `GOMAXPROCS` and preserves deterministic output ordering.
-- Engine logic avoids side effects beyond reading files, making behavior testable and reproducible.
+- applies optional baseline suppression to `ReportableFindings`
+- resolves policy outcome from post-baseline reportable findings
+- renders selected output format
+- exits with policy-derived code (`PASS=0`, `WARN=1`, `FAIL=2`)
 
-## Rule System and Interfaces
+### Concurrency and Cancellation
 
-The rule system is capability-based: a rule implements only the phases it needs.
+`internal/engine.Scanner` uses a bounded worker pool based on `GOMAXPROCS` and preserves deterministic output order.
 
-Core interfaces in `internal/rules/rule.go`:
+Cancellation behavior:
 
-- `Rule`: metadata only (`Metadata() Metadata`)
-- `DocumentRule`: whole-file checks (`CheckDocument`)
-- `SegmentRule`: structural-segment checks (`CheckSegment`)
-- `TokenRule`: lexical checks (`CheckTokens`)
-- `FlowRule`: full analyzed-document checks (`CheckFlow`)
+- command context (`cmd.Context()`) is propagated into scan execution
+- scheduling stops promptly after cancellation is observed
+- in-flight work is best-effort and not forcibly preempted
 
-`Token` values provided to `TokenRule` include:
+### Rule Execution Model
 
-- semantic `Type` (`lexer.TokenType`)
-- `Value`
-- byte `Start`/`End` offsets
-- line/column `Position`
+Rules are capability-based via phase-specific interfaces:
 
-Compilation in `internal/rules/registry.go` binds configured severity and enabled-state into `CompiledRule` values. Each
-compiled rule stores only the phase callbacks actually implemented by that rule.
+- `DocumentRule`
+- `SegmentRule`
+- `TokenRule`
+- `FlowRule`
 
-This avoids no-op methods and keeps extension ergonomic: new rules can be narrowly scoped to one phase or span multiple
-phases.
+`rules.Evaluate` performs deterministic phase order and stable finding sort (`rule ID`, `line`, `column`, `message`) with lazy segment/token/analyzed-document construction.
 
-## Context-Aware Rule Behavior
+### Context-Aware Rule Behavior
 
-`rules.Context` is a first-class input to built-in detection and is used with three patterns:
+`rules.Context` is consumed by built-ins with:
 
-- Environment-only effects:
-  rules that depend on runtime capabilities short-circuit when the capability is disabled.
-  Examples: shell-driven rules (`no-command-chaining`), network-driven rules
-  (`no-insecure-http`, `no-metadata-service-access`), and filesystem-driven rules
-  (`no-sensitive-file-paths`).
-- Trust-only effects:
-  trust level can tighten matching even when environment capabilities are unchanged.
-  Example: `no-prompt-injection-override` always matches strong override phrases and adds
-  weaker phrase matching for `untrusted`/`tainted` sources.
-- Combined effects (environment + trust):
-  some rules use both capability and trust to decide whether and how to match.
-  Example: `no-secret-exfiltration-intent` requires both network access and secret
-  availability, then expands its token-distance window only for `untrusted`/`tainted`
-  inputs.
+- environment-only effects (capability gating)
+- trust-only effects (stricter matching for lower trust)
+- combined environment + trust effects
 
-This model keeps detections aligned with the configured deployment environment while
-remaining conservative for lower-trust inputs.
+This keeps detection aligned to deployment capability assumptions while remaining conservative for untrusted/tainted inputs.
 
-## Rule Evaluation Pipeline
+### Output Architecture
 
-`rules.Evaluate(...)` executes rules in deterministic phase order with lazy preparation:
+`scan` supports three output modes (`--output`):
 
-```mermaid
-flowchart TD
-    A["DocumentView"] --> B["Document checks"]
-    A --> C["segmentDocument (lazy)"]
-    C --> D["Segment checks"]
-    C --> E["tokenizeSegment (lazy: lexer.Lex + lexer.Classify)"]
-    E --> F["Token checks"]
-    C --> G["AnalyzedDocument (lazy)"]
-    E --> G
-    G --> H["Flow checks"]
-    B --> I["Attach rule ID + severity"]
-    D --> I
-    F --> I
-    H --> I
-    I --> J["Stable sort of findings"]
-```
+- `text`: human-readable grouped findings + summary
+- `json`: Promptinel schema with `schema_version: "1.0.0"`
+- `sarif`: SARIF 2.1.0 for code-scanning ingestion
 
-Key decisions:
+Deterministic ordering guarantees:
 
-- Segments/tokens/analyzed document are built lazily so phases incur cost only when needed.
-- Rule metadata is attached after callbacks, centralizing severity and ID assignment.
-- Findings are stably sorted (`rule ID`, `line`, `column`, `message`) to guarantee deterministic output.
+- findings are grouped and sorted by `path` + `rule_id`
+- line lists are deduplicated and numerically sorted
+- SARIF descriptors are sorted by rule ID
 
-## Lexer Architecture
+Compatibility expectations:
 
-Tokenization is implemented in `internal/lexer` and is explicitly deterministic and offline:
+- JSON schema version follows additive compatibility rules within major version `1`
+- SARIF output targets the SARIF 2.1.0 schema and keeps stable rule IDs
 
-- single-pass UTF-8 lexing (`lexer.Lex`) without global `[]rune` conversion
-- exact byte offsets on every token
-- explicit detection for zero-width and control characters
-- semantic post-processing (`lexer.Classify`) for URLs, placeholders, base64-like values, shell commands, paths, and code blocks
-- Unicode grapheme segmentation helper via `github.com/rivo/uniseg` (`Graphemes`)
+### Policy and Exit Semantics
 
-The rules layer consumes these tokens; it does not perform raw-string lexical tokenization.
+`internal/exitcode.Resolve` maps highest severity in reportable findings to configured policy thresholds.
 
-## Built-In and Custom Rules
+- oversized-file skips (`scan-file-too-large`) remain informational and do not affect exit codes
+- unreadable-file skips may appear as low-severity findings and remain subject to policy filtering
 
-Built-ins are composed in `internal/rules/builtin` and registered centrally (`builtin.NewRegistry`).
+## Planned Roadmap (Not Yet Implemented)
 
-Current built-in examples:
-
-- `no-bidi-control-characters` (document phase): detects bidirectional control characters used for visual obfuscation
-- `no-hidden-html-instructions` (document phase): flags suspicious instructions hidden inside HTML comments
-- `no-zero-width` (token phase): detects zero-width tokens emitted by the lexer
-- `no-unsafe-templates` (token phase over template segments): detects risky execution/exfiltration signals in template expressions
-- `no-secret-to-network-flow` (flow phase): detects secret-source plus exfiltration action plus outbound sink chains
-
-Custom regex rules are compiled from config (`custom-rules`) into first-class token-phase rule implementations,
-validated for regex correctness and duplicate IDs. Regex matching is performed on `Token.Value` rather than on raw file
-content.
-
-## Configuration and Policy Decisions
-
-`internal/config` enforces strict invariants before scanning:
-
-- severity and trust enum validation
-- policy ordering (`fail-on >= warn-on`)
-- scope glob validation
-- uniqueness of built-in override IDs and custom-rule IDs
-
-Defaults are security-oriented (high capability environment assumptions, conservative trust levels) so scanning remains
-useful even without a config file.
-
-## Exit Semantics
-
-`internal/exitcode.Resolve` maps the highest finding severity against policy thresholds:
-
-- `0`: no actionable findings
-- `1`: warning threshold reached
-- `2`: failure threshold reached
-
-Commands return typed `exitcode.Error` values so process exit mapping stays centralized in `util.ExitOnCommandError`.
-
-`internal/scan.Result` now distinguishes:
-
-- `RawFindings`: all findings before `policy.warn-on` filtering
-- `ReportableFindings` (and compatibility alias `Findings`): findings after `policy.warn-on` filtering,
-  excluding informational oversized-file skips
-- `OversizedSkippedFindings`: files skipped because `limits.max_file_size_bytes` was exceeded
-
-`scan` command reporting and exit-policy evaluation operate on reportable findings, while baseline snapshot generation
-uses raw findings to preserve accepted findings across severity thresholds. Oversized-file skips are always rendered in
-their own report section so operator visibility does not depend on `warn-on`.
-
-## Notable Tradeoffs and Next Steps
-
-Current tradeoffs:
-
-- Files are read fully in memory per target file (simple and fast for typical prompt files).
-- Deterministic lexical/template analysis over probabilistic/NLP behavior.
-- Terminal-friendly text output over machine-readable reporting formats.
-
-Natural next architecture steps:
-
-- add JSON/SARIF output modes
-- expand flow-level rules for deeper cross-segment reasoning
-- add configurable worker limits
+- configurable worker-count override in scanner settings
+- richer cross-segment flow analysis and additional flow rules
+- optional machine-readable outputs for `sanitize` and baseline commands

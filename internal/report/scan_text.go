@@ -23,8 +23,8 @@ type ScanSummary struct {
 
 // WriteScanText writes a deterministic text report for scan findings.
 func WriteScanText(w io.Writer, summary ScanSummary) error {
-	groupedFindings := groupFindings(summary.Findings)
-	groupedOversizedSkipped := groupFindings(summary.OversizedSkipped)
+	groupedFindings := orderedGroupedFindings(summary.Findings)
+	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped)
 
 	if _, err := fmt.Fprintln(w, "Capabilities:"); err != nil {
 		return err
@@ -112,6 +112,23 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 	}
 
 	return nil
+}
+
+func orderedGroupedFindings(findings []finding.FileFinding) []groupedFinding {
+	grouped := groupFindings(findings)
+	sort.SliceStable(grouped, func(i, j int) bool {
+		if grouped[i].path != grouped[j].path {
+			return grouped[i].path < grouped[j].path
+		}
+		if grouped[i].id != grouped[j].id {
+			return grouped[i].id < grouped[j].id
+		}
+		if grouped[i].severity != grouped[j].severity {
+			return grouped[i].severity < grouped[j].severity
+		}
+		return grouped[i].message < grouped[j].message
+	})
+	return grouped
 }
 
 type groupedFinding struct {
