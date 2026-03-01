@@ -507,6 +507,15 @@ Deterministic ordering guarantees:
 - line lists are deduplicated and sorted numerically
 - SARIF rule descriptors are sorted by rule ID
 
+### CI SARIF Validation
+
+The CI pipeline validates SARIF output end-to-end by:
+
+- running the real CLI command (`go run main.go scan --output sarif ...`) against e2e fixtures
+- verifying core SARIF fields (`version`, `$schema`, run/tool/result structure)
+- uploading the generated `promptinel.sarif` file as a CI artifact
+- uploading SARIF to GitHub Code Scanning when permissions are available
+
 ### Text Mode (`--output text`)
 
 ```

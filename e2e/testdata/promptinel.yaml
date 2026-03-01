@@ -1,0 +1,17 @@
+policy:
+  fail-on: high
+  warn-on: low
+
+environment:
+  can_execute_shell: true
+  can_access_filesystem: false
+  can_access_network: false
+  has_secrets: false
+
+trust:
+  local-files: trusted
+  remote-includes: untrusted
+  user-input-placeholders: tainted
+
+rules: []
+custom-rules: []
