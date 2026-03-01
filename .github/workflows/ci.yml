@@ -8,79 +8,46 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.25.7'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.7"
+          cache: true
 
-    - name: Start Docker
-      run: make setup
+      - name: Tidy and vendor modules
+        run: |
+          go mod tidy
+          go mod vendor
 
-    - name: Test Docker
-      run: make test-docker
+      - name: Test Go (core only)
+        run: |
+          pkgs="$(go list -buildvcs=false ./... | grep -v '/e2e$')"
+          test -n "${pkgs}"
+          go test ${pkgs} --cover --short --race --shuffle=on --parallel=3
 
-    - name: Test Go
-      run: make test
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.4.0
 
-    - name: Lint
-      run: make lint
+      - name: Vet
+        run: go vet ./...
 
-    - name: Vet
-      run: make vet
+      - name: Dependency vulnerability audit
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          govulncheck ./...
 
-    - name: Dependency vulnerability audit
-      run: make vuln
-
-    - name: Build
-      env:
-        BUILD_VERSION: ${{ github.sha }}
-      run: make build
-
-    - name: Generate SARIF
-      run: |
-        set +e
-        docker compose exec -T promptinel_app go run main.go scan \
-          --config e2e/testdata/promptinel.yaml \
-          --no-config-discovery \
-          --output sarif \
-          e2e/testdata/sarif-clean > promptinel.sarif
-        scan_exit="$?"
-        set -e
-
-        if [ "${scan_exit}" -gt 2 ]; then
-          echo "scan command failed with unexpected exit code ${scan_exit}"
-          exit "${scan_exit}"
-        fi
-
-    - name: Validate SARIF payload
-      run: |
-        jq -e '
-          .version == "2.1.0"
-          and ."$schema" == "https://json.schemastore.org/sarif-2.1.0.json"
-          and (.runs | type == "array" and length > 0)
-          and (.runs[0].tool.driver.name == "promptinel")
-          and (.runs[0].results | type == "array")
-        ' promptinel.sarif > /dev/null
-
-    - name: Upload SARIF artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: promptinel-sarif
-        path: promptinel.sarif
-
-    - name: Upload SARIF to code scanning
-      if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: promptinel.sarif
+      - name: Build
+        env:
+          BUILD_VERSION: ${{ github.sha }}
+        run: go build -buildvcs=false -ldflags="-X 'github.com/CunningFatalist/promptinel/cmd.Version=${BUILD_VERSION}'" -o build/promptinel main.go

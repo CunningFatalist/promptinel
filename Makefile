@@ -18,12 +18,26 @@ down: ## Stop the development environment
 	docker compose down -t 0
 
 .PHONY: test
-test: tidy vendor ## Run tests
-	docker compose exec promptinel_app go test ./... --cover --short --race --shuffle=on --parallel=3
+test: test-docker test-core test-e2e ## Run all test commands
+
+.PHONY: test-prepare
+test-prepare: tidy vendor ## Prepare dependencies for tests
+
+.PHONY: test-core
+test-core: test-prepare ## Run tests except e2e
+	docker compose exec promptinel_app sh -ec 'pkgs=$$(go list ./... | grep -v "/e2e$$"); test -n "$$pkgs"; go test $$pkgs -buildvcs=false --cover --short --race --shuffle=on --parallel=3'
+
+.PHONY: test-e2e
+test-e2e: test-prepare ## Run e2e tests only
+	docker compose exec promptinel_app go test ./e2e -buildvcs=false --race --shuffle=on --parallel=3
+
+.PHONY: test-docker
+test-docker: ## Test the docker setup
+	.docker/tests/run.sh
 
 .PHONY: coverage
 coverage: ## Generate test coverage report
-	docker compose exec promptinel_app go test ./... -coverprofile=coverage.out
+	docker compose exec promptinel_app sh -ec 'pkgs=$$(go list ./... | grep -v "/e2e$$"); test -n "$$pkgs"; go test $$pkgs -buildvcs=false -coverprofile=coverage.out'
 	docker compose exec promptinel_app go tool cover -html=coverage.out -o coverage.html
 
 .PHONY: lint
@@ -82,10 +96,6 @@ clean: ## Clean up generated files
 .PHONY: shell
 shell: ## Open a shell in the application container
 	docker compose exec -it promptinel_app bash
-
-.PHONY: test-docker
-test-docker: ## Test the docker setup
-	.docker/tests/run.sh
 
 .PHONY: goreleaser-check
 goreleaser-check: ## Validate GoReleaser configuration
