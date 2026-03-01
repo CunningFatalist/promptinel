@@ -511,10 +511,12 @@ Deterministic ordering guarantees:
 
 The CI pipeline validates SARIF output end-to-end by:
 
-- running the real CLI command (`go run main.go scan --output sarif ...`) against e2e fixtures
+- running the real CLI command (`go run main.go scan --output sarif ...`) against a clean fixture set used only for CI SARIF upload validation
 - verifying core SARIF fields (`version`, `$schema`, run/tool/result structure)
 - uploading the generated `promptinel.sarif` file as a CI artifact
 - uploading SARIF to GitHub Code Scanning when permissions are available
+
+The e2e test fixtures that intentionally contain findings are kept separate from this CI upload fixture so code-scanning uploads do not create synthetic alerts.
 
 ### Text Mode (`--output text`)
 

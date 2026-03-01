@@ -54,7 +54,7 @@ jobs:
           --config e2e/testdata/promptinel.yaml \
           --no-config-discovery \
           --output sarif \
-          e2e/testdata/cases > promptinel.sarif
+          e2e/testdata/sarif-clean > promptinel.sarif
         scan_exit="$?"
         set -e
 
