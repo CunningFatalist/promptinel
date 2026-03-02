@@ -1,0 +1,26 @@
+name: Support question
+description: Ask for usage clarification
+title: "question: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If the behavior is unclear or docs are missing, open a feature request for documentation improvements.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Describe what you are trying to do and what is unclear.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context (optional)
+      description: Include command examples, config snippets, and observed output.
+    validations:
+      required: false

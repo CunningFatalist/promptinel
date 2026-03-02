@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a defect in existing behavior
+title: "fix: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Reproduction steps
+      description: List exact steps to reproduce the issue.
+      placeholder: |
+        1. Run ...
+        2. Use ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: Describe what should happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual behavior
+      description: Describe what happens instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (optional)
+      description: Include OS, Go version, and project version/commit if known.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context (optional)
+      description: Add logs, screenshots, or related links.
+    validations:
+      required: false

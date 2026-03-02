@@ -1,0 +1,29 @@
+name: Documentation request
+description: Request documentation additions or clarifications
+title: "docs: "
+labels:
+  - documentation
+body:
+  - type: textarea
+    id: unclear_area
+    attributes:
+      label: What is unclear
+      description: Describe what documentation is missing or unclear.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_docs
+    attributes:
+      label: What should be documented
+      description: Describe the expected content.
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References (optional)
+      description: Link relevant files, commands, or prior discussions.
+    validations:
+      required: false
