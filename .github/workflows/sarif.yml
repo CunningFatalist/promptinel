@@ -14,12 +14,12 @@ jobs:
   sarif:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: "1.25.7"
         cache: true
@@ -48,13 +48,13 @@ jobs:
         ' promptinel.sarif > /dev/null
 
     - name: Upload SARIF artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: promptinel-sarif
         path: promptinel.sarif
 
     - name: Upload SARIF to code scanning
       if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: promptinel.sarif
