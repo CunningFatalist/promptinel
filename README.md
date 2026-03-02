@@ -90,6 +90,9 @@ docker compose -f docker-compose.promptinel.yml run --rm promptinel
 ### Build from Source
 
 ```bash
+# Start the development container first (once per environment)
+make setup
+
 # Build inside the development container (required for release version metadata)
 export BUILD_VERSION=x.x.x && make build
 ```
@@ -133,7 +136,7 @@ promptinel scan --output sarif prompts/ > promptinel.sarif
 
 ### Sanitize Prompts
 
-This command is restricted to safe transformations, e.g. removing invisible characters etc.
+This command is restricted to safe transformations, for example removing invisible characters.
 
 ```bash
 # Preview transformations without applying them
@@ -228,9 +231,11 @@ agents/**/prod* # Any file/dir starting with "prod" at any depth under agents/
 
 | Code | Meaning                            |
 |------|------------------------------------|
-| 0    | no violations                      |
-| 1    | violations below failure threshold |
-| 2    | policy failure                     |
+| 0    | no reportable policy violations    |
+| 1    | warning threshold reached          |
+| 2    | failure threshold reached          |
+
+Code `0` can still occur when findings are filtered by `policy.warn-on` or suppressed by a baseline snapshot.
 
 ---
 
@@ -348,8 +353,8 @@ custom-rules:
 ```
 
 If `--config` is not set, Promptinel auto-discovers `.promptinel.yaml` from the current directory and `$HOME`.
-Use `--no-config-discovery` on `scan`, `sanitize`, and `baseline` commands to force secure defaults unless you
-explicitly pass `--config`.
+Use `--no-config-discovery` on `scan`, `sanitize`, `baseline create`, and `baseline update` to force secure defaults
+unless you explicitly pass `--config`.
 
 ### Filters
 
