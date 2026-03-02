@@ -28,11 +28,64 @@ Promptinel is in early development and many features are still missing.
 
 ## Installation
 
+### With Go
+
 ```bash
 go install github.com/CunningFatalist/promptinel@latest
 ```
 
 The `promptinel` binary will be installed into your `GOBIN` (or `$(go env GOPATH)/bin`).
+
+### As Docker Command
+
+```bash
+docker run --rm \
+  -v "$PWD:/work" \
+  -w /work \
+  golang:1.25.7 \
+  sh -lc 'set -eu; GOBIN=/tmp/bin /usr/local/go/bin/go install github.com/CunningFatalist/promptinel@latest && /tmp/bin/promptinel scan .'
+```
+
+### As Docker Service
+
+Minimal Compose + Dockerfile (recommended)
+
+Create `Dockerfile.promptinel`:
+
+```dockerfile
+FROM golang:1.25.7
+
+ARG PROMPTINEL_VERSION=vX.Y.Z
+
+RUN GOBIN=/usr/local/bin go install github.com/CunningFatalist/promptinel@${PROMPTINEL_VERSION}
+
+WORKDIR /work
+ENTRYPOINT ["promptinel"]
+```
+
+Create `docker-compose.promptinel.yml`:
+
+```yaml
+services:
+  promptinel:
+    build:
+      context: .
+      dockerfile: Dockerfile.promptinel
+      args:
+        PROMPTINEL_VERSION: vX.Y.Z
+    working_dir: /work
+    volumes:
+      - ./:/work
+    command: ["scan", "."]
+```
+
+Build and run:
+
+```bash
+docker compose -f docker-compose.promptinel.yml build
+
+docker compose -f docker-compose.promptinel.yml run --rm promptinel
+```
 
 ### Build from Source
 
