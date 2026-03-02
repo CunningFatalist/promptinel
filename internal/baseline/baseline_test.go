@@ -1,7 +1,9 @@
 package baseline
 
 import (
+	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
@@ -102,6 +104,47 @@ func Test_Baseline_ReadWrite_RoundTrip(t *testing.T) {
 	assert.Equal(t, snapshot.Entries, loaded.Entries)
 }
 
+func Test_Baseline_Write_OverwritesExistingFile(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "baseline.json")
+
+	original := Snapshot{
+		Version: SnapshotVersion,
+		Entries: []Entry{
+			{
+				Hash:     "abc",
+				Path:     "a.md",
+				RuleID:   "rule-a",
+				Severity: config.SeverityLow,
+				Message:  "original",
+				Line:     1,
+				Column:   1,
+			},
+		},
+	}
+	require.NoError(t, Write(file, original))
+
+	replacement := Snapshot{
+		Version: SnapshotVersion,
+		Entries: []Entry{
+			{
+				Hash:     "def",
+				Path:     "b.md",
+				RuleID:   "rule-b",
+				Severity: config.SeverityHigh,
+				Message:  "replacement",
+				Line:     7,
+				Column:   3,
+			},
+		},
+	}
+	require.NoError(t, Write(file, replacement))
+
+	loaded, err := Read(file)
+	require.NoError(t, err)
+	assert.Equal(t, replacement.Version, loaded.Version)
+	assert.Equal(t, replacement.Entries, loaded.Entries)
+}
+
 func Test_Baseline_HashFinding_IsDeterministic(t *testing.T) {
 	finding := finding.FileFinding{
 		Path: "a.md",
@@ -116,4 +159,38 @@ func Test_Baseline_HashFinding_IsDeterministic(t *testing.T) {
 	first := HashFinding(finding)
 	second := HashFinding(finding)
 	assert.Equal(t, first, second)
+}
+
+func Test_Baseline_Write_RejectsSymlinkDestination(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	victimPath := filepath.Join(workingDir, "victim.json")
+	require.NoError(t, os.WriteFile(victimPath, []byte("victim-original"), 0o644))
+
+	linkPath := filepath.Join(workingDir, "baseline-link.json")
+	require.NoError(t, os.Symlink(victimPath, linkPath))
+
+	err := Write(linkPath, Snapshot{
+		Version: SnapshotVersion,
+		Entries: []Entry{
+			{
+				Hash:     "abc",
+				Path:     "a.md",
+				RuleID:   "rule-a",
+				Severity: config.SeverityLow,
+				Message:  "message",
+				Line:     1,
+				Column:   1,
+			},
+		},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "symbolic link")
+
+	victimContent, readErr := os.ReadFile(victimPath)
+	require.NoError(t, readErr)
+	assert.Equal(t, "victim-original", string(victimContent))
 }

@@ -12,14 +12,14 @@ func WriteSanitizeText(w io.Writer, result sanitize.Result) error {
 	for _, event := range result.Events {
 		switch event.Action {
 		case sanitize.ActionSkipped:
-			if _, err := fmt.Fprintf(w, "%s: skipped (%s)\n", event.Path, event.Reason); err != nil {
+			if _, err := fmt.Fprintf(w, "%s: skipped (%s)\n", sanitizeForTerminal(event.Path), sanitizeForTerminal(event.Reason)); err != nil {
 				return err
 			}
 		case sanitize.ActionWouldSanitize:
 			if _, err := fmt.Fprintf(
 				w,
 				"%s: would sanitize (line_endings=%d, zero_width=%d)\n",
-				event.Path,
+				sanitizeForTerminal(event.Path),
 				event.LineEndingsNormalized,
 				event.ZeroWidthRunesStripped,
 			); err != nil {
@@ -29,7 +29,7 @@ func WriteSanitizeText(w io.Writer, result sanitize.Result) error {
 			if _, err := fmt.Fprintf(
 				w,
 				"%s: sanitized (line_endings=%d, zero_width=%d)\n",
-				event.Path,
+				sanitizeForTerminal(event.Path),
 				event.LineEndingsNormalized,
 				event.ZeroWidthRunesStripped,
 			); err != nil {

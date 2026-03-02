@@ -269,6 +269,16 @@ func Test_Report_WriteBaselineText_CreateAndUpdate(t *testing.T) {
 	assert.Equal(t, "Updated baseline .promptinel-baseline.json with 9 entries (-3 compared to previous snapshot).\n", updated.String())
 }
 
+func Test_Report_WriteBaselineText_EscapesControlCharacters(t *testing.T) {
+	var output bytes.Buffer
+	err := WriteBaselineText(&output, BaselineSummary{
+		File:    "bad\nfile\tname.json",
+		Entries: 1,
+	})
+	require.NoError(t, err)
+	assert.Contains(t, output.String(), "bad\\nfile\\tname.json")
+}
+
 func Test_Report_WriteSanitizeText_WritesEventsAndSummary(t *testing.T) {
 	var output bytes.Buffer
 
@@ -293,4 +303,25 @@ func Test_Report_WriteSanitizeText_WritesEventsAndSummary(t *testing.T) {
 	assert.Contains(t, rendered, "b.md: skipped (non-regular file)")
 	assert.Contains(t, rendered, "Summary: files=2 changed=1 skipped=1 line_endings=1 zero_width=2")
 	assert.Contains(t, rendered, "Re-run with --apply to persist changes.")
+}
+
+func Test_Report_WriteSanitizeText_EscapesControlCharacters(t *testing.T) {
+	var output bytes.Buffer
+	err := WriteSanitizeText(&output, sanitize.Result{
+		Events: []sanitize.Event{
+			{
+				Path:   "a\nb.md",
+				Action: sanitize.ActionSkipped,
+				Reason: "bad\treason\rhere",
+			},
+		},
+		Summary: sanitize.Summary{
+			Files:   1,
+			Skipped: 1,
+		},
+	})
+	require.NoError(t, err)
+
+	rendered := output.String()
+	assert.Contains(t, rendered, "a\\nb.md: skipped (bad\\treason\\rhere)")
 }
