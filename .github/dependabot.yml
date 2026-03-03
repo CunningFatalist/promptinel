@@ -11,7 +11,7 @@ updates:
       - "dependencies"
       - "go"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
     groups:
       go-dependencies:
         patterns:
@@ -29,7 +29,7 @@ updates:
       - "dependencies"
       - "github-actions"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
     groups:
       github-actions:
         patterns:
@@ -46,7 +46,7 @@ updates:
       - "dependencies"
       - "docker"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
     groups:
       docker:
         patterns:
