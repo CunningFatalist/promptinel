@@ -166,7 +166,7 @@ func isNilRule(rule Rule) bool {
 	rv := reflect.ValueOf(rule)
 
 	switch rv.Kind() {
-	case reflect.Ptr, reflect.Interface, reflect.Slice, reflect.Map, reflect.Func, reflect.Chan:
+	case reflect.Pointer, reflect.Interface, reflect.Slice, reflect.Map, reflect.Func, reflect.Chan:
 		return rv.IsNil()
 	default:
 		return false

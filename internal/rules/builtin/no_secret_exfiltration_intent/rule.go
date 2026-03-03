@@ -57,7 +57,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 	exfilIndices := make([]int, 0)
 	secretIndices := make([]int, 0)
 
-	for i := 0; i < len(tokens); i++ {
+	for i := range tokens {
 		token := tokens[i]
 		lower := strings.ToLower(token.Value)
 
@@ -97,10 +97,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		return nil
 	}
 
-	index := best.exfil
-	if best.secret < best.exfil {
-		index = best.secret
-	}
+	index := min(best.secret, best.exfil)
 
 	return []rules.Finding{{
 		Message:  "Potential secret exfiltration intent detected",

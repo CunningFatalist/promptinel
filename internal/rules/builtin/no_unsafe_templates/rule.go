@@ -64,7 +64,7 @@ func (Rule) CheckTokens(_ rules.Context, segment rules.Segment, tokens []rules.T
 }
 
 func containsUnsafeSignal(tokens []rules.Token) bool {
-	for i := 0; i < len(tokens); i++ {
+	for i := range tokens {
 		token := tokens[i]
 		lower := strings.ToLower(token.Value)
 

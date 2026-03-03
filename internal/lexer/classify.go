@@ -193,7 +193,7 @@ func classifyEnclosed(tokens []Token, i int, open string, close string) (Token, 
 		return Token{}, 0, false
 	}
 
-	for k := 0; k < openLen; k++ {
+	for k := range openLen {
 		if tokens[i+k].Type != TokenSymbol || tokens[i+k].Value != string(open[k]) {
 			return Token{}, 0, false
 		}
@@ -202,7 +202,7 @@ func classifyEnclosed(tokens []Token, i int, open string, close string) (Token, 
 	j := i + openLen
 	for j+closeLen-1 < len(tokens) {
 		matched := true
-		for k := 0; k < closeLen; k++ {
+		for k := range closeLen {
 			if tokens[j+k].Type != TokenSymbol || tokens[j+k].Value != string(close[k]) {
 				matched = false
 				break
