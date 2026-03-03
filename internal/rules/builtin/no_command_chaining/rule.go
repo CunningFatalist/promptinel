@@ -43,7 +43,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		return nil
 	}
 
-	for i := 0; i < len(tokens); i++ {
+	for i := range tokens {
 		token := tokens[i]
 		if token.Value == ";" {
 			if isChainedCommand(tokens, i, i+1) {

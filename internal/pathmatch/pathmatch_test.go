@@ -107,7 +107,7 @@ func Test_Pathmatch_Match_DoubleStar_AdversarialPatternBoundedRuntime(t *testing
 	path := strings.Join(pathSegments, "/")
 
 	patternParts := make([]string, 0, 121)
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		patternParts = append(patternParts, "**", "x")
 	}
 	pattern := strings.Join(patternParts, "/")
@@ -131,7 +131,7 @@ func Benchmark_Pathmatch_Match_DoubleStar_Adversarial(b *testing.B) {
 	path := strings.Join(pathSegments, "/")
 
 	patternParts := make([]string, 0, 161)
-	for i := 0; i < 80; i++ {
+	for range 80 {
 		patternParts = append(patternParts, "**", "x")
 	}
 	pattern := strings.Join(patternParts, "/")

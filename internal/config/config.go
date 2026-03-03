@@ -244,7 +244,7 @@ func (s *Severity) String() string {
 }
 
 // MarshalYAML implements yaml.Marshaler for Severity.
-func (s *Severity) MarshalYAML() (interface{}, error) {
+func (s *Severity) MarshalYAML() (any, error) {
 	if s == nil {
 		return "", nil
 	}
@@ -253,7 +253,7 @@ func (s *Severity) MarshalYAML() (interface{}, error) {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Severity.
-func (s *Severity) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (s *Severity) UnmarshalYAML(unmarshal func(any) error) error {
 	var str string
 	if err := unmarshal(&str); err != nil {
 		return err
@@ -286,7 +286,7 @@ func (t *TrustLevel) String() string {
 }
 
 // MarshalYAML implements yaml.Marshaler for TrustLevel.
-func (t *TrustLevel) MarshalYAML() (interface{}, error) {
+func (t *TrustLevel) MarshalYAML() (any, error) {
 	if t == nil {
 		return "", nil
 	}
@@ -295,7 +295,7 @@ func (t *TrustLevel) MarshalYAML() (interface{}, error) {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for TrustLevel.
-func (t *TrustLevel) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *TrustLevel) UnmarshalYAML(unmarshal func(any) error) error {
 	var str string
 	if err := unmarshal(&str); err != nil {
 		return err

@@ -74,10 +74,7 @@ func Test_Engine_ScanPaths_ContextCanceled(t *testing.T) {
 
 func Test_Engine_ScanPaths_CancellationReturnsPromptlyOnLargeInputSet(t *testing.T) {
 	tmp := t.TempDir()
-	totalFiles := runtime.GOMAXPROCS(0) * 4
-	if totalFiles < 8 {
-		totalFiles = 8
-	}
+	totalFiles := max(runtime.GOMAXPROCS(0)*4, 8)
 
 	for i := 0; i < totalFiles; i++ {
 		file := filepath.Join(tmp, fmt.Sprintf("file-%03d.md", i))

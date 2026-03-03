@@ -46,7 +46,7 @@ func matchSegments(patternParts []string, pathParts []string) bool {
 	}
 	dp[0][0] = true
 
-	for i := 0; i < patternLen; i++ {
+	for i := range patternLen {
 		segment := patternParts[i]
 		if segment == "**" {
 			for j := 0; j <= pathLen; j++ {
@@ -63,7 +63,7 @@ func matchSegments(patternParts []string, pathParts []string) bool {
 			continue
 		}
 
-		for j := 0; j < pathLen; j++ {
+		for j := range pathLen {
 			if !dp[i][j] {
 				continue
 			}

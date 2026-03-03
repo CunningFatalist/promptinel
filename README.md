@@ -42,7 +42,7 @@ The `promptinel` binary will be installed into your `GOBIN` (or `$(go env GOPATH
 docker run --rm \
   -v "$PWD:/work" \
   -w /work \
-  golang:1.25.7 \
+  golang:1.26.0 \
   sh -lc 'set -eu; GOBIN=/tmp/bin /usr/local/go/bin/go install github.com/CunningFatalist/promptinel@latest && /tmp/bin/promptinel scan .'
 ```
 
@@ -53,7 +53,7 @@ Minimal Compose + Dockerfile (recommended)
 Create `Dockerfile.promptinel`:
 
 ```dockerfile
-FROM golang:1.25.7
+FROM golang:1.26.0
 
 ARG PROMPTINEL_VERSION=vX.Y.Z
 

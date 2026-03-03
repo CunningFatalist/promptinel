@@ -1,4 +1,4 @@
-FROM golang:1.25.7-bookworm
+FROM golang:1.26.0-bookworm
 
 ARG GOLANGCI_LINT_VERSION=v2.10.1
 ARG GOVULNCHECK_VERSION=v1.1.4

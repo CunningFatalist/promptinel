@@ -80,7 +80,7 @@ func Test_Config_Severity_UnmarshalYAML(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var s Severity
-			err := s.UnmarshalYAML(func(v interface{}) error {
+			err := s.UnmarshalYAML(func(v any) error {
 				*v.(*string) = tt.input
 				return nil
 			})
@@ -96,7 +96,7 @@ func Test_Config_Severity_UnmarshalYAML(t *testing.T) {
 
 func Test_Config_Severity_UnmarshalYAML_Error(t *testing.T) {
 	var s Severity
-	err := s.UnmarshalYAML(func(v interface{}) error {
+	err := s.UnmarshalYAML(func(v any) error {
 		return assert.AnError
 	})
 	assert.Error(t, err)
@@ -161,7 +161,7 @@ func Test_Config_TrustLevel_UnmarshalYAML(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var tl TrustLevel
-			err := tl.UnmarshalYAML(func(v interface{}) error {
+			err := tl.UnmarshalYAML(func(v any) error {
 				*v.(*string) = tt.input
 				return nil
 			})
@@ -177,7 +177,7 @@ func Test_Config_TrustLevel_UnmarshalYAML(t *testing.T) {
 
 func Test_Config_TrustLevel_UnmarshalYAML_Error(t *testing.T) {
 	var tl TrustLevel
-	err := tl.UnmarshalYAML(func(v interface{}) error {
+	err := tl.UnmarshalYAML(func(v any) error {
 		return assert.AnError
 	})
 	assert.Error(t, err)

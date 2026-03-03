@@ -130,10 +130,7 @@ func (s *Scanner) scanTargets(ctx context.Context, targets []scanTarget, scopeRo
 		return nil, nil
 	}
 
-	workerCount := runtime.GOMAXPROCS(0)
-	if workerCount < 1 {
-		workerCount = 1
-	}
+	workerCount := max(runtime.GOMAXPROCS(0), 1)
 	if workerCount > len(targets) {
 		workerCount = len(targets)
 	}
@@ -142,9 +139,7 @@ func (s *Scanner) scanTargets(ctx context.Context, targets []scanTarget, scopeRo
 	results := make(chan scanResult, len(targets))
 	var workerGroup sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
-		workerGroup.Add(1)
-		go func() {
-			defer workerGroup.Done()
+		workerGroup.Go(func() {
 			for {
 				select {
 				case <-ctx.Done():
@@ -165,7 +160,7 @@ func (s *Scanner) scanTargets(ctx context.Context, targets []scanTarget, scopeRo
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	scheduledCount := 0
