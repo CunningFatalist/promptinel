@@ -1,6 +1,7 @@
 # Promptinel
 
 [![CI](https://github.com/CunningFatalist/promptinel/actions/workflows/ci.yml/badge.svg)](https://github.com/CunningFatalist/promptinel/actions/workflows/ci.yml)
+![GitHub Release](https://img.shields.io/github/v/release/CunningFatalist/promptinel)
 
 **Promptinel** is a deterministic security scanner for machine-interpreted natural language.
 
@@ -661,6 +662,13 @@ The logo was created with ChatGPT and refined with Nano Banana.
 
 This project follows [Conventional Commits](https://www.conventionalcommits.org) for commit messages and
 pull request titles.
+
+Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+When opening issues or pull requests, use the available templates:
+
+- [Issue templates](.github/ISSUE_TEMPLATE/)
+- [Pull request template](.github/pull_request_template.md)
 
 ## Development Conventions
 
