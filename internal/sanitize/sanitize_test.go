@@ -1,6 +1,7 @@
 package sanitize
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -10,6 +11,19 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/safefile"
 )
+
+func Test_Sanitize_Run_ReturnsCanceledContextWhenAlreadyCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := Run(ctx, Request{Paths: []string{"."}, Discover: false})
+	if err == nil {
+		t.Fatal("expected canceled context error")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
 
 func Test_Sanitize_Run_DryRunReportsPlannedChanges(t *testing.T) {
 	workingDir := t.TempDir()
@@ -28,7 +42,7 @@ func Test_Sanitize_Run_DryRunReportsPlannedChanges(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(previousWorkingDir) })
 
-	result, err := Run(Request{Paths: []string{"."}, Discover: true, Include: []string{"*.md"}})
+	result, err := Run(context.Background(), Request{Paths: []string{"."}, Discover: true, Include: []string{"*.md"}})
 	if err != nil {
 		t.Fatalf("run sanitize: %v", err)
 	}
@@ -56,7 +70,7 @@ func Test_Sanitize_Run_ApplyWritesChanges(t *testing.T) {
 		t.Fatalf("write fixture file: %v", err)
 	}
 
-	result, err := Run(Request{Paths: []string{workingDir}, Discover: true, Include: []string{"*.md"}, Apply: true})
+	result, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: true, Include: []string{"*.md"}, Apply: true})
 	if err != nil {
 		t.Fatalf("run sanitize --apply: %v", err)
 	}
@@ -87,7 +101,7 @@ func Test_Sanitize_Run_SkipsOversizedFile(t *testing.T) {
 		t.Fatalf("write fixture file: %v", err)
 	}
 
-	result, err := Run(Request{Paths: []string{workingDir}, ConfigFile: configPath, Discover: false})
+	result, err := Run(context.Background(), Request{Paths: []string{workingDir}, ConfigFile: configPath, Discover: false})
 	if err != nil {
 		t.Fatalf("run sanitize: %v", err)
 	}
@@ -112,7 +126,7 @@ func Test_Sanitize_Run_UnchangedFileProducesNoEvents(t *testing.T) {
 		t.Fatalf("write fixture file: %v", err)
 	}
 
-	result, err := Run(Request{Paths: []string{workingDir}, Discover: false})
+	result, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false})
 	if err != nil {
 		t.Fatalf("run sanitize: %v", err)
 	}
@@ -145,7 +159,7 @@ func Test_Sanitize_Run_NoConfigDiscovery_IgnoresLocalConfig(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(previousWorkingDir) })
 
-	withDiscovery, err := Run(Request{Paths: []string{"."}, Discover: true})
+	withDiscovery, err := Run(context.Background(), Request{Paths: []string{"."}, Discover: true})
 	if err != nil {
 		t.Fatalf("run sanitize with discovery: %v", err)
 	}
@@ -159,7 +173,7 @@ func Test_Sanitize_Run_NoConfigDiscovery_IgnoresLocalConfig(t *testing.T) {
 		t.Fatalf("expected discovered config max file size skip, events: %#v", withDiscovery.Events)
 	}
 
-	withoutDiscovery, err := Run(Request{Paths: []string{"."}, Discover: false})
+	withoutDiscovery, err := Run(context.Background(), Request{Paths: []string{"."}, Discover: false})
 	if err != nil {
 		t.Fatalf("run sanitize without discovery: %v", err)
 	}
@@ -188,7 +202,7 @@ func Test_Sanitize_Run_CLIIncludeOverridesConfigFilters(t *testing.T) {
 		t.Fatalf("write txt file: %v", err)
 	}
 
-	result, err := Run(Request{
+	result, err := Run(context.Background(), Request{
 		Paths:      []string{workingDir},
 		ConfigFile: configPath,
 		Discover:   false,
@@ -221,7 +235,7 @@ func Test_Sanitize_Run_SkipsSymlinkInput(t *testing.T) {
 		t.Fatalf("create symlink: %v", err)
 	}
 
-	result, err := Run(Request{Paths: []string{link}, Discover: false})
+	result, err := Run(context.Background(), Request{Paths: []string{link}, Discover: false})
 	if err != nil {
 		t.Fatalf("run sanitize: %v", err)
 	}
@@ -234,7 +248,7 @@ func Test_Sanitize_Run_SkipsSymlinkInput(t *testing.T) {
 }
 
 func Test_Sanitize_Run_ReturnsErrorWhenCollectionFails(t *testing.T) {
-	_, err := Run(Request{
+	_, err := Run(context.Background(), Request{
 		Paths:    []string{"/definitely/missing/path"},
 		Discover: false,
 	})
@@ -261,7 +275,7 @@ func Test_Sanitize_Run_ReturnsErrorWhenAtomicWriteFails(t *testing.T) {
 		writeFileAtomically = originalWriter
 	})
 
-	_, err := Run(Request{Paths: []string{workingDir}, Discover: false, Apply: true})
+	_, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false, Apply: true})
 	if err == nil {
 		t.Fatal("expected write failure error")
 	}

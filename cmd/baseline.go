@@ -7,6 +7,7 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/baseline"
 	"github.com/CunningFatalist/promptinel/internal/report"
+	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	internalscan "github.com/CunningFatalist/promptinel/internal/scan"
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/spf13/cobra"
@@ -99,13 +100,14 @@ func buildBaselineScanRequest(args []string, options baselineOptions) internalsc
 	}
 
 	return internalscan.Request{
-		Paths:      paths,
-		ConfigFile: options.configFile,
-		Discover:   !options.noConfigDiscovery,
-		Include:    options.includes,
-		Exclude:    options.excludes,
-		IncludeSet: options.includeSet,
-		ExcludeSet: options.excludeSet,
+		Paths:           paths,
+		ConfigFile:      options.configFile,
+		Discover:        !options.noConfigDiscovery,
+		Include:         options.includes,
+		Exclude:         options.excludes,
+		IncludeSet:      options.includeSet,
+		ExcludeSet:      options.excludeSet,
+		RegistryFactory: builtin.NewRegistry,
 	}
 }
 

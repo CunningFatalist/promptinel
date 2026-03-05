@@ -6,6 +6,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rulecatalog"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -40,7 +41,7 @@ var rulesDescribeCmd = &cobra.Command{
 }
 
 func runRulesList(_ *cobra.Command, _ []string) error {
-	ruleSet, err := rulecatalog.List()
+	ruleSet, err := rulecatalog.List(builtin.NewRegistry)
 	if err != nil {
 		return err
 	}
@@ -64,7 +65,7 @@ func maxSeverityLabelWidth(ruleSet []rules.Metadata) int {
 }
 
 func runRulesDescribe(_ *cobra.Command, args []string) error {
-	meta, exists, err := rulecatalog.Describe(args[0])
+	meta, exists, err := rulecatalog.Describe(builtin.NewRegistry, args[0])
 	if err != nil {
 		return err
 	}

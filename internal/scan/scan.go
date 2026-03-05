@@ -8,19 +8,23 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/finding"
-	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
+	"github.com/CunningFatalist/promptinel/internal/rules"
 )
 
 // Request configures a scan execution.
 type Request struct {
-	Paths      []string
-	ConfigFile string
-	Discover   bool
-	Include    []string
-	Exclude    []string
-	IncludeSet bool
-	ExcludeSet bool
+	Paths           []string
+	ConfigFile      string
+	Discover        bool
+	Include         []string
+	Exclude         []string
+	IncludeSet      bool
+	ExcludeSet      bool
+	RegistryFactory RegistryFactory
 }
+
+// RegistryFactory creates a rule registry for one scan execution.
+type RegistryFactory func() (*rules.Registry, error)
 
 // Result contains findings and effective configuration.
 type Result struct {
@@ -45,7 +49,11 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		return Result{}, fmt.Errorf("load config: %w", err)
 	}
 
-	registry, err := builtin.NewRegistry()
+	if req.RegistryFactory == nil {
+		return Result{}, fmt.Errorf("initialize rule registry: missing registry factory")
+	}
+
+	registry, err := req.RegistryFactory()
 	if err != nil {
 		return Result{}, fmt.Errorf("initialize rule registry: %w", err)
 	}

@@ -1,9 +1,13 @@
 package rulecatalog
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
+)
 
 func Test_RuleCatalog_List_ReturnsSortedRules(t *testing.T) {
-	ruleSet, err := List()
+	ruleSet, err := List(builtin.NewRegistry)
 	if err != nil {
 		t.Fatalf("list rules: %v", err)
 	}
@@ -18,11 +22,25 @@ func Test_RuleCatalog_List_ReturnsSortedRules(t *testing.T) {
 }
 
 func Test_RuleCatalog_Describe_UnknownRule(t *testing.T) {
-	_, exists, err := Describe("unknown-rule")
+	_, exists, err := Describe(builtin.NewRegistry, "unknown-rule")
 	if err != nil {
 		t.Fatalf("describe rule: %v", err)
 	}
 	if exists {
 		t.Fatal("expected unknown rule to not exist")
+	}
+}
+
+func Test_RuleCatalog_List_ReturnsErrorWhenRegistryFactoryMissing(t *testing.T) {
+	_, err := List(nil)
+	if err == nil {
+		t.Fatal("expected missing registry factory error")
+	}
+}
+
+func Test_RuleCatalog_Describe_ReturnsErrorWhenRegistryFactoryMissing(t *testing.T) {
+	_, _, err := Describe(nil, "no-zero-width")
+	if err == nil {
+		t.Fatal("expected missing registry factory error")
 	}
 }

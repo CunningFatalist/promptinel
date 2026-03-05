@@ -11,6 +11,7 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/baseline"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
+	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	internalscan "github.com/CunningFatalist/promptinel/internal/scan"
 	"github.com/spf13/cobra"
 )
@@ -304,8 +305,9 @@ func Test_Cmd_RunScanWithOptions_AppliesBaselineAndStaysPass(t *testing.T) {
 
 	baselinePath := filepath.Join(workingDir, "baseline.json")
 	initialResult, err := internalscan.Run(context.Background(), internalscan.Request{
-		Paths:    []string{filePath},
-		Discover: false,
+		Paths:           []string{filePath},
+		Discover:        false,
+		RegistryFactory: builtin.NewRegistry,
 	})
 	if err != nil {
 		t.Fatalf("run initial scan: %v", err)

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,5 +97,32 @@ func Test_Cmd_RunSanitize_ReturnsErrorForInvalidOptions(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "read sanitize options") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Cmd_RunSanitize_UsesCommandContext(t *testing.T) {
+	workingDir := t.TempDir()
+	file := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(file, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+
+	command := &cobra.Command{}
+	command.Flags().String("config", "", "")
+	command.Flags().Bool("no-config-discovery", false, "")
+	command.Flags().StringArray("include", nil, "")
+	command.Flags().StringArray("exclude", nil, "")
+	command.Flags().Bool("apply", false, "")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	command.SetContext(ctx)
+
+	err := runSanitize(command, []string{workingDir})
+	if err == nil {
+		t.Fatal("expected canceled context error")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
 	}
 }

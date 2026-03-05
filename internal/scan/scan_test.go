@@ -11,6 +11,7 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/engine"
+	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	internalsanitize "github.com/CunningFatalist/promptinel/internal/sanitize"
 )
 
@@ -35,11 +36,19 @@ func Test_Scan_Run_NoConfigDiscovery_IgnoresLocalConfig(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(previousWD) })
 
-	withDiscovery, err := Run(context.Background(), Request{Paths: []string{"."}, Discover: true})
+	withDiscovery, err := Run(context.Background(), Request{
+		Paths:           []string{"."},
+		Discover:        true,
+		RegistryFactory: builtin.NewRegistry,
+	})
 	if err != nil {
 		t.Fatalf("run shared scan with discovery: %v", err)
 	}
-	withoutDiscovery, err := Run(context.Background(), Request{Paths: []string{"."}, Discover: false})
+	withoutDiscovery, err := Run(context.Background(), Request{
+		Paths:           []string{"."},
+		Discover:        false,
+		RegistryFactory: builtin.NewRegistry,
+	})
 	if err != nil {
 		t.Fatalf("run shared scan without discovery: %v", err)
 	}
@@ -49,6 +58,19 @@ func Test_Scan_Run_NoConfigDiscovery_IgnoresLocalConfig(t *testing.T) {
 	}
 	if withoutDiscovery.Config.Policy.WarnOn != config.SeverityMedium {
 		t.Fatalf("expected default warn-on medium without discovery, got %s", withoutDiscovery.Config.Policy.WarnOn)
+	}
+}
+
+func Test_Scan_Run_ReturnsErrorWhenRegistryFactoryMissing(t *testing.T) {
+	_, err := Run(context.Background(), Request{
+		Paths:    []string{"."},
+		Discover: false,
+	})
+	if err == nil {
+		t.Fatal("expected missing registry factory error")
+	}
+	if !strings.Contains(err.Error(), "missing registry factory") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -67,9 +89,10 @@ func Test_Scan_Run_ConfigFiltersApplyWhenCLIFlagsUnset(t *testing.T) {
 	}
 
 	result, err := Run(context.Background(), Request{
-		Paths:      []string{workingDir},
-		ConfigFile: configPath,
-		Discover:   false,
+		Paths:           []string{workingDir},
+		ConfigFile:      configPath,
+		Discover:        false,
+		RegistryFactory: builtin.NewRegistry,
 	})
 	if err != nil {
 		t.Fatalf("run shared scan: %v", err)
@@ -97,11 +120,12 @@ func Test_Scan_Run_CLIIncludeOverridesConfigFilters(t *testing.T) {
 	}
 
 	result, err := Run(context.Background(), Request{
-		Paths:      []string{workingDir},
-		ConfigFile: configPath,
-		Discover:   false,
-		Include:    []string{"*.txt"},
-		IncludeSet: true,
+		Paths:           []string{workingDir},
+		ConfigFile:      configPath,
+		Discover:        false,
+		Include:         []string{"*.txt"},
+		IncludeSet:      true,
+		RegistryFactory: builtin.NewRegistry,
 	})
 	if err != nil {
 		t.Fatalf("run shared scan: %v", err)
@@ -126,8 +150,9 @@ func Test_Scan_Run_ReturnsRawAndReportableFindingsSeparately(t *testing.T) {
 	}
 
 	result, err := Run(context.Background(), Request{
-		Paths:    []string{link},
-		Discover: false,
+		Paths:           []string{link},
+		Discover:        false,
+		RegistryFactory: builtin.NewRegistry,
 	})
 	if err != nil {
 		t.Fatalf("run scan: %v", err)
@@ -157,9 +182,10 @@ func Test_Scan_Run_OversizedSkipsRemainInformationalAndVisible(t *testing.T) {
 	}
 
 	result, err := Run(context.Background(), Request{
-		Paths:      []string{filePath},
-		ConfigFile: configPath,
-		Discover:   false,
+		Paths:           []string{filePath},
+		ConfigFile:      configPath,
+		Discover:        false,
+		RegistryFactory: builtin.NewRegistry,
 	})
 	if err != nil {
 		t.Fatalf("run scan: %v", err)
@@ -199,16 +225,17 @@ func Test_Scan_Run_FileTargetingMatchesSanitizeForEquivalentPatterns(t *testing.
 	}
 
 	scanResult, err := Run(context.Background(), Request{
-		Paths:      []string{workingDir},
-		Discover:   false,
-		Include:    include,
-		IncludeSet: true,
+		Paths:           []string{workingDir},
+		Discover:        false,
+		Include:         include,
+		IncludeSet:      true,
+		RegistryFactory: builtin.NewRegistry,
 	})
 	if err != nil {
 		t.Fatalf("run scan: %v", err)
 	}
 
-	sanitizeResult, err := internalsanitize.Run(internalsanitize.Request{
+	sanitizeResult, err := internalsanitize.Run(context.Background(), internalsanitize.Request{
 		Paths:      []string{workingDir},
 		Discover:   false,
 		Include:    include,

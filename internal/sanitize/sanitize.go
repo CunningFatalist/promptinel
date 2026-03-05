@@ -1,6 +1,7 @@
 package sanitize
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -61,10 +62,20 @@ type Result struct {
 }
 
 // Run executes sanitize workflow.
-func Run(req Request) (Result, error) {
+func Run(ctx context.Context, req Request) (Result, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
+
 	cfg, err := config.LoadWithOptions(req.ConfigFile, config.LoadOptions{Discover: req.Discover})
 	if err != nil {
 		return Result{}, fmt.Errorf("load config: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
 	}
 
 	includes, excludes := filters.ResolveEffective(cfg, req.Include, req.Exclude, req.IncludeSet, req.ExcludeSet)
@@ -72,14 +83,24 @@ func Run(req Request) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("collect files: %w", err)
 	}
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
 
 	result := Result{Events: make([]Event, 0, len(targets)+len(skippedDuringDiscovery))}
 	for _, skipped := range skippedDuringDiscovery {
+		if err := ctx.Err(); err != nil {
+			return Result{}, err
+		}
 		result.Events = append(result.Events, Event{Path: skipped.RelativePath, Action: ActionSkipped, Reason: skipped.Reason})
 		result.Summary.Skipped++
 	}
 
 	for _, target := range targets {
+		if err := ctx.Err(); err != nil {
+			return Result{}, err
+		}
+
 		info, statErr := os.Lstat(target.AbsolutePath)
 		if statErr != nil {
 			if errors.Is(statErr, os.ErrNotExist) {
@@ -125,6 +146,10 @@ func Run(req Request) (Result, error) {
 
 		action := ActionWouldSanitize
 		if req.Apply {
+			if err := ctx.Err(); err != nil {
+				return Result{}, err
+			}
+
 			latestInfo, latestErr := os.Lstat(target.AbsolutePath)
 			if latestErr != nil {
 				if errors.Is(latestErr, os.ErrNotExist) {

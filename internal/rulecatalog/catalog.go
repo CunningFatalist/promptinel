@@ -5,12 +5,18 @@ import (
 	"sort"
 
 	"github.com/CunningFatalist/promptinel/internal/rules"
-	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 )
 
+// RegistryFactory creates a rule registry for catalog operations.
+type RegistryFactory func() (*rules.Registry, error)
+
 // List returns all built-in rule metadata sorted by rule id.
-func List() ([]rules.Metadata, error) {
-	registry, err := builtin.NewRegistry()
+func List(registryFactory RegistryFactory) ([]rules.Metadata, error) {
+	if registryFactory == nil {
+		return nil, fmt.Errorf("initialize rule registry: missing registry factory")
+	}
+
+	registry, err := registryFactory()
 	if err != nil {
 		return nil, fmt.Errorf("initialize rule registry: %w", err)
 	}
@@ -23,8 +29,12 @@ func List() ([]rules.Metadata, error) {
 }
 
 // Describe returns metadata for a single built-in rule by id.
-func Describe(id string) (rules.Metadata, bool, error) {
-	registry, err := builtin.NewRegistry()
+func Describe(registryFactory RegistryFactory, id string) (rules.Metadata, bool, error) {
+	if registryFactory == nil {
+		return rules.Metadata{}, false, fmt.Errorf("initialize rule registry: missing registry factory")
+	}
+
+	registry, err := registryFactory()
 	if err != nil {
 		return rules.Metadata{}, false, fmt.Errorf("initialize rule registry: %w", err)
 	}

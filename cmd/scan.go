@@ -9,6 +9,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/baseline"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
 	"github.com/CunningFatalist/promptinel/internal/report"
+	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	internalscan "github.com/CunningFatalist/promptinel/internal/scan"
 	"github.com/CunningFatalist/promptinel/internal/util"
 	"github.com/spf13/cobra"
@@ -105,13 +106,14 @@ func parseScanOutputFormat(raw string) (scanOutputFormat, error) {
 
 func buildScanRequest(args []string, options scanOptions) internalscan.Request {
 	return internalscan.Request{
-		Paths:      args,
-		ConfigFile: options.configFile,
-		Discover:   !options.noConfigDiscovery,
-		Include:    options.includes,
-		Exclude:    options.excludes,
-		IncludeSet: options.includeSet,
-		ExcludeSet: options.excludeSet,
+		Paths:           args,
+		ConfigFile:      options.configFile,
+		Discover:        !options.noConfigDiscovery,
+		Include:         options.includes,
+		Exclude:         options.excludes,
+		IncludeSet:      options.includeSet,
+		ExcludeSet:      options.excludeSet,
+		RegistryFactory: builtin.NewRegistry,
 	}
 }
 

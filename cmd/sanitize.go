@@ -45,7 +45,7 @@ func runSanitize(cmd *cobra.Command, args []string) error {
 	}
 
 	request := buildSanitizeRequest(args, options)
-	result, err := internalsanitize.Run(request)
+	result, err := internalsanitize.Run(cmd.Context(), request)
 	if err != nil {
 		return err
 	}
