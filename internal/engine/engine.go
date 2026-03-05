@@ -130,15 +130,12 @@ func (s *Scanner) scanTargets(ctx context.Context, targets []scanTarget, scopeRo
 		return nil, nil
 	}
 
-	workerCount := max(runtime.GOMAXPROCS(0), 1)
-	if workerCount > len(targets) {
-		workerCount = len(targets)
-	}
+	workerCount := min(max(runtime.GOMAXPROCS(0), 1), len(targets))
 
 	jobs := make(chan scanTarget)
 	results := make(chan scanResult, len(targets))
 	var workerGroup sync.WaitGroup
-	for i := 0; i < workerCount; i++ {
+	for range workerCount {
 		workerGroup.Go(func() {
 			for {
 				select {
@@ -266,8 +263,18 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 	scope := s.scopeForFile(target.relativePath, target.absolutePath, scopeRoots)
 	findings := make([]FileFinding, 0, len(ruleFindings))
 	for _, ruleFinding := range ruleFindings {
+		scopedRuleOverride, hasScopedRuleOverride := getScopeRuleOverride(scope, ruleFinding.ID)
+		if hasScopedRuleOverride && scopedRuleOverride.Enabled != nil && !*scopedRuleOverride.Enabled {
+			continue
+		}
+
 		if scope != nil {
-			ruleFinding.Severity = scope.Severity
+			if scope.Severity != "" {
+				ruleFinding.Severity = scope.Severity
+			}
+			if hasScopedRuleOverride && scopedRuleOverride.Severity != "" {
+				ruleFinding.Severity = scopedRuleOverride.Severity
+			}
 		}
 		findings = append(findings, FileFinding{
 			Path:    target.relativePath,
@@ -301,6 +308,20 @@ func (s *Scanner) scopeForFile(relativePath string, absolutePath string, roots [
 	}
 
 	return nil
+}
+
+func getScopeRuleOverride(scope *config.Scope, ruleID string) (config.Rule, bool) {
+	if scope == nil {
+		return config.Rule{}, false
+	}
+
+	for _, scopedRule := range scope.Rules {
+		if scopedRule.ID == ruleID {
+			return scopedRule, true
+		}
+	}
+
+	return config.Rule{}, false
 }
 
 func resolveScopeRoots(paths []string) []string {

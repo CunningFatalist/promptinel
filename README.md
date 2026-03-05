@@ -274,6 +274,9 @@ filters:
 scopes:
   - path: agents/**
     severity: high
+    rules:
+      - id: no-bidi-control-characters
+        severity: high
 
   - path: skills/**
     severity: high
@@ -283,6 +286,11 @@ scopes:
 
   - path: docs/**
     severity: low
+    rules:
+      - id: no-unsafe-templates
+        enabled: false
+      - id: no-bidi-control-characters
+        severity: medium
 
 rules:
   - id: no-bidi-control-characters
@@ -460,7 +468,7 @@ Files above the limit are skipped and always surfaced in scan output under
 
 ### Scopes
 
-You may adjust severity based on location.
+You may adjust severity and per-rule behavior based on location.
 The `path` field uses the same glob semantics as the guide above.
 
 ```yaml
@@ -470,7 +478,27 @@ scopes:
 
   - path: docs/**
     severity: low
+    rules:
+      - id: no-unsafe-templates
+        enabled: false
+      - id: no-bidi-control-characters
+        severity: medium
 ```
+
+Scope precedence is deterministic:
+
+- all matching scopes are evaluated in declaration order
+- later matching scopes override earlier ones (**Last-Match-Wins**)
+- within a file: global `rules[]` defaults are resolved first, then scope `severity`, then `scopes[].rules[]` per-rule overrides
+
+`Last-Match-Wins` applies to both:
+
+- scope-level `severity`
+- per-rule overrides in `scopes[].rules[]` for the same `id` (merged field-by-field for `enabled` and `severity`)
+
+For per-rule overrides, only explicitly set fields in later scopes replace earlier values.
+Example: a later scope that only sets `severity` keeps the previous `enabled` value unchanged.
+To re-enable a previously disabled rule, set `enabled: true` explicitly in a later matching scope.
 
 ### Built-In Rules
 

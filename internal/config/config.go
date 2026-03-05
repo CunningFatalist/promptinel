@@ -74,6 +74,7 @@ type Filters struct {
 type Scope struct {
 	Path     string   `mapstructure:"path"`
 	Severity Severity `mapstructure:"severity"`
+	Rules    []Rule   `mapstructure:"rules"`
 }
 
 // Rule defines a built-in security rule configuration.
@@ -340,11 +341,19 @@ func (c *Config) Validate() error {
 	}
 
 	for i, scope := range c.Scopes {
-		if !scope.Severity.IsValid() {
+		if scope.Severity != "" && !scope.Severity.IsValid() {
 			return fmt.Errorf("invalid severity for scope[%d]: %s", i, scope.Severity)
 		}
 		if _, err := filepath.Match(scope.Path, ""); err != nil {
 			return fmt.Errorf("invalid glob pattern for scope[%d]: %s", i, scope.Path)
+		}
+		for j, scopedRule := range scope.Rules {
+			if scopedRule.ID == "" {
+				return fmt.Errorf("scope[%d].rules[%d] has empty id", i, j)
+			}
+			if scopedRule.Severity != "" && !scopedRule.Severity.IsValid() {
+				return fmt.Errorf("invalid severity for scope[%d].rules[%d]: %s", i, j, scopedRule.Severity)
+			}
 		}
 	}
 
@@ -403,6 +412,19 @@ func validateUniqueCustomRuleIDs(customRules []CustomRule) error {
 	return nil
 }
 
+// ValidateScopedRuleIDs validates that scoped rule overrides reference known rule IDs.
+func (c *Config) ValidateScopedRuleIDs(knownRuleIDs map[string]struct{}) error {
+	for i, scope := range c.Scopes {
+		for j, scopedRule := range scope.Rules {
+			if _, exists := knownRuleIDs[scopedRule.ID]; !exists {
+				return fmt.Errorf("unknown rule id %q at scopes[%d].rules[%d]", scopedRule.ID, i, j)
+			}
+		}
+	}
+
+	return nil
+}
+
 // GetRuleByID returns the rule with the given ID, or nil if not found.
 func (c *Config) GetRuleByID(id string) *Rule {
 	for i := range c.Rules {
@@ -423,12 +445,63 @@ func (c *Config) GetCustomRuleByID(id string) *CustomRule {
 	return nil
 }
 
-// GetScopeForPath returns the scope matching the given path, or nil if no match.
+// GetScopeForPath returns the effective scope for the given path.
+// For overlapping scopes, matching entries are merged in order and later scopes override earlier ones.
 func (c *Config) GetScopeForPath(path string) *Scope {
-	for i := range c.Scopes {
-		if pathmatch.Match(c.Scopes[i].Path, path) {
-			return &c.Scopes[i]
+	var effective Scope
+	matched := false
+
+	for _, scope := range c.Scopes {
+		if !pathmatch.Match(scope.Path, path) {
+			continue
 		}
+
+		matched = true
+		effective.Path = scope.Path
+		if scope.Severity != "" {
+			effective.Severity = scope.Severity
+		}
+		effective.Rules = mergeRuleOverrides(effective.Rules, scope.Rules)
 	}
-	return nil
+
+	if !matched {
+		return nil
+	}
+
+	return &effective
+}
+
+func mergeRuleOverrides(base []Rule, overrides []Rule) []Rule {
+	if len(overrides) == 0 {
+		return base
+	}
+
+	merged := append([]Rule(nil), base...)
+	indexByID := make(map[string]int, len(merged))
+	for i, rule := range merged {
+		indexByID[rule.ID] = i
+	}
+
+	for _, override := range overrides {
+		if idx, exists := indexByID[override.ID]; exists {
+			merged[idx] = mergeRuleOverride(merged[idx], override)
+			continue
+		}
+		indexByID[override.ID] = len(merged)
+		merged = append(merged, override)
+	}
+
+	return merged
+}
+
+func mergeRuleOverride(current Rule, override Rule) Rule {
+	merged := current
+	merged.ID = override.ID
+	if override.Enabled != nil {
+		merged.Enabled = override.Enabled
+	}
+	if override.Severity != "" {
+		merged.Severity = override.Severity
+	}
+	return merged
 }

@@ -287,6 +287,9 @@ filters:
 scopes:
   - path: agents/**
     severity: high
+    rules:
+      - id: no-zero-width
+        enabled: false
   - path: docs/**
     severity: low
 
@@ -327,6 +330,10 @@ custom-rules:
 	require.Len(t, cfg.Scopes, 2)
 	assert.Equal(t, "agents/**", cfg.Scopes[0].Path)
 	assert.Equal(t, SeverityHigh, cfg.Scopes[0].Severity)
+	require.Len(t, cfg.Scopes[0].Rules, 1)
+	assert.Equal(t, "no-zero-width", cfg.Scopes[0].Rules[0].ID)
+	require.NotNil(t, cfg.Scopes[0].Rules[0].Enabled)
+	assert.False(t, *cfg.Scopes[0].Rules[0].Enabled)
 	assert.Equal(t, "docs/**", cfg.Scopes[1].Path)
 	assert.Equal(t, SeverityLow, cfg.Scopes[1].Severity)
 
@@ -536,6 +543,34 @@ func Test_Config_Validate_InvalidScopeGlobPattern(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid glob pattern for scope")
 }
 
+func Test_Config_Validate_ScopeRuleWithEmptyID(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Scopes = []Scope{{
+		Path: "docs/**",
+		Rules: []Rule{
+			{ID: "", Severity: SeverityLow},
+		},
+	}}
+
+	err := cfg.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "scope[0].rules[0] has empty id")
+}
+
+func Test_Config_Validate_InvalidScopeRuleSeverity(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Scopes = []Scope{{
+		Path: "docs/**",
+		Rules: []Rule{
+			{ID: "no-zero-width", Severity: "invalid"},
+		},
+	}}
+
+	err := cfg.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid severity for scope[0].rules[0]")
+}
+
 func Test_Config_Validate_InvalidIncludeFilterGlobPattern(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.Filters.Include = []string{"test["}
@@ -688,4 +723,83 @@ func Test_Config_GetScopeForPath(t *testing.T) {
 
 	scope = cfg.GetScopeForPath("other/file.md")
 	assert.Nil(t, scope)
+}
+
+func Test_Config_GetScopeForPath_OverlappingScopes_LastWins(t *testing.T) {
+	cfg := DefaultConfig()
+	disabled := false
+	cfg.Scopes = []Scope{
+		{
+			Path:     "docs/**",
+			Severity: SeverityLow,
+			Rules: []Rule{
+				{ID: "no-unsafe-templates", Enabled: &disabled},
+				{ID: "no-bidi-control-characters", Severity: SeverityLow},
+			},
+		},
+		{
+			Path:     "docs/security/**",
+			Severity: SeverityHigh,
+			Rules: []Rule{
+				{ID: "no-bidi-control-characters", Severity: SeverityMedium},
+			},
+		},
+	}
+
+	scope := cfg.GetScopeForPath("docs/security/model.md")
+	require.NotNil(t, scope)
+	assert.Equal(t, "docs/security/**", scope.Path)
+	assert.Equal(t, SeverityHigh, scope.Severity)
+	require.Len(t, scope.Rules, 2)
+	assert.Equal(t, "no-unsafe-templates", scope.Rules[0].ID)
+	require.NotNil(t, scope.Rules[0].Enabled)
+	assert.False(t, *scope.Rules[0].Enabled)
+	assert.Equal(t, "no-bidi-control-characters", scope.Rules[1].ID)
+	assert.Equal(t, SeverityMedium, scope.Rules[1].Severity)
+}
+
+func Test_Config_GetScopeForPath_OverlappingScopeRuleOverrides_MergesFields(t *testing.T) {
+	cfg := DefaultConfig()
+	disabled := false
+	cfg.Scopes = []Scope{
+		{
+			Path: "docs/**",
+			Rules: []Rule{
+				{ID: "no-bidi-control-characters", Enabled: &disabled, Severity: SeverityLow},
+			},
+		},
+		{
+			Path: "docs/security/**",
+			Rules: []Rule{
+				{ID: "no-bidi-control-characters", Severity: SeverityHigh},
+			},
+		},
+	}
+
+	scope := cfg.GetScopeForPath("docs/security/model.md")
+	require.NotNil(t, scope)
+	require.Len(t, scope.Rules, 1)
+	assert.Equal(t, "no-bidi-control-characters", scope.Rules[0].ID)
+	require.NotNil(t, scope.Rules[0].Enabled)
+	assert.False(t, *scope.Rules[0].Enabled)
+	assert.Equal(t, SeverityHigh, scope.Rules[0].Severity)
+}
+
+func Test_Config_ValidateScopedRuleIDs_RejectsUnknownRule(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Scopes = []Scope{
+		{
+			Path: "docs/**",
+			Rules: []Rule{
+				{ID: "unknown-rule"},
+			},
+		},
+	}
+
+	err := cfg.ValidateScopedRuleIDs(map[string]struct{}{
+		"no-unsafe-templates": {},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown rule id")
+	assert.Contains(t, err.Error(), "scopes[0].rules[0]")
 }

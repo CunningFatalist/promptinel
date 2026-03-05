@@ -76,7 +76,7 @@ func Test_Engine_ScanPaths_CancellationReturnsPromptlyOnLargeInputSet(t *testing
 	tmp := t.TempDir()
 	totalFiles := max(runtime.GOMAXPROCS(0)*4, 8)
 
-	for i := 0; i < totalFiles; i++ {
+	for i := range totalFiles {
 		file := filepath.Join(tmp, fmt.Sprintf("file-%03d.md", i))
 		require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
 	}
@@ -224,6 +224,190 @@ func Test_Engine_ScanPaths_AppliesScopeSeverityOverride_WhenWorkingDirectoryDiff
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
 	assert.Equal(t, config.SeverityLow, findings[0].Severity)
+}
+
+func Test_Engine_ScanPaths_AppliesScopedRuleDisable(t *testing.T) {
+	tmp := t.TempDir()
+	file := filepath.Join(tmp, "docs", "file.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(file), 0o755))
+	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
+
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("rule-a", config.SeverityMedium, "a"))
+	require.NoError(t, err)
+	err = registry.Register(newAlwaysRule("rule-b", config.SeverityMedium, "b"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	disabled := false
+	cfg := config.DefaultConfig()
+	cfg.Scopes = []config.Scope{
+		{
+			Path: "docs/**",
+			Rules: []config.Rule{
+				{ID: "rule-a", Enabled: &disabled},
+			},
+		},
+	}
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanPaths(context.Background(), []string{tmp}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, "rule-b", findings[0].ID)
+}
+
+func Test_Engine_ScanPaths_AppliesScopedRuleSeverityOverride(t *testing.T) {
+	tmp := t.TempDir()
+	file := filepath.Join(tmp, "docs", "file.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(file), 0o755))
+	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
+
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("rule-a", config.SeverityHigh, "a"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	cfg := config.DefaultConfig()
+	cfg.Scopes = []config.Scope{
+		{
+			Path:     "docs/**",
+			Severity: config.SeverityLow,
+			Rules: []config.Rule{
+				{ID: "rule-a", Severity: config.SeverityMedium},
+			},
+		},
+	}
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanPaths(context.Background(), []string{tmp}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, config.SeverityMedium, findings[0].Severity)
+}
+
+func Test_Engine_ScanPaths_AppliesOverlappingScopePrecedence_LastWins(t *testing.T) {
+	tmp := t.TempDir()
+	rootFile := filepath.Join(tmp, "docs", "root.md")
+	securityFile := filepath.Join(tmp, "docs", "security", "deep.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(securityFile), 0o755))
+	require.NoError(t, os.WriteFile(rootFile, []byte("x"), 0o644))
+	require.NoError(t, os.WriteFile(securityFile, []byte("x"), 0o644))
+
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("rule-a", config.SeverityMedium, "a"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	disabled := false
+	enabled := true
+	cfg := config.DefaultConfig()
+	cfg.Scopes = []config.Scope{
+		{
+			Path: "docs/**",
+			Rules: []config.Rule{
+				{ID: "rule-a", Enabled: &disabled},
+			},
+		},
+		{
+			Path: "docs/security/**",
+			Rules: []config.Rule{
+				{ID: "rule-a", Enabled: &enabled, Severity: config.SeverityHigh},
+			},
+		},
+	}
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanPaths(context.Background(), []string{tmp}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Contains(t, filepath.ToSlash(findings[0].Path), "docs/security/deep.md")
+	assert.Equal(t, config.SeverityHigh, findings[0].Severity)
+}
+
+func Test_Engine_ScanPaths_AppliesMultipleScopedRuleOverrides_LastWins(t *testing.T) {
+	tmp := t.TempDir()
+	securityFile := filepath.Join(tmp, "docs", "security", "note.md")
+	criticalFile := filepath.Join(tmp, "docs", "security", "critical", "runbook.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(criticalFile), 0o755))
+	require.NoError(t, os.WriteFile(securityFile, []byte("x"), 0o644))
+	require.NoError(t, os.WriteFile(criticalFile, []byte("x"), 0o644))
+
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("rule-a", config.SeverityLow, "a"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	enabled := true
+	disabled := false
+	cfg := config.DefaultConfig()
+	cfg.Scopes = []config.Scope{
+		{
+			Path: "docs/**",
+			Rules: []config.Rule{
+				{ID: "rule-a", Enabled: &enabled, Severity: config.SeverityLow},
+			},
+		},
+		{
+			Path: "docs/security/**",
+			Rules: []config.Rule{
+				{ID: "rule-a", Enabled: &disabled, Severity: config.SeverityMedium},
+			},
+		},
+		{
+			Path: "docs/security/critical/**",
+			Rules: []config.Rule{
+				{ID: "rule-a", Enabled: &enabled, Severity: config.SeverityHigh},
+			},
+		},
+	}
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanPaths(context.Background(), []string{tmp}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Contains(t, filepath.ToSlash(findings[0].Path), "docs/security/critical/runbook.md")
+	assert.Equal(t, "rule-a", findings[0].ID)
+	assert.Equal(t, config.SeverityHigh, findings[0].Severity)
+}
+
+func Test_Engine_ScanPaths_PreservesScopedRuleDisableOnSeverityOnlyOverride(t *testing.T) {
+	tmp := t.TempDir()
+	file := filepath.Join(tmp, "docs", "security", "deep.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(file), 0o755))
+	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
+
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("rule-a", config.SeverityLow, "a"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	disabled := false
+	cfg := config.DefaultConfig()
+	cfg.Scopes = []config.Scope{
+		{
+			Path: "docs/**",
+			Rules: []config.Rule{
+				{ID: "rule-a", Enabled: &disabled},
+			},
+		},
+		{
+			Path: "docs/security/**",
+			Rules: []config.Rule{
+				{ID: "rule-a", Severity: config.SeverityHigh},
+			},
+		},
+	}
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanPaths(context.Background(), []string{tmp}, nil, nil)
+	require.NoError(t, err)
+	assert.Empty(t, findings)
 }
 
 func Test_Engine_ScanPaths_PreservesInputOrderWithConcurrentWorkers(t *testing.T) {

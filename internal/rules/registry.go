@@ -85,6 +85,9 @@ func (r *Registry) Compile(cfg *config.Config) ([]CompiledRule, error) {
 	if r == nil {
 		return nil, fmt.Errorf("registry is nil")
 	}
+	if err := validateScopedRuleIDs(cfg, r); err != nil {
+		return nil, err
+	}
 
 	compiled := make([]CompiledRule, 0, len(r.ordered))
 	usedIDs := make(map[string]struct{}, len(r.ordered))
@@ -139,6 +142,22 @@ func (r *Registry) Compile(cfg *config.Config) ([]CompiledRule, error) {
 	}
 
 	return compiled, nil
+}
+
+func validateScopedRuleIDs(cfg *config.Config, registry *Registry) error {
+	if cfg == nil {
+		return nil
+	}
+
+	knownRuleIDs := make(map[string]struct{}, len(registry.ordered)+len(cfg.CustomRules))
+	for _, entry := range registry.ordered {
+		knownRuleIDs[entry.metadata.ID] = struct{}{}
+	}
+	for _, customRule := range cfg.CustomRules {
+		knownRuleIDs[customRule.ID] = struct{}{}
+	}
+
+	return cfg.ValidateScopedRuleIDs(knownRuleIDs)
 }
 
 func compileRule(rule Rule, id string, severity config.Severity) CompiledRule {

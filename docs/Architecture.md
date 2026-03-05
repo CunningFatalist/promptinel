@@ -29,7 +29,7 @@ flowchart TD
 - `internal/filters`: glob validation and include/exclude resolution
 - `internal/files`: shared file discovery and deterministic target collection
 - `internal/scan`: shared scan workflow used by `scan` and `baseline`
-- `internal/engine`: concurrent per-file scanning and scope severity override application
+- `internal/engine`: concurrent per-file scanning and scope override application (scope severity + field-wise per-rule overrides)
 - `internal/rules`: rule contracts, compilation, and deterministic phase-based evaluation
 - `internal/rules/builtin`: built-in security rule implementations and registry
 - `internal/lexer`: UTF-8 lexical analysis and token classification
@@ -86,6 +86,20 @@ Rules are capability-based via phase-specific interfaces:
 - combined environment + trust effects
 
 This keeps detection aligned to deployment capability assumptions while remaining conservative for untrusted/tainted inputs.
+
+### Scope Override Precedence
+
+Scope resolution uses deterministic **Last-Match-Wins** semantics:
+
+- all scopes that match a file path are considered in declaration order
+- later matching scopes override earlier matching scopes
+- this applies to scope-level `severity` and per-rule entries in `scopes[].rules[]` for the same rule `id`
+
+Effective precedence per finding is:
+
+1. compiled global rule config (`rules[]`)
+2. effective scope `severity`
+3. effective per-rule scope override (`scopes[].rules[]`)
 
 ### Output Architecture
 

@@ -107,6 +107,28 @@ func Test_Rules_Compile_RejectsInvalidResolvedSeverity(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_Rules_Compile_RejectsUnknownScopedRuleID(t *testing.T) {
+	registry := NewRegistry()
+	err := registry.Register(documentTestRule{
+		meta: Metadata{ID: "known", DefaultSeverity: config.SeverityLow},
+	})
+	require.NoError(t, err)
+
+	_, err = registry.Compile(&config.Config{
+		Scopes: []config.Scope{
+			{
+				Path: "docs/**",
+				Rules: []config.Rule{
+					{ID: "unknown"},
+				},
+			},
+		},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown rule id")
+	assert.Contains(t, err.Error(), "scopes[0].rules[0]")
+}
+
 func Test_Rules_Compile_RejectsInvalidCustomRegex(t *testing.T) {
 	registry := NewRegistry()
 	_, err := registry.Compile(&config.Config{CustomRules: []config.CustomRule{{
