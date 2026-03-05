@@ -678,6 +678,50 @@ Stay safe, and happy coding! ✌️
 
 ---
 
+## How Promptinel Compares to Other Tools
+
+Promptinel performs static analysis before a prompt ever reaches an LLM.
+
+It enforces structure, policy, and quality at development time, not at runtime.
+
+What this means in practice:
+
+- runs in CI/CD
+- deterministic, rule-based validation
+- zero runtime latency
+- fully free and open source
+- designed to complement, not replace, runtime systems
+
+Promptinel shifts governance left. It prevents flawed prompts from being deployed.
+It can be combined with any runtime guardrail, firewall, or orchestration framework.
+
+### How It Differs From Other Tools
+
+- Guardrails AI: 
+  runtime input/output validation and automatic repair; 
+  operates after prompt execution and adds runtime overhead.
+- LangChain middleware and runtime guardrails: 
+  runtime orchestration and filtering inside execution chains; 
+  focused on flow control and live validation, not CI linting.
+- Rebuff and LLM firewalls: 
+  runtime detection of prompt injection and adversarial inputs; 
+  reactive mitigation rather than preventative authoring checks.
+- LLM orchestration frameworks (for example LangChain and LlamaIndex): 
+  composition frameworks for prompts, tools, and memory; 
+  execution systems rather than governance scanners.
+
+### Why They Do Not Directly Compete
+
+Runtime tools primarily act during execution. 
+Promptinel acts _before_ execution.
+
+Runtime tools mitigate live abuse and runtime risk.
+Promptinel tries to prevent flawed prompts from ever reaching runtime.
+
+Promptinel is complementary infrastructure, not a competing runtime system.
+
+---
+
 ## Image Credits
 
 The logo was created with ChatGPT and refined with Nano Banana.
