@@ -301,7 +301,12 @@ func Test_Report_WriteSanitizeText_WritesEventsAndSummary(t *testing.T) {
 	rendered := output.String()
 	assert.Contains(t, rendered, "a.md: would sanitize (line_endings=1, zero_width=2)")
 	assert.Contains(t, rendered, "b.md: skipped (non-regular file)")
-	assert.Contains(t, rendered, "Summary: files=2 changed=1 skipped=1 line_endings=1 zero_width=2")
+	assert.Contains(t, rendered, "Summary:")
+	assert.Contains(t, rendered, " - files: 2")
+	assert.Contains(t, rendered, " - changed: 1")
+	assert.Contains(t, rendered, " - skipped: 1")
+	assert.Contains(t, rendered, " - line_endings: 1")
+	assert.Contains(t, rendered, " - zero_width: 2")
 	assert.Contains(t, rendered, "Re-run with --apply to persist changes.")
 }
 

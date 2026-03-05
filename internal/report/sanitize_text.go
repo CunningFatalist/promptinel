@@ -38,15 +38,22 @@ func WriteSanitizeText(w io.Writer, result sanitize.Result) error {
 		}
 	}
 
-	if _, err := fmt.Fprintf(
-		w,
-		"\nSummary: files=%d changed=%d skipped=%d line_endings=%d zero_width=%d\n",
-		result.Summary.Files,
-		result.Summary.Changed,
-		result.Summary.Skipped,
-		result.Summary.LineEndingsNormalized,
-		result.Summary.ZeroWidthRunesStripped,
-	); err != nil {
+	if _, err := fmt.Fprintln(w, "Summary:"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, " - files: %d\n", result.Summary.Files); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, " - changed: %d\n", result.Summary.Changed); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, " - skipped: %d\n", result.Summary.Skipped); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, " - line_endings: %d\n", result.Summary.LineEndingsNormalized); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, " - zero_width: %d\n", result.Summary.ZeroWidthRunesStripped); err != nil {
 		return err
 	}
 	if result.Summary.Changed > 0 && !result.Summary.Applied {

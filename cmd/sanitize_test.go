@@ -77,7 +77,7 @@ func Test_Cmd_RunSanitize_SucceedsAndWritesReport(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(output, "Summary: files=") {
+	if !strings.Contains(output, "Summary:\n - files:") {
 		t.Fatalf("expected sanitize summary in output, got:\n%s", output)
 	}
 }
