@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rulecatalog"
@@ -41,6 +42,18 @@ var rulesDescribeCmd = &cobra.Command{
 }
 
 func runRulesList(_ *cobra.Command, _ []string) error {
+	return runRulesListWithOptions(rulesListOptions{
+		ShowDescription: rulesListShowDescription,
+	})
+}
+
+type rulesListOptions struct {
+	ShowDescription bool
+}
+
+var rulesListShowDescription bool
+
+func runRulesListWithOptions(options rulesListOptions) error {
 	ruleSet, err := rulecatalog.List(builtin.NewRegistry)
 	if err != nil {
 		return err
@@ -50,6 +63,10 @@ func runRulesList(_ *cobra.Command, _ []string) error {
 	for _, meta := range ruleSet {
 		severityLabel := util.PadRight(meta.DefaultSeverity.String(), maxSeverityWidth)
 		fmt.Printf("[ %s ] %s %s\n", addColorToSeverityLabel(meta.DefaultSeverity, severityLabel), addColorToID(meta.ID), meta.Summary)
+		if options.ShowDescription {
+			indent := len(fmt.Sprintf("[ %s ] ", severityLabel))
+			fmt.Printf("%s%s\n", strings.Repeat(" ", indent), meta.Description)
+		}
 	}
 	return nil
 }
@@ -104,6 +121,12 @@ func addColorToSeverityLabel(severity config.Severity, severityLabel string) str
 }
 
 func init() {
+	rulesListCmd.Flags().BoolVar(
+		&rulesListShowDescription,
+		"description",
+		false,
+		"show each rule's description on an additional line",
+	)
 	rulesCmd.AddCommand(rulesListCmd)
 	rulesCmd.AddCommand(rulesDescribeCmd)
 	rootCmd.AddCommand(rulesCmd)

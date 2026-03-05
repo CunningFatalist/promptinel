@@ -168,6 +168,9 @@ promptinel sanitize --exclude "*.yaml" --apply prompts/
 # List all available rules
 promptinel rules list
 
+# List all available rules and include full descriptions
+promptinel rules list --description
+
 # Explain the no-unsafe-templates rule
 promptinel rules describe no-unsafe-templates
 ```

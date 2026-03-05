@@ -20,7 +20,7 @@ func Test_Cmd_RulesListCommand_OutputIsSorted(t *testing.T) {
 	})
 
 	output := captureStdout(t, func() {
-		if err := runRulesList(nil, nil); err != nil {
+		if err := runRulesListWithOptions(rulesListOptions{}); err != nil {
 			t.Fatalf("run rules list: %v", err)
 		}
 	})
@@ -62,6 +62,80 @@ func Test_Cmd_RulesListCommand_OutputIsSorted(t *testing.T) {
 		if len(severityLabel) != maxSeverityWordLength {
 			t.Fatalf("expected severity label %q to be padded to width %d", severityLabel, maxSeverityWordLength)
 		}
+	}
+}
+
+func Test_Cmd_RulesListCommand_WithDescription_PrintsSecondAlignedLine(t *testing.T) {
+	previousNoColor := color.NoColor
+	color.NoColor = true
+	t.Cleanup(func() {
+		color.NoColor = previousNoColor
+	})
+
+	output := captureStdout(t, func() {
+		if err := runRulesListWithOptions(rulesListOptions{
+			ShowDescription: true,
+		}); err != nil {
+			t.Fatalf("run rules list with description: %v", err)
+		}
+	})
+
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	registry, err := builtin.NewRegistry()
+	if err != nil {
+		t.Fatalf("initialize builtin rule registry: %v", err)
+	}
+
+	expectedRuleCount := len(registry.List())
+	if len(lines) != expectedRuleCount*2 {
+		t.Fatalf("expected %d lines, got %d (%q)", expectedRuleCount*2, len(lines), output)
+	}
+
+	headerPattern := regexp.MustCompile(`^\[ ([^]]+) \] [^ ]+ `)
+	for idx := 0; idx < len(lines); idx += 2 {
+		headerLine := lines[idx]
+		descriptionLine := lines[idx+1]
+		matches := headerPattern.FindStringSubmatch(headerLine)
+		if len(matches) != 2 {
+			t.Fatalf("expected bracketed severity line, got %q", headerLine)
+		}
+
+		indent := len("[ " + matches[1] + " ] ")
+		if len(descriptionLine) <= indent {
+			t.Fatalf("expected description line to contain indentation and text, got %q", descriptionLine)
+		}
+		if descriptionLine[:indent] != strings.Repeat(" ", indent) {
+			t.Fatalf("expected description line %q to be indented by %d spaces", descriptionLine, indent)
+		}
+	}
+}
+
+func Test_Cmd_RulesListCommand_WithDescriptionFlag_PrintsDescriptions(t *testing.T) {
+	previousNoColor := color.NoColor
+	color.NoColor = true
+	t.Cleanup(func() {
+		color.NoColor = previousNoColor
+		rootCmd.SetArgs(nil)
+		_ = rulesListCmd.Flags().Set("description", "false")
+	})
+
+	rootCmd.SetArgs([]string{"rules", "list", "--description"})
+
+	output := captureStdout(t, func() {
+		if err := rootCmd.Execute(); err != nil {
+			t.Fatalf("execute rules list --description: %v", err)
+		}
+	})
+
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	registry, err := builtin.NewRegistry()
+	if err != nil {
+		t.Fatalf("initialize builtin rule registry: %v", err)
+	}
+
+	expectedRuleCount := len(registry.List())
+	if len(lines) != expectedRuleCount*2 {
+		t.Fatalf("expected %d lines, got %d (%q)", expectedRuleCount*2, len(lines), output)
 	}
 }
 
