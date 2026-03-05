@@ -21,12 +21,6 @@ Promptinel treats prompts as executable artifacts.
 
 ---
 
-## State
-
-Promptinel is in early development and many features are still missing.
-
----
-
 ## Installation
 
 ### With Go
