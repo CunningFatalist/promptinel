@@ -1,11 +1,14 @@
 package sanitize
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/CunningFatalist/promptinel/internal/safefile"
 )
 
 func Test_Sanitize_Run_DryRunReportsPlannedChanges(t *testing.T) {
@@ -203,34 +206,6 @@ func Test_Sanitize_Run_CLIIncludeOverridesConfigFilters(t *testing.T) {
 	}
 }
 
-func Test_Sanitize_WriteFileAtomically_DoesNotWriteThroughSymlink(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("symlink behavior is environment-dependent on windows")
-	}
-
-	workingDir := t.TempDir()
-	victimPath := filepath.Join(workingDir, "victim.md")
-	if err := os.WriteFile(victimPath, []byte("victim-original"), 0o644); err != nil {
-		t.Fatalf("write victim file: %v", err)
-	}
-	linkPath := filepath.Join(workingDir, "link.md")
-	if err := os.Symlink(victimPath, linkPath); err != nil {
-		t.Fatalf("create symlink: %v", err)
-	}
-
-	if err := writeFileAtomically(linkPath, []byte("replacement"), 0o644); err != nil {
-		t.Fatalf("write file atomically: %v", err)
-	}
-
-	victimContent, err := os.ReadFile(victimPath)
-	if err != nil {
-		t.Fatalf("read victim file: %v", err)
-	}
-	if string(victimContent) != "victim-original" {
-		t.Fatalf("expected victim file unchanged, got %q", string(victimContent))
-	}
-}
-
 func Test_Sanitize_Run_SkipsSymlinkInput(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink behavior is environment-dependent on windows")
@@ -271,13 +246,29 @@ func Test_Sanitize_Run_ReturnsErrorWhenCollectionFails(t *testing.T) {
 	}
 }
 
-func Test_Sanitize_WriteFileAtomically_ReturnsErrorWhenDirMissing(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "missing", "prompt.md")
-	err := writeFileAtomically(path, []byte("content"), 0o644)
-	if err == nil {
-		t.Fatal("expected error for missing directory")
+func Test_Sanitize_Run_ReturnsErrorWhenAtomicWriteFails(t *testing.T) {
+	workingDir := t.TempDir()
+	file := filepath.Join(workingDir, "prompt.md")
+	if err := os.WriteFile(file, []byte("line1\r\n"), 0o644); err != nil {
+		t.Fatalf("write fixture file: %v", err)
 	}
-	if !strings.Contains(err.Error(), "create temp file") {
+
+	originalWriter := writeFileAtomically
+	writeFileAtomically = func(_ string, _ []byte, _ os.FileMode, _ safefile.AtomicWriteOptions) error {
+		return errors.New("forced write failure")
+	}
+	t.Cleanup(func() {
+		writeFileAtomically = originalWriter
+	})
+
+	_, err := Run(Request{Paths: []string{workingDir}, Discover: false, Apply: true})
+	if err == nil {
+		t.Fatal("expected write failure error")
+	}
+	if !strings.Contains(err.Error(), "write sanitized file") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "forced write failure") {
+		t.Fatalf("expected forced write failure in error, got: %v", err)
 	}
 }

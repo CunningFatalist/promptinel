@@ -1,6 +1,7 @@
 package baseline
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -9,6 +10,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/finding"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/safefile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -193,4 +195,31 @@ func Test_Baseline_Write_RejectsSymlinkDestination(t *testing.T) {
 	victimContent, readErr := os.ReadFile(victimPath)
 	require.NoError(t, readErr)
 	assert.Equal(t, "victim-original", string(victimContent))
+}
+
+func Test_Baseline_Write_ReturnsErrorWhenAtomicWriteFails(t *testing.T) {
+	originalWriter := writeFileAtomically
+	writeFileAtomically = func(_ string, _ []byte, _ os.FileMode, _ safefile.AtomicWriteOptions) error {
+		return errors.New("forced write failure")
+	}
+	t.Cleanup(func() {
+		writeFileAtomically = originalWriter
+	})
+
+	err := Write(filepath.Join(t.TempDir(), "baseline.json"), Snapshot{
+		Version: SnapshotVersion,
+		Entries: []Entry{
+			{
+				Hash:     "abc",
+				Path:     "a.md",
+				RuleID:   "rule-a",
+				Severity: config.SeverityLow,
+				Message:  "message",
+				Line:     1,
+				Column:   1,
+			},
+		},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "forced write failure")
 }

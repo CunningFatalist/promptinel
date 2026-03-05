@@ -35,9 +35,13 @@ Promptinel is in early development and many features are still missing.
 go install github.com/CunningFatalist/promptinel@latest
 ```
 
+`@latest` is shown here for quick demonstration only. For reproducible installs, pin an explicit version tag (for example `@v0.2.0`).
+
 The `promptinel` binary will be installed into your `GOBIN` (or `$(go env GOPATH)/bin`).
 
 ### As Docker Command
+
+This example also uses `@latest` for demonstration. For production/CI, pin an explicit release tag.
 
 ```bash
 docker run --rm \
@@ -46,6 +50,11 @@ docker run --rm \
   golang:1.26.0 \
   sh -lc 'set -eu; GOBIN=/tmp/bin /usr/local/go/bin/go install github.com/CunningFatalist/promptinel@latest && /tmp/bin/promptinel scan .'
 ```
+
+> [!WARNING]  
+> It is not recommended to use `@latest` in production or CI environments. Pin your versions instead.
+> Version pinning restricts dependencies to known, vetted versions, preventing automatic upgrades that could 
+> introduce malicious code, compromised packages, or breaking changes into the supply chain.
 
 ### As Docker Service
 

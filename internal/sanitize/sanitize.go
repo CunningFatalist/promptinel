@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/files"
 	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/normalize"
+	"github.com/CunningFatalist/promptinel/internal/safefile"
 )
 
 // Request configures sanitize execution.
@@ -32,6 +32,8 @@ const (
 	ActionWouldSanitize Action = "would_sanitize"
 	ActionSanitized     Action = "sanitized"
 )
+
+var writeFileAtomically = safefile.WriteFileAtomically
 
 // Event captures one emitted sanitize operation entry.
 type Event struct {
@@ -142,7 +144,9 @@ func Run(req Request) (Result, error) {
 				result.Summary.Skipped++
 				continue
 			}
-			if err := writeFileAtomically(target.AbsolutePath, []byte(normalized.Content), info.Mode().Perm()); err != nil {
+			if err := writeFileAtomically(target.AbsolutePath, []byte(normalized.Content), info.Mode().Perm(), safefile.AtomicWriteOptions{
+				TempPattern: ".promptinel-sanitize-*",
+			}); err != nil {
 				return Result{}, fmt.Errorf("write sanitized file %q: %w", target.AbsolutePath, err)
 			}
 			action = ActionSanitized
@@ -159,40 +163,4 @@ func Run(req Request) (Result, error) {
 	result.Summary.Files = len(targets)
 	result.Summary.Applied = req.Apply
 	return result, nil
-}
-
-func writeFileAtomically(path string, content []byte, perm os.FileMode) (returnErr error) {
-	dir := filepath.Dir(path)
-	tempFile, err := os.CreateTemp(dir, ".promptinel-sanitize-*")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-
-	tempPath := tempFile.Name()
-	defer func() {
-		if returnErr != nil {
-			_ = os.Remove(tempPath)
-		}
-	}()
-
-	if err := tempFile.Chmod(perm); err != nil {
-		_ = tempFile.Close()
-		return fmt.Errorf("set temp file permissions: %w", err)
-	}
-	if _, err := tempFile.Write(content); err != nil {
-		_ = tempFile.Close()
-		return fmt.Errorf("write temp file: %w", err)
-	}
-	if err := tempFile.Sync(); err != nil {
-		_ = tempFile.Close()
-		return fmt.Errorf("sync temp file: %w", err)
-	}
-	if err := tempFile.Close(); err != nil {
-		return fmt.Errorf("close temp file: %w", err)
-	}
-	if err := os.Rename(tempPath, path); err != nil {
-		return fmt.Errorf("replace destination file: %w", err)
-	}
-
-	return nil
 }

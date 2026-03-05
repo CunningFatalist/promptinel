@@ -4,16 +4,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/finding"
+	"github.com/CunningFatalist/promptinel/internal/safefile"
 )
 
 const (
@@ -22,6 +21,8 @@ const (
 	// SnapshotVersion is the current baseline file format version.
 	SnapshotVersion = 1
 )
+
+var writeFileAtomically = safefile.WriteFileAtomically
 
 // Snapshot stores accepted findings in a deterministic representation.
 type Snapshot struct {
@@ -169,72 +170,12 @@ func Write(path string, snapshot Snapshot) error {
 		}
 	}
 
-	if err := writeFileAtomically(path, content, 0o644); err != nil {
+	if err := writeFileAtomically(path, content, 0o644, safefile.AtomicWriteOptions{
+		TempPattern:              ".promptinel-baseline-*",
+		RefuseDestinationSymlink: true,
+	}); err != nil {
 		return fmt.Errorf("write baseline file %q: %w", path, err)
 	}
 
-	return nil
-}
-
-func writeFileAtomically(path string, content []byte, perm os.FileMode) (returnErr error) {
-	info, err := os.Lstat(path)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("lstat destination: %w", err)
-	}
-	if err == nil && info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("refusing to write through symbolic link")
-	}
-
-	tempFile, err := os.CreateTemp(filepath.Dir(path), ".promptinel-baseline-*")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-
-	tempPath := tempFile.Name()
-	defer func() {
-		if returnErr != nil {
-			_ = os.Remove(tempPath)
-		}
-	}()
-
-	if err := tempFile.Chmod(perm); err != nil {
-		_ = tempFile.Close()
-		return fmt.Errorf("set temp file permissions: %w", err)
-	}
-	if _, err := tempFile.Write(content); err != nil {
-		_ = tempFile.Close()
-		return fmt.Errorf("write temp file: %w", err)
-	}
-	if err := tempFile.Sync(); err != nil {
-		_ = tempFile.Close()
-		return fmt.Errorf("sync temp file: %w", err)
-	}
-	if err := tempFile.Close(); err != nil {
-		return fmt.Errorf("close temp file: %w", err)
-	}
-	if err := replaceDestinationFile(tempPath, path); err != nil {
-		return fmt.Errorf("replace destination file: %w", err)
-	}
-
-	return nil
-}
-
-func replaceDestinationFile(tempPath string, destinationPath string) error {
-	renameErr := os.Rename(tempPath, destinationPath)
-	if renameErr == nil {
-		return nil
-	}
-
-	// On Windows, os.Rename cannot replace an existing destination.
-	if runtime.GOOS != "windows" {
-		return renameErr
-	}
-
-	if err := os.Remove(destinationPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("remove existing destination: %w", err)
-	}
-	if err := os.Rename(tempPath, destinationPath); err != nil {
-		return err
-	}
 	return nil
 }
