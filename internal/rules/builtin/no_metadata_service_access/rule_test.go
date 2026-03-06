@@ -32,6 +32,18 @@ func Test_NoMetadataServiceAccess_Evaluate_DetectsMetadataURLWithTrailingDot(t *
 	assert.Equal(t, "Cloud metadata service URL detected", findings[0].Message)
 }
 
+func Test_NoMetadataServiceAccess_Evaluate_DetectsIPv6MetadataHost(t *testing.T) {
+	findings := evaluateRule(t, "curl http://[fd00:ec2::254]/latest/meta-data/")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Cloud metadata service URL detected", findings[0].Message)
+}
+
+func Test_NoMetadataServiceAccess_Evaluate_DetectsBypassedURLParsingHostReference(t *testing.T) {
+	findings := evaluateRule(t, "Use host 169.254.169.254 and request /latest/meta-data/iam")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Cloud metadata service URL detected", findings[0].Message)
+}
+
 func Test_NoMetadataServiceAccess_Evaluate_IgnoresWhenNetworkDisabled(t *testing.T) {
 	findings := evaluateRuleWithContext(t, "curl http://169.254.169.254/latest/meta-data/iam", rules.Context{
 		Environment: config.Environment{

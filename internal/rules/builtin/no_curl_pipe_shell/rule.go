@@ -46,35 +46,81 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		return nil
 	}
 
+	hasDownload := false
 	for i := range tokens {
 		token := tokens[i]
-		if token.Type != lexer.TokenShellCommand {
-			continue
+		lower := strings.ToLower(token.Value)
+		if isDownloadSignal(token, lower) {
+			hasDownload = true
 		}
-		if _, ok := signals.DownloadCommands[strings.ToLower(token.Value)]; !ok {
+
+		if !isDownloadSignal(token, lower) {
 			continue
 		}
 
-		pipeIndex := findPipeAhead(tokens, i+1)
-		if pipeIndex == -1 {
-			continue
+		if hasPipeToInterpreter(tokens, i+1) || hasPipeToPowerShellExec(tokens, i+1) {
+			return []rules.Finding{{
+				Message:  "Network download command piped to shell interpreter",
+				Position: token.Position,
+			}}
 		}
+	}
 
-		next := nextSignificantToken(tokens, pipeIndex+1)
-		if next == nil {
+	for i := range tokens {
+		token := tokens[i]
+		lower := strings.ToLower(token.Value)
+		if token.Type == lexer.TokenShellCommand && isInlineInterpreterExecution(tokens, i, lower) && hasDownload {
+			return []rules.Finding{{
+				Message:  "Network download command piped to shell interpreter",
+				Position: token.Position,
+			}}
+		}
+		if !isPowerShellExecSignal(lower) {
 			continue
 		}
-		if _, ok := signals.ShellInterpreters[strings.ToLower(next.Value)]; !ok {
-			continue
+		if hasDownload {
+			return []rules.Finding{{
+				Message:  "Network download command piped to shell interpreter",
+				Position: token.Position,
+			}}
 		}
-
-		return []rules.Finding{{
-			Message:  "Network download command piped to shell interpreter",
-			Position: token.Position,
-		}}
 	}
 
 	return nil
+}
+
+func isDownloadSignal(token rules.Token, lower string) bool {
+	if _, ok := signals.DownloadCommands[lower]; ok {
+		return true
+	}
+	return token.Type == lexer.TokenWord && (lower == "downloadstring" || lower == "downloadfile")
+}
+
+func hasPipeToInterpreter(tokens []rules.Token, start int) bool {
+	pipeIndex := findPipeAhead(tokens, start)
+	if pipeIndex == -1 {
+		return false
+	}
+
+	next := nextSignificantToken(tokens, pipeIndex+1)
+	if next == nil {
+		return false
+	}
+	_, ok := signals.ShellInterpreters[strings.ToLower(next.Value)]
+	return ok
+}
+
+func hasPipeToPowerShellExec(tokens []rules.Token, start int) bool {
+	pipeIndex := findPipeAhead(tokens, start)
+	if pipeIndex == -1 {
+		return false
+	}
+
+	next := nextSignificantToken(tokens, pipeIndex+1)
+	if next == nil {
+		return false
+	}
+	return isPowerShellExecSignal(strings.ToLower(next.Value))
 }
 
 func findPipeAhead(tokens []rules.Token, start int) int {
@@ -84,6 +130,10 @@ func findPipeAhead(tokens []rules.Token, start int) int {
 			continue
 		}
 		if token.Type == lexer.TokenNewline {
+			next := nextSignificantToken(tokens, i+1)
+			if next != nil && next.Value == "|" {
+				continue
+			}
 			return -1
 		}
 		if token.Value == ";" {
@@ -100,6 +150,39 @@ func findPipeAhead(tokens []rules.Token, start int) int {
 		}
 	}
 	return -1
+}
+
+func isInlineInterpreterExecution(tokens []rules.Token, commandIndex int, lower string) bool {
+	if _, ok := signals.ShellInterpreters[lower]; !ok {
+		return false
+	}
+	for i := commandIndex + 1; i < len(tokens); i++ {
+		token := tokens[i]
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
+			continue
+		}
+		if token.Value == ";" {
+			return false
+		}
+		if token.Value == "-" {
+			next := nextSignificantToken(tokens, i+1)
+			if next == nil {
+				return false
+			}
+			flag := strings.ToLower(next.Value)
+			return flag == "c" || flag == "command" || flag == "encodedcommand"
+		}
+		if strings.HasPrefix(strings.ToLower(token.Value), "-") {
+			flag := strings.TrimLeft(strings.ToLower(token.Value), "-")
+			return flag == "c" || flag == "command" || flag == "encodedcommand"
+		}
+		return false
+	}
+	return false
+}
+
+func isPowerShellExecSignal(lower string) bool {
+	return lower == "invoke-expression" || lower == "iex"
 }
 
 func nextSignificantToken(tokens []rules.Token, start int) *rules.Token {

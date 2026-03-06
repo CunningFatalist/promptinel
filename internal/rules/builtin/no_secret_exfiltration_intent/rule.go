@@ -15,8 +15,8 @@ const (
 	name                      = "No Secret Exfiltration Intent"
 	summary                   = "Detects co-occurrence of secret targets and exfiltration actions"
 	description               = "Prompts that combine secret-related terms with transfer actions often indicate data exfiltration intent."
-	maxTokenDistance          = 12
-	maxTokenDistanceUntrusted = 20
+	maxTokenDistanceTrusted   = 10
+	maxTokenDistanceUntrusted = 28
 )
 
 // Rule detects secret exfiltration intent patterns.
@@ -49,7 +49,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		return nil
 	}
 
-	maxDistance := maxTokenDistance
+	maxDistance := maxTokenDistanceTrusted
 	if ctx.IsUntrusted() {
 		maxDistance = maxTokenDistanceUntrusted
 	}
@@ -61,27 +61,16 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		token := tokens[i]
 		lower := strings.ToLower(token.Value)
 
-		if token.Type == lexer.TokenShellCommand {
-			if _, ok := signals.ExfiltrationCommands[lower]; ok {
-				exfilIndices = append(exfilIndices, i)
-			}
+		if isExfiltrationToken(token, lower) {
+			exfilIndices = append(exfilIndices, i)
 		}
 
 		if token.Type != lexer.TokenWord && token.Type != lexer.TokenShellCommand {
 			continue
 		}
 
-		if _, ok := signals.ExfiltrationTerms[lower]; ok {
-			exfilIndices = append(exfilIndices, i)
-		}
-		if _, ok := signals.SecretTerms[lower]; ok {
+		if isSecretToken(tokens, i, lower) {
 			secretIndices = append(secretIndices, i)
-		}
-		if lower == "api" {
-			next := nextWordToken(tokens, i+1)
-			if next != nil && strings.EqualFold(next.Value, "key") {
-				secretIndices = append(secretIndices, i)
-			}
 		}
 	}
 
@@ -103,6 +92,49 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		Message:  "Potential secret exfiltration intent detected",
 		Position: tokens[index].Position,
 	}}
+}
+
+func isExfiltrationToken(token rules.Token, lower string) bool {
+	if _, ok := signals.ExfiltrationCommands[lower]; ok {
+		return true
+	}
+	if _, ok := signals.ExfiltrationTerms[lower]; ok {
+		return true
+	}
+	if _, ok := signals.ExfiltrationActionSignals[lower]; ok {
+		return true
+	}
+	if token.Type == lexer.TokenURL {
+		for _, sink := range signals.WebhookSinkSnippets {
+			if strings.Contains(lower, sink) {
+				return true
+			}
+		}
+	}
+	for _, sink := range signals.OutboundSinkSnippets {
+		if strings.Contains(lower, sink) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSecretToken(tokens []rules.Token, index int, lower string) bool {
+	if _, ok := signals.SecretTerms[lower]; ok {
+		return true
+	}
+	next := nextWordToken(tokens, index+1)
+	if next == nil {
+		return false
+	}
+	nextLower := strings.ToLower(next.Value)
+	return (lower == "api" && nextLower == "key") ||
+		(lower == "access" && nextLower == "key") ||
+		(lower == "secret" && nextLower == "key") ||
+		(lower == "client" && nextLower == "secret") ||
+		(lower == "private" && nextLower == "key") ||
+		(lower == "session" && nextLower == "token") ||
+		(lower == "bearer" && nextLower == "token")
 }
 
 type tokenPair struct {

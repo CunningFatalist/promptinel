@@ -48,83 +48,95 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 		return nil
 	}
 
-	downloadSegment := -1
-	var downloadToken *rules.Token
-	downloadTokenIndex := -1
-	downloadTokenIndexInSegment := -1
-	executionSegment := -1
-	executionTokenIndex := -1
-	executionTokenIndexInSegment := -1
-	tokenCursor := 0
+	downloadStage, hasDownload := firstStageToken(doc, isDownloadStage)
+	if !hasDownload {
+		return nil
+	}
 
-	for segmentIndex, tokens := range doc.TokensBySegment {
-		if downloadSegment == -1 {
-			for i := range tokens {
-				token := tokens[i]
-				lower := strings.ToLower(token.Value)
-				if _, ok := signals.DownloadSignals[lower]; ok {
-					downloadSegment = segmentIndex
-					downloadToken = &tokens[i]
-					downloadTokenIndex = tokenCursor + i
-					downloadTokenIndexInSegment = i
-					break
-				}
-			}
-		}
-
-		if executionSegment == -1 {
-			for i := range tokens {
-				token := tokens[i]
-				lower := strings.ToLower(token.Value)
-				if token.Type == lexer.TokenShellCommand {
-					if _, ok := signals.ExecutionSignals[lower]; ok {
-						executionSegment = segmentIndex
-						executionTokenIndex = tokenCursor + i
-						executionTokenIndexInSegment = i
-						break
-					}
-				}
-				if _, ok := signals.ExecutionSignals[lower]; ok {
-					executionSegment = segmentIndex
-					executionTokenIndex = tokenCursor + i
-					executionTokenIndexInSegment = i
-					break
-				}
-			}
-		}
-
-		tokenCursor += len(tokens)
-
-		if downloadSegment != -1 && executionSegment != -1 {
-			break
+	transformStage, hasTransform := nextStageToken(doc, downloadStage.globalIndex+1, isTransformStage)
+	executionStage, hasExecution := nextStageToken(doc, downloadStage.globalIndex+1, isExecutionStage)
+	if !hasExecution {
+		return nil
+	}
+	if hasTransform {
+		execAfterTransform, ok := nextStageToken(doc, transformStage.globalIndex+1, isExecutionStage)
+		if ok {
+			executionStage = execAfterTransform
 		}
 	}
-
-	if downloadSegment == -1 || executionSegment == -1 {
-		return nil
-	}
-	if downloadToken == nil {
-		return nil
-	}
-	if executionTokenIndex <= downloadTokenIndex {
+	if executionStage.globalIndex <= downloadStage.globalIndex {
 		return nil
 	}
 
-	tokenDistance := executionTokenIndex - downloadTokenIndex
-	if downloadSegment == executionSegment && tokenDistance < minTokenDistanceForStagedFlow {
+	tokenDistance := executionStage.globalIndex - downloadStage.globalIndex
+	if !hasTransform && downloadStage.segmentIndex == executionStage.segmentIndex && tokenDistance < minTokenDistanceForStagedFlow {
 		return nil
 	}
-	if downloadSegment == executionSegment {
-		tokens := doc.TokensBySegment[downloadSegment]
-		if hasChainOperatorBetween(tokens, downloadTokenIndexInSegment, executionTokenIndexInSegment) {
+	if !hasTransform && downloadStage.segmentIndex == executionStage.segmentIndex {
+		tokens := doc.TokensBySegment[downloadStage.segmentIndex]
+		if hasChainOperatorBetween(tokens, downloadStage.indexInSegment, executionStage.indexInSegment) {
 			return nil
 		}
 	}
 
 	return []rules.Finding{{
 		Message:  "Staged download-and-execute flow detected",
-		Position: downloadToken.Position,
+		Position: downloadStage.token.Position,
 	}}
+}
+
+type stageToken struct {
+	token          rules.Token
+	globalIndex    int
+	segmentIndex   int
+	indexInSegment int
+}
+
+func firstStageToken(doc rules.AnalyzedDocument, matcher func(rules.Token, string) bool) (stageToken, bool) {
+	return nextStageToken(doc, 0, matcher)
+}
+
+func nextStageToken(doc rules.AnalyzedDocument, from int, matcher func(rules.Token, string) bool) (stageToken, bool) {
+	globalIndex := 0
+	for segmentIndex, tokens := range doc.TokensBySegment {
+		for indexInSegment := range tokens {
+			token := tokens[indexInSegment]
+			if globalIndex < from {
+				globalIndex++
+				continue
+			}
+			lower := strings.ToLower(token.Value)
+			if matcher(token, lower) {
+				return stageToken{
+					token:          token,
+					globalIndex:    globalIndex,
+					segmentIndex:   segmentIndex,
+					indexInSegment: indexInSegment,
+				}, true
+			}
+			globalIndex++
+		}
+	}
+	return stageToken{}, false
+}
+
+func isDownloadStage(_ rules.Token, lower string) bool {
+	_, ok := signals.DownloadSignals[lower]
+	return ok
+}
+
+func isTransformStage(_ rules.Token, lower string) bool {
+	_, ok := signals.DecodeDecompressSignals[lower]
+	return ok
+}
+
+func isExecutionStage(token rules.Token, lower string) bool {
+	if token.Type == lexer.TokenShellCommand {
+		_, ok := signals.ExecutionSignals[lower]
+		return ok
+	}
+	_, ok := signals.ExecutionSignals[lower]
+	return ok
 }
 
 func hasChainOperatorBetween(tokens []rules.Token, from int, to int) bool {

@@ -21,6 +21,12 @@ func Test_NoSecretExfiltrationIntent_Evaluate_DetectsIntent(t *testing.T) {
 	assert.Equal(t, "Potential secret exfiltration intent detected", findings[0].Message)
 }
 
+func Test_NoSecretExfiltrationIntent_Evaluate_DetectsCloudTokenVocabulary(t *testing.T) {
+	findings := evaluateRule(t, "send refresh token to webhook endpoint")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Potential secret exfiltration intent detected", findings[0].Message)
+}
+
 func Test_NoSecretExfiltrationIntent_Evaluate_IgnoresUnrelatedText(t *testing.T) {
 	findings := evaluateRule(t, "store token locally in memory")
 	assert.Empty(t, findings)
@@ -38,7 +44,7 @@ func Test_NoSecretExfiltrationIntent_Evaluate_IgnoresWhenCapabilitiesMissing(t *
 }
 
 func Test_NoSecretExfiltrationIntent_Evaluate_ExpandsDistanceForUntrustedInput(t *testing.T) {
-	content := "upload alpha beta gamma delta epsilon zeta eta token"
+	content := "upload alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu token"
 
 	trustedFindings := evaluateRuleWithContext(t, content, defaultRuleContext())
 	assert.Empty(t, trustedFindings)
@@ -55,7 +61,7 @@ func Test_NoSecretExfiltrationIntent_Evaluate_ExpandsDistanceForUntrustedInput(t
 }
 
 func Test_NoSecretExfiltrationIntent_Evaluate_UntrustedStillRequiresCapabilities(t *testing.T) {
-	content := "upload alpha beta gamma delta epsilon zeta eta token"
+	content := "upload alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu token"
 
 	findings := evaluateRuleWithContext(t, content, rules.Context{
 		Environment: config.Environment{

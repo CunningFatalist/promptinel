@@ -21,8 +21,19 @@ func Test_NoSensitiveFilePaths_Evaluate_DetectsSensitivePath(t *testing.T) {
 	assert.Equal(t, "Sensitive local file path reference detected", findings[0].Message)
 }
 
+func Test_NoSensitiveFilePaths_Evaluate_DetectsPersistenceIntent(t *testing.T) {
+	findings := evaluateRule(t, "echo token >> ~/.bashrc")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Sensitive local file path reference detected", findings[0].Message)
+}
+
 func Test_NoSensitiveFilePaths_Evaluate_IgnoresRegularPath(t *testing.T) {
 	findings := evaluateRule(t, "cat ./docs/readme.md")
+	assert.Empty(t, findings)
+}
+
+func Test_NoSensitiveFilePaths_Evaluate_IgnoresSensitivePathWithoutReadOrWriteIntent(t *testing.T) {
+	findings := evaluateRule(t, "Reference path /etc/shadow in security documentation.")
 	assert.Empty(t, findings)
 }
 

@@ -61,6 +61,7 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 	hasShellAction := false
 	hasFilesystemAction := false
 	hasSecretAction := false
+	hasProtocolAction := false
 	for _, tokens := range doc.TokensBySegment {
 		for _, token := range tokens {
 			if token.Type == lexer.TokenURL {
@@ -91,6 +92,9 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 					}
 				}
 			}
+			if _, ok := signals.ToolExecutionSignals[lower]; ok {
+				hasProtocolAction = true
+			}
 		}
 	}
 
@@ -101,8 +105,14 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 			break
 		}
 	}
+	for _, signal := range signals.StructuredRoleSpoofSnippets {
+		if strings.Contains(contentLower, signal) {
+			hasProtocolAction = true
+			break
+		}
+	}
 
-	if !capabilityAvailableInContext(ctx, hasNetworkAction, hasShellAction, hasFilesystemAction, hasSecretAction) {
+	if !capabilityAvailableInContext(ctx, hasNetworkAction, hasShellAction, hasFilesystemAction, hasSecretAction, hasProtocolAction) {
 		return nil
 	}
 
@@ -112,7 +122,10 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 	}}
 }
 
-func capabilityAvailableInContext(ctx rules.Context, hasNetwork bool, hasShell bool, hasFilesystem bool, hasSecrets bool) bool {
+func capabilityAvailableInContext(ctx rules.Context, hasNetwork bool, hasShell bool, hasFilesystem bool, hasSecrets bool, hasProtocol bool) bool {
+	if hasProtocol {
+		return true
+	}
 	return (hasNetwork && ctx.CanAccessNetwork()) ||
 		(hasShell && ctx.CanExecuteShell()) ||
 		(hasFilesystem && ctx.CanAccessFilesystem()) ||

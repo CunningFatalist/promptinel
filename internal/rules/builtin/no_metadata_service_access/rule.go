@@ -8,6 +8,8 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/lexer"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/helpers"
+	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
 
 const (
@@ -16,13 +18,6 @@ const (
 	summary     = "Detects URLs targeting cloud instance metadata endpoints"
 	description = "Cloud metadata services can expose credentials and environment secrets when accessed from compromised prompts."
 )
-
-var metadataHosts = map[string]struct{}{
-	"169.254.169.254":          {},
-	"169.254.170.2":            {},
-	"100.100.100.200":          {},
-	"metadata.google.internal": {},
-}
 
 // Rule detects metadata service access URLs.
 type Rule struct{}
@@ -49,7 +44,7 @@ func Metadata() rules.Metadata {
 }
 
 // CheckTokens detects metadata service URL targets.
-func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+func (Rule) CheckTokens(ctx rules.Context, segment rules.Segment, tokens []rules.Token) []rules.Finding {
 	if !ctx.CanAccessNetwork() {
 		return nil
 	}
@@ -64,7 +59,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		if host == "" {
 			continue
 		}
-		if _, ok := metadataHosts[host]; !ok {
+		if !isMetadataHost(host) {
 			continue
 		}
 
@@ -73,6 +68,26 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 			Position: token.Position,
 		})
 	}
+
+	if len(findings) > 0 {
+		return findings
+	}
+
+	contentLower := strings.ToLower(segment.Content)
+	hostIndex := firstSnippetIndex(contentLower, signals.MetadataHostSnippets)
+	pathIndex := firstSnippetIndex(contentLower, signals.MetadataPathSnippets)
+	if hostIndex == -1 && pathIndex == -1 {
+		return nil
+	}
+	index := hostIndex
+	if index == -1 || (pathIndex >= 0 && pathIndex < index) {
+		index = pathIndex
+	}
+	findings = append(findings, rules.Finding{
+		Message:  "Cloud metadata service URL detected",
+		Position: helpers.AdvancePositionByByteOffset(segment.Position, segment.Content, index),
+	})
+
 	return findings
 }
 
@@ -91,5 +106,31 @@ func hostFromURL(raw string) string {
 
 	// DNS FQDNs may include a trailing dot; normalize before matching.
 	host = strings.TrimRight(host, ".")
+	host = strings.Trim(host, "[]")
 	return host
+}
+
+func isMetadataHost(host string) bool {
+	host = strings.ToLower(strings.TrimRight(strings.Trim(host, "[]"), "."))
+	for _, known := range signals.MetadataHostSnippets {
+		normalized := strings.ToLower(strings.TrimRight(strings.Trim(known, "[]"), "."))
+		if host == normalized {
+			return true
+		}
+	}
+	return false
+}
+
+func firstSnippetIndex(content string, snippets []string) int {
+	earliest := -1
+	for _, snippet := range snippets {
+		index := strings.Index(content, strings.ToLower(snippet))
+		if index == -1 {
+			continue
+		}
+		if earliest == -1 || index < earliest {
+			earliest = index
+		}
+	}
+	return earliest
 }

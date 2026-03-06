@@ -16,6 +16,22 @@ const (
 	description = "Combining remote download references with execution commands can indicate remote code execution intent."
 )
 
+var inlineExecInterpreters = map[string]struct{}{
+	"bash":       {},
+	"sh":         {},
+	"zsh":        {},
+	"pwsh":       {},
+	"powershell": {},
+	"cmd":        {},
+	"cmd.exe":    {},
+	"python":     {},
+	"python3":    {},
+	"node":       {},
+	"ruby":       {},
+	"php":        {},
+	"perl":       {},
+}
+
 // Rule detects download-and-execute patterns.
 type Rule struct{}
 
@@ -47,6 +63,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 	}
 
 	hasURL := false
+	hasDownload := false
 	executionToken := -1
 
 	for i, token := range tokens {
@@ -55,21 +72,35 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		}
 
 		if token.Type == lexer.TokenShellCommand {
-			if _, ok := signals.ExecutionCommands[strings.ToLower(token.Value)]; ok {
+			lower := strings.ToLower(token.Value)
+			if _, ok := signals.ExecutionCommands[lower]; ok {
+				executionToken = i
+			}
+			if _, ok := signals.DownloadSignals[lower]; ok {
+				hasDownload = true
+			}
+			if isInlineExecInterpreter(tokens, i, lower) {
 				executionToken = i
 			}
 			continue
 		}
 
-		if token.Type != lexer.TokenWord {
+		if token.Type != lexer.TokenWord && token.Type != lexer.TokenPath {
 			continue
 		}
-		if _, ok := signals.ExecutionCommands[strings.ToLower(token.Value)]; ok {
+		lower := strings.ToLower(token.Value)
+		if _, ok := signals.ExecutionCommands[lower]; ok {
 			executionToken = i
+		}
+		if _, ok := signals.DownloadSignals[lower]; ok {
+			hasDownload = true
+		}
+		if lower == "downloadstring" || lower == "downloadfile" {
+			hasDownload = true
 		}
 	}
 
-	if !hasURL || executionToken == -1 {
+	if !hasDownload || !hasURL || executionToken == -1 {
 		return nil
 	}
 
@@ -77,4 +108,51 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		Message:  "Remote download appears combined with execution",
 		Position: tokens[executionToken].Position,
 	}}
+}
+
+func isInlineExecInterpreter(tokens []rules.Token, index int, lower string) bool {
+	if _, ok := inlineExecInterpreters[lower]; !ok {
+		return false
+	}
+	for i := index + 1; i < len(tokens); i++ {
+		token := tokens[i]
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
+			continue
+		}
+		if token.Value == ";" || token.Value == "|" || token.Value == "&" {
+			return false
+		}
+		if token.Value == "/" {
+			next := nextSignificantToken(tokens, i+1)
+			if next == nil {
+				return false
+			}
+			return strings.EqualFold(next.Value, "c")
+		}
+		if token.Value == "-" {
+			next := nextSignificantToken(tokens, i+1)
+			if next == nil {
+				return false
+			}
+			flag := strings.ToLower(next.Value)
+			return flag == "c" || flag == "e" || flag == "r" || flag == "command" || flag == "encodedcommand"
+		}
+		if strings.HasPrefix(token.Value, "-") || strings.HasPrefix(token.Value, "/") {
+			flag := strings.TrimLeft(strings.ToLower(token.Value), "-/")
+			return flag == "c" || flag == "e" || flag == "r" || flag == "command" || flag == "encodedcommand"
+		}
+		return false
+	}
+	return false
+}
+
+func nextSignificantToken(tokens []rules.Token, start int) *rules.Token {
+	for i := start; i < len(tokens); i++ {
+		token := tokens[i]
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
+			continue
+		}
+		return &tokens[i]
+	}
+	return nil
 }

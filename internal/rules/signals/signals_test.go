@@ -35,6 +35,7 @@ func Test_Signals_MergeUniqueSlices_PreservesOrderAndRemovesDuplicates(t *testin
 func Test_Signals_ComposedSignalSets_ContainExpectedValues(t *testing.T) {
 	assert.Contains(t, DownloadCommands, "curl")
 	assert.Contains(t, DownloadCommands, "wget")
+	assert.Contains(t, DownloadCommands, "invoke-webrequest")
 
 	assert.Contains(t, DownloadSignals, "download")
 	assert.Contains(t, DownloadSignals, "curl")
@@ -60,4 +61,14 @@ func Test_Signals_ComposedSignalSets_ContainExpectedValues(t *testing.T) {
 	assert.Contains(t, FilesystemCapabilitySignals, "/etc/passwd")
 	assert.Contains(t, FilesystemCapabilitySignals, "/run/secrets/")
 	assert.Contains(t, FilesystemCapabilitySignals, ".docker/config.json")
+
+	assert.Contains(t, DecodeDecompressSignals, "base64")
+	assert.Contains(t, OutboundSinkSnippets, "webhook")
+	assert.Contains(t, MetadataHostSnippets, "169.254.169.254")
+	assert.Contains(t, RoleHeaderSpoofSnippets, "system:")
+	assert.Contains(t, ShellProfilePathSnippets, ".bashrc")
+	assert.Contains(t, SSHTrustStorePathSnippets, "authorized_keys")
+	assert.Contains(t, TunnelCommands, "ngrok")
+	assert.Contains(t, WebhookSinkSnippets, "webhook.site")
+	assert.Contains(t, DNSSinkCommands, "dig")
 }

