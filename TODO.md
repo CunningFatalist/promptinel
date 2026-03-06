@@ -12,21 +12,21 @@ Priority scale:
 
 ### P0
 
-- [ ] `no-curl-pipe-shell`: Expand beyond direct `curl|sh`/`wget|sh` to cover indirect execution (
+- [x] `no-curl-pipe-shell`: Expand beyond direct `curl|sh`/`wget|sh` to cover indirect execution (
   `bash -c "$(curl ...)"`, `sh -c`, PowerShell equivalents, newline/whitespace variants).
-- [ ] `no-download-execute`: Detect download + execution across command substitution and inline interpreter usage; keep
+- [x] `no-download-execute`: Detect download + execution across command substitution and inline interpreter usage; keep
   multi-signal requirement (`download` + `URL` + `execution`) to avoid false positives.
-- [ ] `no-staged-download-execution`: Extend flow detection to staged chains like
+- [x] `no-staged-download-execution`: Extend flow detection to staged chains like
   `download -> decode/decompress -> execute`, including cross-segment sequences.
-- [ ] `no-sensitive-file-paths`: Split semantics for `read/exfil` vs `write/persist` intent; broaden path coverage (
+- [x] `no-sensitive-file-paths`: Split semantics for `read/exfil` vs `write/persist` intent; broaden path coverage (
   Linux, macOS, Windows credential/profile locations).
-- [ ] `no-secret-to-network-flow`: Add sinks beyond plain URLs (webhooks, reverse tunnels, transfer binaries, DNS
+- [x] `no-secret-to-network-flow`: Add sinks beyond plain URLs (webhooks, reverse tunnels, transfer binaries, DNS
   channels) and require strong source/action/sink triads.
-- [ ] `no-secret-exfiltration-intent`: Expand secret + exfil vocabulary (cloud tokens, API artifacts, webhook language)
+- [x] `no-secret-exfiltration-intent`: Expand secret + exfil vocabulary (cloud tokens, API artifacts, webhook language)
   and tune distance windows for trusted vs untrusted input.
-- [ ] `no-metadata-service-access`: Expand metadata endpoint coverage (additional cloud hosts/IP forms, IPv6 variants)
+- [x] `no-metadata-service-access`: Expand metadata endpoint coverage (additional cloud hosts/IP forms, IPv6 variants)
   and detect host references even when URL parsing is bypassed.
-- [ ] `no-override-capability-flow`: Add capability signals for tool/function-call style execution requests and
+- [x] `no-override-capability-flow`: Add capability signals for tool/function-call style execution requests and
   structured role-spoof payloads.
 
 ### P1
@@ -57,22 +57,22 @@ Priority scale:
 
 ### P0
 
-- [ ] `no-powershell-download-cradle` (`Token`/`Flow`): Detect `Invoke-WebRequest`/`DownloadString` +
+- [x] `no-powershell-download-cradle` (`Token`/`Flow`): Detect `Invoke-WebRequest`/`DownloadString` +
   `Invoke-Expression` style chains.
-- [ ] `no-interpreter-inline-exec` (`Token`): Detect inline execution flags (`python -c`, `node -e`, `ruby -e`,
+- [x] `no-interpreter-inline-exec` (`Token`): Detect inline execution flags (`python -c`, `node -e`, `ruby -e`,
   `php -r`, `perl -e`) with execution context.
-- [ ] `no-role-header-spoofing` (`Segment`): Detect `SYSTEM:`, `DEVELOPER:`, `TOOLS:` and related role header spoof
+- [x] `no-role-header-spoofing` (`Segment`): Detect `SYSTEM:`, `DEVELOPER:`, `TOOLS:` and related role header spoof
   patterns.
-- [ ] `no-yaml-json-role-fields` (`Document`/`Token`): Detect embedded role/tool-call payloads (`role`, `tool_calls`,
+- [x] `no-yaml-json-role-fields` (`Document`/`Token`): Detect embedded role/tool-call payloads (`role`, `tool_calls`,
   `function_call`, `arguments`) that can spoof agent protocols.
-- [ ] `no-shell-profile-modification` (`Token`/`Flow`): Detect write operations targeting shell startup/profile files.
-- [ ] `no-ssh-config-manipulation` (`Token`/`Flow`): Detect write operations to `~/.ssh/config`, `authorized_keys`, and
+- [x] `no-shell-profile-modification` (`Token`/`Flow`): Detect write operations targeting shell startup/profile files.
+- [x] `no-ssh-config-manipulation` (`Token`/`Flow`): Detect write operations to `~/.ssh/config`, `authorized_keys`, and
   related SSH trust stores.
-- [ ] `no-tunnel-and-reverse-shell` (`Token`/`Flow`): Detect reverse shell and tunneling instructions (`nc -e`,
+- [x] `no-tunnel-and-reverse-shell` (`Token`/`Flow`): Detect reverse shell and tunneling instructions (`nc -e`,
   `/dev/tcp`, `ssh -R`, `ngrok`, `cloudflared`).
-- [ ] `no-webhook-exfiltration` (`Token`/`Flow`): Detect data transfer instructions to webhook/request-bin style sinks,
+- [x] `no-webhook-exfiltration` (`Token`/`Flow`): Detect data transfer instructions to webhook/request-bin style sinks,
   coupled with secret/file signals.
-- [ ] `no-mixed-script-identifiers` (`Token`): Detect homoglyph/mixed-script spoofing in identifier-like tokens and
+- [x] `no-mixed-script-identifiers` (`Token`): Detect homoglyph/mixed-script spoofing in identifier-like tokens and
   hostnames.
 
 ### P1
@@ -102,8 +102,8 @@ Priority scale:
 
 ## 3) Delivery Checklist for Every Rule Change
 
-- [ ] Add deterministic unit tests: at least one positive case, one negative case, and one false-positive guard case.
-- [ ] Register new built-ins in `internal/rules/builtin/registry.go` and include metadata/docs entries.
-- [ ] Keep finding messages stable for baseline compatibility.
-- [ ] Update `README.md` rule catalog and configuration examples for new IDs/severity defaults.
-- [ ] Validate with `make fmt fix vet vuln lint test` before merging.
+- [x] Add deterministic unit tests: at least one positive case, one negative case, and one false-positive guard case.
+- [x] Register new built-ins in `internal/rules/builtin/registry.go` and include metadata/docs entries.
+- [x] Keep finding messages stable for baseline compatibility.
+- [x] Update `README.md` rule catalog and configuration examples for new IDs/severity defaults.
+- [x] Validate with `make fmt fix vet vuln lint test` before merging.
