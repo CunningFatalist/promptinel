@@ -311,8 +311,14 @@ rules:
   - id: no-data-uri-payloads
     severity: medium
 
+  - id: no-dns-exfiltration
+    severity: high
+
   - id: no-download-execute
     severity: medium
+
+  - id: no-gitconfig-credential-helper
+    severity: high
 
   - id: no-hidden-html-instructions
     severity: medium
@@ -350,6 +356,9 @@ rules:
   - id: no-sensitive-file-paths
     severity: high
 
+  - id: no-shell-heredoc-payload
+    severity: high
+
   - id: no-shell-profile-modification
     severity: high
 
@@ -362,6 +371,15 @@ rules:
   - id: no-suspicious-base64
     severity: medium
 
+  - id: no-tainted-placeholder-instructions
+    severity: high
+
+  - id: no-template-network-fetch
+    severity: medium
+
+  - id: no-transcript-injection
+    severity: high
+
   - id: no-tunnel-and-reverse-shell
     severity: high
 
@@ -370,6 +388,9 @@ rules:
 
   - id: no-unsafe-templates
     severity: medium
+
+  - id: no-url-encoded-command-payload
+    severity: high
 
   - id: no-webhook-exfiltration
     severity: high
@@ -551,8 +572,14 @@ rules:
   - id: no-data-uri-payloads
     severity: medium
 
+  - id: no-dns-exfiltration
+    severity: high
+
   - id: no-download-execute
     severity: medium
+
+  - id: no-gitconfig-credential-helper
+    severity: high
 
   - id: no-hidden-html-instructions
     severity: medium
@@ -590,6 +617,9 @@ rules:
   - id: no-sensitive-file-paths
     severity: high
 
+  - id: no-shell-heredoc-payload
+    severity: high
+
   - id: no-shell-profile-modification
     severity: high
 
@@ -602,6 +632,15 @@ rules:
   - id: no-suspicious-base64
     severity: medium
 
+  - id: no-tainted-placeholder-instructions
+    severity: high
+
+  - id: no-template-network-fetch
+    severity: medium
+
+  - id: no-transcript-injection
+    severity: high
+
   - id: no-tunnel-and-reverse-shell
     severity: high
 
@@ -610,6 +649,9 @@ rules:
 
   - id: no-unsafe-templates
     severity: medium
+
+  - id: no-url-encoded-command-payload
+    severity: high
 
   - id: no-webhook-exfiltration
     severity: high

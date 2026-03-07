@@ -6,6 +6,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/lexer"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
 
 const (
@@ -14,20 +15,6 @@ const (
 	summary     = "Detects PowerShell download cradle chains"
 	description = "PowerShell download cradle patterns like Invoke-WebRequest or DownloadString piped into Invoke-Expression indicate high-risk remote execution intent."
 )
-
-var powerShellDownloadSignals = map[string]struct{}{
-	"invoke-webrequest": {},
-	"iwr":               {},
-	"invoke-restmethod": {},
-	"irm":               {},
-	"downloadstring":    {},
-	"downloadfile":      {},
-}
-
-var powerShellExecSignals = map[string]struct{}{
-	"invoke-expression": {},
-	"iex":               {},
-}
 
 // Rule detects PowerShell download cradle patterns.
 type Rule struct{}
@@ -69,12 +56,12 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 			lower := strings.ToLower(token.Value)
 
 			if downloadIndex == -1 {
-				if _, ok := powerShellDownloadSignals[lower]; ok {
+				if _, ok := signals.PowerShellDownloadSignals[lower]; ok {
 					downloadIndex = globalIndex
 					downloadPosition = token.Position
 				}
 			}
-			if _, ok := powerShellExecSignals[lower]; ok {
+			if _, ok := signals.PowerShellExecSignals[lower]; ok {
 				if downloadIndex != -1 && globalIndex > downloadIndex {
 					return []rules.Finding{{
 						Message:  "PowerShell download cradle pattern detected",
@@ -112,10 +99,10 @@ func hasPowerShellDownloadAndExecAhead(tokens []rules.Token, start int) bool {
 		token := tokens[i]
 		lower := strings.ToLower(token.Value)
 
-		if _, ok := powerShellDownloadSignals[lower]; ok {
+		if _, ok := signals.PowerShellDownloadSignals[lower]; ok {
 			hasDownload = true
 		}
-		if _, ok := powerShellExecSignals[lower]; ok {
+		if _, ok := signals.PowerShellExecSignals[lower]; ok {
 			hasExec = true
 		}
 		if token.Value == ";" {

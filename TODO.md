@@ -31,19 +31,19 @@ Priority scale:
 
 ### P1
 
-- [ ] `no-prompt-injection-override`: Reduce documentation/quoted-text false positives; add stronger pattern set for
+- [x] `no-prompt-injection-override`: Reduce documentation/quoted-text false positives; add stronger pattern set for
   untrusted content while keeping deterministic behavior.
-- [ ] `no-command-chaining`: Improve shell-context detection for code examples/docs and add encoded chaining operator
+- [x] `no-command-chaining`: Improve shell-context detection for code examples/docs and add encoded chaining operator
   detection (`%3B`, `%26%26`, `%7C`).
-- [ ] `no-unsafe-templates`: Strengthen template taint handling so only placeholder-driven execution/network/file
+- [x] `no-unsafe-templates`: Strengthen template taint handling so only placeholder-driven execution/network/file
   patterns trigger high-confidence findings.
-- [ ] `no-hidden-html-instructions`: Extend hidden-content scanning to additional hidden containers and nested comment
+- [x] `no-hidden-html-instructions`: Extend hidden-content scanning to additional hidden containers and nested comment
   patterns.
-- [ ] `no-suspicious-base64`: Add entropy/shape checks and decoder-coupling heuristics to separate benign blobs from
+- [x] `no-suspicious-base64`: Add entropy/shape checks and decoder-coupling heuristics to separate benign blobs from
   executable/exfil payloads.
-- [ ] `no-data-uri-payloads`: Add MIME-aware handling and stronger triggering when payloads are
+- [x] `no-data-uri-payloads`: Add MIME-aware handling and stronger triggering when payloads are
   script/executable-oriented.
-- [ ] `no-insecure-http`: Add companion high-risk behavior when insecure HTTP appears together with
+- [x] `no-insecure-http`: Add companion high-risk behavior when insecure HTTP appears together with
   execution/download/tool-invocation intent.
 
 ### P2
@@ -77,18 +77,18 @@ Priority scale:
 
 ### P1
 
-- [ ] `no-transcript-injection` (`Segment`): Detect fake chat transcripts (`User:`, `Assistant:` role alternation) used
+- [x] `no-transcript-injection` (`Segment`): Detect fake chat transcripts (`User:`, `Assistant:` role alternation) used
   as instruction smuggling.
-- [ ] `no-shell-heredoc-payload` (`Document`): Detect heredoc payload containers likely used to stage scripts.
-- [ ] `no-gitconfig-credential-helper` (`Token`): Detect risky credential-helper and HTTP header rewrites in
+- [x] `no-shell-heredoc-payload` (`Document`): Detect heredoc payload containers likely used to stage scripts.
+- [x] `no-gitconfig-credential-helper` (`Token`): Detect risky credential-helper and HTTP header rewrites in
   `git config` instructions.
-- [ ] `no-dns-exfiltration` (`Flow`): Detect DNS-based exfil chains (`nslookup`/`dig` + secret source + external
+- [x] `no-dns-exfiltration` (`Flow`): Detect DNS-based exfil chains (`nslookup`/`dig` + secret source + external
   domain).
-- [ ] `no-tainted-placeholder-instructions` (`Token`/`Segment`): Detect tainted template placeholders near
+- [x] `no-tainted-placeholder-instructions` (`Token`/`Segment`): Detect tainted template placeholders near
   override/capability execution language.
-- [ ] `no-template-network-fetch` (`Token`): Detect template expressions that dynamically build or trigger network/tool
+- [x] `no-template-network-fetch` (`Token`): Detect template expressions that dynamically build or trigger network/tool
   fetch behavior.
-- [ ] `no-url-encoded-command-payload` (`Token`): Detect encoded command operators and payloads intended for
+- [x] `no-url-encoded-command-payload` (`Token`): Detect encoded command operators and payloads intended for
   decode-then-execute flows.
 
 ### P2

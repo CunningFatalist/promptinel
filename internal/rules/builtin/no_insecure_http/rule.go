@@ -6,6 +6,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/lexer"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
 
 const (
@@ -46,6 +47,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 	}
 
 	findings := make([]rules.Finding, 0)
+	hasHighRiskContext := hasHighRiskSignal(tokens)
 	for _, token := range tokens {
 		if token.Type != lexer.TokenURL {
 			continue
@@ -53,10 +55,25 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		if !strings.HasPrefix(strings.ToLower(token.Value), "http://") {
 			continue
 		}
+		message := "Insecure HTTP URL detected"
+		if hasHighRiskContext {
+			message = "Insecure HTTP URL detected in download or execution flow"
+		}
 		findings = append(findings, rules.Finding{
-			Message:  "Insecure HTTP URL detected",
+			Message:  message,
 			Position: token.Position,
 		})
 	}
 	return findings
+}
+
+func hasHighRiskSignal(tokens []rules.Token) bool {
+	for _, token := range tokens {
+		lower := strings.ToLower(token.Value)
+		if _, ok := signals.HighRiskHTTPSignals[lower]; ok {
+			return true
+		}
+	}
+
+	return false
 }

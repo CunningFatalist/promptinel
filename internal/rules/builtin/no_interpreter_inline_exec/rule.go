@@ -6,6 +6,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/lexer"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
 
 const (
@@ -14,27 +15,6 @@ const (
 	summary     = "Detects inline interpreter execution flags"
 	description = "Inline interpreter execution flags like python -c or node -e can be used to execute injected payloads directly."
 )
-
-var inlineInterpreterFlags = map[string]map[string]struct{}{
-	"python": {
-		"c": {},
-	},
-	"python3": {
-		"c": {},
-	},
-	"node": {
-		"e": {},
-	},
-	"ruby": {
-		"e": {},
-	},
-	"php": {
-		"r": {},
-	},
-	"perl": {
-		"e": {},
-	},
-}
 
 // Rule detects inline interpreter execution usage.
 type Rule struct{}
@@ -72,7 +52,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 			continue
 		}
 		interpreter := strings.ToLower(token.Value)
-		flags, ok := inlineInterpreterFlags[interpreter]
+		flags, ok := signals.InlineInterpreterFlags[interpreter]
 		if !ok {
 			continue
 		}

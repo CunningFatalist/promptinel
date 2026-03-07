@@ -1,6 +1,7 @@
 package nohiddenhtmlinstructions
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
@@ -41,7 +42,21 @@ func Metadata() rules.Metadata {
 
 // CheckDocument detects suspicious content hidden in HTML comments.
 func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Finding {
-	contentLower := strings.ToLower(doc.Content)
+	if finding := findSuspiciousComment(doc.Content); finding != nil {
+		return finding
+	}
+	if finding := findSuspiciousHiddenContainer(doc.Content); finding != nil {
+		return finding
+	}
+	if finding := findSuspiciousTemplateContainer(doc.Content, signals.TemplateContainerPattern); finding != nil {
+		return finding
+	}
+
+	return nil
+}
+
+func findSuspiciousComment(content string) []rules.Finding {
+	contentLower := strings.ToLower(content)
 	searchOffset := 0
 
 	for searchOffset < len(contentLower) {
@@ -50,7 +65,6 @@ func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Findi
 			break
 		}
 		start := searchOffset + startRelative
-
 		bodyStart := start + len("<!--")
 		endRelative := strings.Index(contentLower[bodyStart:], "-->")
 		if endRelative < 0 {
@@ -59,16 +73,18 @@ func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Findi
 
 		bodyEnd := bodyStart + endRelative
 		commentBody := contentLower[bodyStart:bodyEnd]
-		for _, signal := range signals.SuspiciousCommentSignals {
-			signalIndex := strings.Index(commentBody, signal)
-			if signalIndex == -1 {
-				continue
-			}
+		if strings.Contains(commentBody, "<!--") {
+			return []rules.Finding{{
+				Message:  "Suspicious instruction hidden in HTML comment detected",
+				Position: rules.PositionFromByteOffset(content, bodyStart),
+			}}
+		}
 
+		if signalIndex := firstSuspiciousSignal(commentBody); signalIndex >= 0 {
 			matchOffset := bodyStart + signalIndex
 			return []rules.Finding{{
 				Message:  "Suspicious instruction hidden in HTML comment detected",
-				Position: rules.PositionFromByteOffset(doc.Content, matchOffset),
+				Position: rules.PositionFromByteOffset(content, matchOffset),
 			}}
 		}
 
@@ -76,4 +92,65 @@ func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Findi
 	}
 
 	return nil
+}
+
+func findSuspiciousHiddenContainer(content string) []rules.Finding {
+	matches := signals.HiddenContainerStartPattern.FindAllStringSubmatchIndex(content, -1)
+	for _, match := range matches {
+		if len(match) < 4 {
+			continue
+		}
+
+		tagName := strings.ToLower(content[match[2]:match[3]])
+		bodyStart := match[1]
+		endTag := "</" + tagName + ">"
+		bodyEndRelative := strings.Index(strings.ToLower(content[bodyStart:]), endTag)
+		if bodyEndRelative < 0 {
+			continue
+		}
+
+		bodyEnd := bodyStart + bodyEndRelative
+		body := strings.ToLower(content[bodyStart:bodyEnd])
+		if signalIndex := firstSuspiciousSignal(body); signalIndex >= 0 {
+			return []rules.Finding{{
+				Message:  "Suspicious instruction hidden in HTML comment detected",
+				Position: rules.PositionFromByteOffset(content, bodyStart+signalIndex),
+			}}
+		}
+	}
+
+	return nil
+}
+
+func findSuspiciousTemplateContainer(content string, pattern *regexp.Regexp) []rules.Finding {
+	matches := pattern.FindAllStringSubmatchIndex(content, -1)
+	for _, match := range matches {
+		if len(match) < 6 {
+			continue
+		}
+
+		bodyStart := match[4]
+		bodyEnd := match[5]
+		body := strings.ToLower(content[bodyStart:bodyEnd])
+		if signalIndex := firstSuspiciousSignal(body); signalIndex >= 0 {
+			return []rules.Finding{{
+				Message:  "Suspicious instruction hidden in HTML comment detected",
+				Position: rules.PositionFromByteOffset(content, bodyStart+signalIndex),
+			}}
+		}
+	}
+
+	return nil
+}
+
+func firstSuspiciousSignal(content string) int {
+	best := -1
+	for _, signal := range signals.SuspiciousCommentSignals {
+		signalIndex := strings.Index(content, signal)
+		if signalIndex >= 0 && (best == -1 || signalIndex < best) {
+			best = signalIndex
+		}
+	}
+
+	return best
 }

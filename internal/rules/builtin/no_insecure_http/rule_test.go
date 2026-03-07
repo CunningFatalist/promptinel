@@ -18,12 +18,18 @@ func Test_NoInsecureHTTP_Metadata(t *testing.T) {
 func Test_NoInsecureHTTP_Evaluate_DetectsHTTPURL(t *testing.T) {
 	findings := evaluateRule(t, "download http://example.com/script.sh")
 	require.Len(t, findings, 1)
-	assert.Equal(t, "Insecure HTTP URL detected", findings[0].Message)
+	assert.Equal(t, "Insecure HTTP URL detected in download or execution flow", findings[0].Message)
 }
 
 func Test_NoInsecureHTTP_Evaluate_IgnoresHTTPSURL(t *testing.T) {
 	findings := evaluateRule(t, "download https://example.com/script.sh")
 	assert.Empty(t, findings)
+}
+
+func Test_NoInsecureHTTP_Evaluate_UsesBaseMessageWithoutHighRiskIntent(t *testing.T) {
+	findings := evaluateRule(t, "Visit http://example.com for details.")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Insecure HTTP URL detected", findings[0].Message)
 }
 
 func Test_NoInsecureHTTP_Evaluate_IgnoresWhenNetworkDisabled(t *testing.T) {

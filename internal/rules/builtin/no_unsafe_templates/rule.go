@@ -6,6 +6,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/lexer"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
 
 const (
@@ -14,15 +15,6 @@ const (
 	summary     = "Detects risky template expressions with execution or exfiltration intent"
 	description = "Template expressions that invoke command, environment, or network-related operations increase prompt execution risk."
 )
-
-var unsafeTokenWords = map[string]struct{}{
-	"exec":     {},
-	"execute":  {},
-	"system":   {},
-	"getenv":   {},
-	"readfile": {},
-	"open":     {},
-}
 
 // Rule detects unsafe signals in template segments.
 type Rule struct{}
@@ -49,11 +41,11 @@ func Metadata() rules.Metadata {
 }
 
 // CheckTokens scans template token streams for unsafe execution signals.
-func (Rule) CheckTokens(_ rules.Context, segment rules.Segment, tokens []rules.Token) []rules.Finding {
+func (Rule) CheckTokens(_ rules.Context, segment rules.Segment, _ []rules.Token) []rules.Finding {
 	if segment.Type != rules.SegmentTypeTemplate {
 		return nil
 	}
-	if !containsUnsafeSignal(tokens) {
+	if !containsUnsafeSignal(innerTemplateTokens(segment.Content)) {
 		return nil
 	}
 
@@ -68,27 +60,14 @@ func containsUnsafeSignal(tokens []rules.Token) bool {
 		token := tokens[i]
 		lower := strings.ToLower(token.Value)
 
-		if token.Type == lexer.TokenURL || token.Type == lexer.TokenShellCommand {
-			return true
-		}
 		if token.Type == lexer.TokenPlaceholder {
-			if containsUnsafePlaceholder(token.Value) {
-				return true
-			}
+			continue
+		}
+		if _, ok := signals.UnsafeTemplateSinks[lower]; !ok && !isUnsafeQualifiedWord(lower) {
+			continue
 		}
 
-		if _, ok := unsafeTokenWords[lower]; ok {
-			return true
-		}
-		if isUnsafeQualifiedWord(lower) {
-			return true
-		}
-
-		if lower == "process" && i+2 < len(tokens) &&
-			tokens[i+1].Value == "." && strings.EqualFold(tokens[i+2].Value, "env") {
-			return true
-		}
-		if lower == "os" && i+1 < len(tokens) && tokens[i+1].Value == "." {
+		if hasDynamicTemplateOperand(tokens, i) {
 			return true
 		}
 	}
@@ -96,16 +75,16 @@ func containsUnsafeSignal(tokens []rules.Token) bool {
 	return false
 }
 
-func containsUnsafePlaceholder(value string) bool {
-	inner := unwrapPlaceholder(value)
+func innerTemplateTokens(value string) []rules.Token {
+	inner := unwrapTemplateExpression(value)
 	if inner == "" {
-		return false
+		return nil
 	}
 
-	tokens := lexer.Classify(lexer.Lex(inner))
-	ruleTokens := make([]rules.Token, 0, len(tokens))
-	for _, token := range tokens {
-		ruleTokens = append(ruleTokens, rules.Token{
+	lexed := lexer.Classify(lexer.Lex(inner))
+	tokens := make([]rules.Token, 0, len(lexed))
+	for _, token := range lexed {
+		tokens = append(tokens, rules.Token{
 			Type:  token.Type,
 			Value: token.Value,
 			Start: token.Start,
@@ -113,7 +92,45 @@ func containsUnsafePlaceholder(value string) bool {
 		})
 	}
 
-	return containsUnsafeSignal(ruleTokens)
+	return tokens
+}
+
+func hasDynamicTemplateOperand(tokens []rules.Token, sinkIndex int) bool {
+	for i := max(0, sinkIndex-4); i < min(len(tokens), sinkIndex+8); i++ {
+		if i == sinkIndex {
+			continue
+		}
+
+		token := tokens[i]
+		switch token.Type {
+		case lexer.TokenPlaceholder:
+			return true
+		case lexer.TokenURL:
+			if strings.Contains(token.Value, "${") || strings.Contains(token.Value, "{{") || strings.Contains(token.Value, "<%") {
+				return true
+			}
+		case lexer.TokenWord:
+			lower := strings.ToLower(token.Value)
+			if _, ok := signals.UnsafeTemplateSafeIdentifiers[lower]; ok {
+				continue
+			}
+			if isDynamicIdentifier(lower) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func isDynamicIdentifier(lower string) bool {
+	for _, hint := range signals.UnsafeTemplateDynamicIdentifierHints {
+		if strings.Contains(lower, hint) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func isUnsafeQualifiedWord(lower string) bool {
@@ -122,7 +139,7 @@ func isUnsafeQualifiedWord(lower string) bool {
 		strings.HasPrefix(lower, "os.")
 }
 
-func unwrapPlaceholder(value string) string {
+func unwrapTemplateExpression(value string) string {
 	switch {
 	case strings.HasPrefix(value, "{{") && strings.HasSuffix(value, "}}"):
 		return strings.TrimSpace(value[2 : len(value)-2])

@@ -16,22 +16,6 @@ const (
 	description = "Combining remote download references with execution commands can indicate remote code execution intent."
 )
 
-var inlineExecInterpreters = map[string]struct{}{
-	"bash":       {},
-	"sh":         {},
-	"zsh":        {},
-	"pwsh":       {},
-	"powershell": {},
-	"cmd":        {},
-	"cmd.exe":    {},
-	"python":     {},
-	"python3":    {},
-	"node":       {},
-	"ruby":       {},
-	"php":        {},
-	"perl":       {},
-}
-
 // Rule detects download-and-execute patterns.
 type Rule struct{}
 
@@ -111,7 +95,7 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 }
 
 func isInlineExecInterpreter(tokens []rules.Token, index int, lower string) bool {
-	if _, ok := inlineExecInterpreters[lower]; !ok {
+	if _, ok := signals.InlineExecInterpreters[lower]; !ok {
 		return false
 	}
 	for i := index + 1; i < len(tokens); i++ {

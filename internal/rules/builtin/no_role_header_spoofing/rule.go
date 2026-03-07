@@ -1,12 +1,12 @@
 package noroleheaderspoofing
 
 import (
-	"regexp"
 	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/CunningFatalist/promptinel/internal/rules/helpers"
+	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
 
 const (
@@ -15,8 +15,6 @@ const (
 	summary     = "Detects structured role-header spoof patterns"
 	description = "Role header prefixes such as SYSTEM: or DEVELOPER: can be used to spoof higher-priority instruction channels in prompts."
 )
-
-var roleHeaderPattern = regexp.MustCompile(`(?im)^\s*(system|developer|tools|tool|assistant|user)\s*:`)
 
 // Rule detects role header spoofing markers.
 type Rule struct{}
@@ -45,7 +43,7 @@ func Metadata() rules.Metadata {
 // CheckSegment detects role-like header prefixes at line starts.
 func (Rule) CheckSegment(_ rules.Context, segment rules.Segment) []rules.Finding {
 	lower := strings.ToLower(segment.Content)
-	match := roleHeaderPattern.FindStringIndex(lower)
+	match := signals.RoleHeaderPattern.FindStringIndex(lower)
 	if match == nil {
 		return nil
 	}

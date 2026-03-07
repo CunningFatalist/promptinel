@@ -5,6 +5,7 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
 
 const (
@@ -13,10 +14,6 @@ const (
 	summary     = "Detects embedded role/tool-call protocol payloads"
 	description = "Structured role, tool_call, and function_call payloads embedded in content can spoof agent protocol boundaries and tool invocation semantics."
 )
-
-var roleFieldSnippets = []string{"\"role\"", "role:"}
-var protocolFieldSnippets = []string{"tool_calls", "tool_call", "function_call", "arguments"}
-var elevatedRoleSnippets = []string{"\"system\"", "\"developer\"", "\"tool\"", "role: system", "role: developer", "role: tool"}
 
 // Rule detects protocol-like YAML/JSON role payload structures.
 type Rule struct{}
@@ -45,13 +42,13 @@ func Metadata() rules.Metadata {
 // CheckDocument detects protocol field clusters that can spoof agent role/tool calls.
 func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Finding {
 	lower := strings.ToLower(doc.Content)
-	roleIndex := firstSnippetIndex(lower, roleFieldSnippets)
+	roleIndex := firstSnippetIndex(lower, signals.YAMLRoleFieldSnippets)
 	if roleIndex == -1 {
 		return nil
 	}
 
-	hasProtocolField := firstSnippetIndex(lower, protocolFieldSnippets) != -1
-	hasElevatedRole := firstSnippetIndex(lower, elevatedRoleSnippets) != -1
+	hasProtocolField := firstSnippetIndex(lower, signals.YAMLProtocolFieldSnippets) != -1
+	hasElevatedRole := firstSnippetIndex(lower, signals.YAMLElevatedRoleSnippets) != -1
 	if !hasProtocolField && !hasElevatedRole {
 		return nil
 	}

@@ -5,7 +5,6 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rules"
-	"github.com/CunningFatalist/promptinel/internal/rules/helpers"
 	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
 
@@ -40,26 +39,51 @@ func Metadata() rules.Metadata {
 	}
 }
 
-// CheckSegment detects common instruction override phrases.
-func (Rule) CheckSegment(ctx rules.Context, segment rules.Segment) []rules.Finding {
-	lower := strings.ToLower(segment.Content)
-	if index := firstPhraseIndex(lower, signals.OverridePhrases); index >= 0 {
+// CheckDocument detects common instruction override phrases while skipping quoted/documented examples.
+func (Rule) CheckDocument(ctx rules.Context, doc rules.DocumentView) []rules.Finding {
+	match := firstDocumentPhraseMatch(doc.Content, signals.OverridePhrases, false)
+	if match >= 0 {
 		return []rules.Finding{{
 			Message:  "Prompt instruction override phrase detected",
-			Position: helpers.AdvancePositionByByteOffset(segment.Position, segment.Content, index),
+			Position: rules.PositionFromByteOffset(doc.Content, match),
 		}}
 	}
 
 	if ctx.IsUntrusted() {
-		if index := firstPhraseIndex(lower, signals.UntrustedOverridePhrases); index >= 0 {
+		if match := firstDocumentPhraseMatch(doc.Content, signals.UntrustedOverridePhrases, true); match >= 0 {
 			return []rules.Finding{{
 				Message:  "Prompt instruction override phrase detected",
-				Position: helpers.AdvancePositionByByteOffset(segment.Position, segment.Content, index),
+				Position: rules.PositionFromByteOffset(doc.Content, match),
 			}}
 		}
 	}
 
 	return nil
+}
+
+func firstDocumentPhraseMatch(content string, phrases []string, requireTarget bool) int {
+	lines := strings.SplitAfter(content, "\n")
+	offset := 0
+	for _, line := range lines {
+		lowerLine := strings.ToLower(strings.TrimRight(line, "\n"))
+		index := firstPhraseIndex(lowerLine, phrases)
+		if index == -1 {
+			offset += len(line)
+			continue
+		}
+		phrase := matchedPhrase(lowerLine, phrases, index)
+		if phrase == "" || isDocumentedPhrase(lowerLine, index, len(phrase)) {
+			offset += len(line)
+			continue
+		}
+		if requireTarget && !containsAnySnippet(lowerLine, signals.PromptOverrideUntrustedTargetSignals) {
+			offset += len(line)
+			continue
+		}
+		return offset + index
+	}
+
+	return -1
 }
 
 func firstPhraseIndex(content string, phrases []string) int {
@@ -75,4 +99,51 @@ func firstPhraseIndex(content string, phrases []string) int {
 	}
 
 	return earliest
+}
+
+func matchedPhrase(content string, phrases []string, index int) string {
+	for _, phrase := range phrases {
+		if strings.Index(content, phrase) == index {
+			return phrase
+		}
+	}
+
+	return ""
+}
+
+func isDocumentedPhrase(line string, index int, length int) bool {
+	if index < 0 || index+length > len(line) {
+		return false
+	}
+
+	if enclosedBy(line, index, length, '`') || enclosedBy(line, index, length, '"') || enclosedBy(line, index, length, '\'') {
+		return true
+	}
+
+	contextStart := max(0, index-24)
+	contextEnd := min(len(line), index+length+24)
+	context := line[contextStart:contextEnd]
+	for _, marker := range signals.PromptOverrideDocumentationMarkers {
+		if strings.Contains(context, marker) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func enclosedBy(line string, index int, length int, quote byte) bool {
+	start := strings.LastIndexByte(line[:index], quote)
+	end := strings.IndexByte(line[index+length:], quote)
+	return start >= 0 && end >= 0
+}
+
+func containsAnySnippet(value string, snippets []string) bool {
+	for _, snippet := range snippets {
+		if strings.Contains(value, snippet) {
+			return true
+		}
+	}
+
+	return false
 }

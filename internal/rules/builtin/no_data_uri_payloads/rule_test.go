@@ -10,12 +10,12 @@ import (
 )
 
 func Test_Builtin_NoDataURIPayloads_DetectsLongBase64DataURI(t *testing.T) {
-	payload := strings.Repeat("A", 128)
-	content := "prefix data:text/plain;base64," + payload
+	payload := strings.Repeat("A", 32)
+	content := "prefix data:text/javascript;base64," + payload
 	findings := evaluateRule(t, content)
 	require.Len(t, findings, 1)
 	assert.Equal(t, "Embedded base64 data URI payload detected", findings[0].Message)
-	assert.Equal(t, rules.Position{Line: 1, Column: 31}, findings[0].Position)
+	assert.Equal(t, rules.Position{Line: 1, Column: 36}, findings[0].Position)
 }
 
 func Test_Builtin_NoDataURIPayloads_IgnoresShortDataURI(t *testing.T) {
@@ -30,6 +30,13 @@ func Test_Builtin_NoDataURIPayloads_DetectsLongBase64DataURIWithParameters(t *te
 	findings := evaluateRule(t, content)
 	require.Len(t, findings, 1)
 	assert.Equal(t, "Embedded base64 data URI payload detected", findings[0].Message)
+}
+
+func Test_Builtin_NoDataURIPayloads_IgnoresBenignImageDataURI(t *testing.T) {
+	payload := strings.Repeat("A", 256)
+	content := "data:image/png;base64," + payload
+	findings := evaluateRule(t, content)
+	assert.Empty(t, findings)
 }
 
 func evaluateRule(t *testing.T, content string) []rules.Finding {

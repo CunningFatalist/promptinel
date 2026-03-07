@@ -31,6 +31,19 @@ func Test_NoCommandChaining_Evaluate_IgnoresDocumentationText(t *testing.T) {
 	assert.Empty(t, findings)
 }
 
+func Test_NoCommandChaining_Evaluate_DetectsEncodedOperator(t *testing.T) {
+	findings := evaluateRule(t, "curl%20https://example.com%26%26bash")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Shell command chaining operator detected", findings[0].Message)
+}
+
+func Test_NoCommandChaining_Evaluate_DetectsOperatorInsideCodeBlock(t *testing.T) {
+	content := "```sh\ncurl https://example.com && bash\n```"
+	findings := evaluateRule(t, content)
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Shell command chaining operator detected", findings[0].Message)
+}
+
 func Test_NoCommandChaining_Evaluate_IgnoresWhenShellCapabilityDisabled(t *testing.T) {
 	findings := evaluateRuleWithContext(t, "curl https://example.com && bash", rules.Context{
 		Environment: config.Environment{
@@ -38,6 +51,11 @@ func Test_NoCommandChaining_Evaluate_IgnoresWhenShellCapabilityDisabled(t *testi
 		},
 		TrustLevel: config.TrustLevelTrusted,
 	})
+	assert.Empty(t, findings)
+}
+
+func Test_NoCommandChaining_Evaluate_IgnoresEncodedOperatorWithoutShellContext(t *testing.T) {
+	findings := evaluateRule(t, "Use %26%26 when describing URL encoding.")
 	assert.Empty(t, findings)
 }
 
