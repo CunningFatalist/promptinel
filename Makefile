@@ -60,6 +60,10 @@ vuln: tidy vendor ## Run dependency vulnerability scan
 fmt: ## Format the code
 	docker compose exec promptinel_app go fmt ./...
 
+.PHONY: fmt-docs
+fmt-docs: ## Format Markdown documentation with Prettier
+	docker run --rm -v "$(PWD):/work" -w /work node:22.14.0-bookworm-slim sh -ec 'pnpx prettier@3.5.3 --write README.md "docs/**/*.md"'
+
 .PHONY: vet
 vet: ## Vet the code
 	docker compose exec promptinel_app go vet ./...

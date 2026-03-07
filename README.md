@@ -164,6 +164,9 @@ promptinel sanitize --exclude "*.yaml" --apply prompts/
 
 ### Viewing and Explaining Rules
 
+See [Rule Documentation Overview](docs/Rules/Overview.md) for the full built-in rule index and
+links to the per-rule pages in [`docs/rules/`](docs/rules/).
+
 ```bash
 # List all available rules
 promptinel rules list

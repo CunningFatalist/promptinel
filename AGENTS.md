@@ -48,6 +48,10 @@ Your task is considered complete when:
 - Documentation is updated
 - Test coverage is above 85% for new code
 
+If you add a rule or change a rule's behavior, metadata, or severity, update the corresponding
+file in `docs/rules/`, update `docs/Rules/Overview.md`, and add a new rule doc from
+`docs/rules/Template.md` when needed.
+
 **Tip:** Run required checks with `make fmt fix vet vuln lint test`.
 
 ## General Philosophy
