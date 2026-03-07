@@ -253,11 +253,13 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 	}
 
 	normalized := normalize.ForScan(string(content))
+	skillContext := deriveSkillContext(target.absolutePath, normalized.Content)
 
 	ruleFindings := rules.Evaluate(s.compiledRules, rules.Context{
 		Path:        target.relativePath,
 		Environment: s.environment,
 		TrustLevel:  s.trustLevel,
+		Skill:       skillContext,
 	}, normalized.Content)
 
 	scope := s.scopeForFile(target.relativePath, target.absolutePath, scopeRoots)

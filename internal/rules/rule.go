@@ -27,6 +27,7 @@ type Context struct {
 	Path        string
 	Environment config.Environment
 	TrustLevel  config.TrustLevel
+	Skill       *SkillContext
 }
 
 // DocumentView is the normalized content and metadata for a single file.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -256,6 +258,55 @@ func Test_Engine_ScanPaths_AppliesScopedRuleDisable(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, findings, 1)
 	assert.Equal(t, "rule-b", findings[0].ID)
+}
+
+func Test_Engine_ScanPaths_DetectsReferencedSkillResources(t *testing.T) {
+	tmp := t.TempDir()
+	skillDir := filepath.Join(tmp, "skills", "demo")
+	require.NoError(t, os.MkdirAll(filepath.Join(skillDir, "scripts"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "scripts", "run.py"), []byte("print('ok')\n"), 0o644))
+
+	skillDoc := `---
+name: demo
+description: demo
+---
+
+Use [runner](scripts/run.py) to execute the workflow.
+`
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skillDoc), 0o644))
+
+	registry, err := builtin.NewRegistry()
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	scanner := NewScanner(compiled, config.DefaultConfig())
+	findings, err := scanner.ScanPaths(context.Background(), []string{tmp}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.True(t, filepath.ToSlash(findings[0].Path) == "skills/demo/SKILL.md" || strings.HasSuffix(filepath.ToSlash(findings[0].Path), "/skills/demo/SKILL.md"))
+	assert.Equal(t, "skill-has-bundled-resources", findings[0].ID)
+	assert.Equal(t, config.SeverityLow, findings[0].Severity)
+	assert.Contains(t, findings[0].Message, "scripts/run.py")
+}
+
+func Test_Engine_ScanPaths_IgnoresUnresolvedSkillReferences(t *testing.T) {
+	tmp := t.TempDir()
+	skillDir := filepath.Join(tmp, "skills", "demo")
+	require.NoError(t, os.MkdirAll(skillDir, 0o755))
+
+	skillDoc := `Use [runner](scripts/run.py) only after setup.`
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skillDoc), 0o644))
+
+	registry, err := builtin.NewRegistry()
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	scanner := NewScanner(compiled, config.DefaultConfig())
+	findings, err := scanner.ScanPaths(context.Background(), []string{tmp}, nil, nil)
+	require.NoError(t, err)
+	assert.Empty(t, findings)
 }
 
 func Test_Engine_ScanPaths_AppliesScopedRuleSeverityOverride(t *testing.T) {

@@ -20,11 +20,14 @@ func Test_Builtin_NewRegistry_ContainsDefaultRules(t *testing.T) {
 		"no-dns-exfiltration",
 		"no-download-execute",
 		"no-gitconfig-credential-helper",
+		"no-hidden-directionality",
 		"no-hidden-html-instructions",
 		"no-insecure-http",
 		"no-interpreter-inline-exec",
 		"no-metadata-service-access",
 		"no-mixed-script-identifiers",
+		"no-multilayer-encoding",
+		"no-nonstandard-whitespace",
 		"no-override-capability-flow",
 		"no-powershell-download-cradle",
 		"no-prompt-injection-override",
@@ -46,6 +49,7 @@ func Test_Builtin_NewRegistry_ContainsDefaultRules(t *testing.T) {
 		"no-webhook-exfiltration",
 		"no-yaml-json-role-fields",
 		"no-zero-width",
+		"skill-has-bundled-resources",
 	}
 	require.Len(t, list, len(expectedIDs))
 	for i, id := range expectedIDs {

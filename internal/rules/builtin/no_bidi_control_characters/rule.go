@@ -1,8 +1,11 @@
 package nobidicontrolcharacters
 
 import (
+	"fmt"
+
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/helpers"
 )
 
 const (
@@ -11,20 +14,6 @@ const (
 	summary     = "Detects bidirectional text control characters"
 	description = "Bidi control characters can visually reorder instructions and hide malicious intent in prompt text."
 )
-
-var bidiControlRunes = map[rune]struct{}{
-	'\u200e': {}, // LEFT-TO-RIGHT MARK
-	'\u200f': {}, // RIGHT-TO-LEFT MARK
-	'\u202a': {}, // LEFT-TO-RIGHT EMBEDDING
-	'\u202b': {}, // RIGHT-TO-LEFT EMBEDDING
-	'\u202c': {}, // POP DIRECTIONAL FORMATTING
-	'\u202d': {}, // LEFT-TO-RIGHT OVERRIDE
-	'\u202e': {}, // RIGHT-TO-LEFT OVERRIDE
-	'\u2066': {}, // LEFT-TO-RIGHT ISOLATE
-	'\u2067': {}, // RIGHT-TO-LEFT ISOLATE
-	'\u2068': {}, // FIRST STRONG ISOLATE
-	'\u2069': {}, // POP DIRECTIONAL ISOLATE
-}
 
 // Rule detects bidirectional control characters.
 type Rule struct{}
@@ -52,16 +41,23 @@ func Metadata() rules.Metadata {
 
 // CheckDocument detects bidi control characters in the full document.
 func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Finding {
+	findings := make([]rules.Finding, 0)
 	for offset, r := range doc.Content {
-		if _, ok := bidiControlRunes[r]; !ok {
+		detail, ok := helpers.BidiControlInfo(r)
+		if !ok {
 			continue
 		}
 
-		return []rules.Finding{{
-			Message:  "Bidirectional control character detected",
+		message := fmt.Sprintf("Bidirectional control character detected (%s, %s)", detail.Name, detail.Class)
+		if token, _, _ := helpers.SurroundingNonWhitespaceToken(doc.Content, offset); helpers.LooksIdentifierLikeValue(token) {
+			message = fmt.Sprintf("%s inside URL/path-like token", message)
+		}
+
+		findings = append(findings, rules.Finding{
+			Message:  message,
 			Position: rules.PositionFromByteOffset(doc.Content, offset),
-		}}
+		})
 	}
 
-	return nil
+	return findings
 }

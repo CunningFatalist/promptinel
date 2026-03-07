@@ -29,3 +29,11 @@ func Test_Rules_Context_IsUntrusted(t *testing.T) {
 	assert.True(t, Context{TrustLevel: config.TrustLevelUntrusted}.IsUntrusted())
 	assert.True(t, Context{TrustLevel: config.TrustLevelTainted}.IsUntrusted())
 }
+
+func Test_Rules_Context_HasReferencedSkillResources(t *testing.T) {
+	assert.False(t, Context{}.HasReferencedSkillResources())
+	assert.False(t, Context{Skill: &SkillContext{}}.HasReferencedSkillResources())
+	assert.True(t, Context{Skill: &SkillContext{
+		ReferencedResources: []string{"scripts/run.py"},
+	}}.HasReferencedSkillResources())
+}

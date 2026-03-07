@@ -30,6 +30,13 @@ func Test_NoZeroWidth_CheckDocument_DoesNotMatchSafeText(t *testing.T) {
 	assert.Empty(t, findings)
 }
 
+func Test_NoZeroWidth_CheckDocument_DetectsRelatedInvisibleFormattingRune(t *testing.T) {
+	findings := evaluateRule(t, "down\u00adload")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Zero-width character detected (SOFT HYPHEN, formatting)", findings[0].Message)
+	assert.Equal(t, rules.Position{Line: 1, Column: 5}, findings[0].Position)
+}
+
 func evaluateRule(t *testing.T, content string) []rules.Finding {
 	t.Helper()
 

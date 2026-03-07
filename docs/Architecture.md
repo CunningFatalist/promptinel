@@ -84,6 +84,7 @@ Rules are capability-based via phase-specific interfaces:
 - environment-only effects (capability gating)
 - trust-only effects (stricter matching for lower trust)
 - combined environment + trust effects
+- scanner-derived per-document metadata for targeted advisory checks such as `SKILL.md` bundled-resource detection
 
 This keeps detection aligned to deployment capability assumptions while remaining conservative for untrusted/tainted inputs.
 

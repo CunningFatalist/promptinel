@@ -11,11 +11,14 @@ import (
 	nodnsexfiltration "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_dns_exfiltration"
 	nodownloadexecute "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_download_execute"
 	nogitconfigcredentialhelper "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_gitconfig_credential_helper"
+	nohiddendirectionality "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_hidden_directionality"
 	nohiddenhtmlinstructions "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_hidden_html_instructions"
 	noinsecurehttp "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_insecure_http"
 	nointerpreterinlineexec "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_interpreter_inline_exec"
 	nometadataserviceaccess "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_metadata_service_access"
 	nomixedscriptidentifiers "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_mixed_script_identifiers"
+	nomultilayerencoding "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_multilayer_encoding"
+	nononstandardwhitespace "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_nonstandard_whitespace"
 	nooverridecapabilityflow "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_override_capability_flow"
 	nopowershelldownloadcradle "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_powershell_download_cradle"
 	nopromptinjectionoverride "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_prompt_injection_override"
@@ -37,6 +40,7 @@ import (
 	nowebhookexfiltration "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_webhook_exfiltration"
 	noyamljsonrolefields "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_yaml_json_role_fields"
 	nozerowidth "github.com/CunningFatalist/promptinel/internal/rules/builtin/no_zero_width"
+	skillhasbundledresources "github.com/CunningFatalist/promptinel/internal/rules/builtin/skill_has_bundled_resources"
 )
 
 // NewRegistry returns the registry containing built-in rules.
@@ -51,11 +55,14 @@ func NewRegistry() (*rules.Registry, error) {
 		nodnsexfiltration.New(),
 		nodownloadexecute.New(),
 		nogitconfigcredentialhelper.New(),
+		nohiddendirectionality.New(),
 		nohiddenhtmlinstructions.New(),
 		noinsecurehttp.New(),
 		nointerpreterinlineexec.New(),
 		nometadataserviceaccess.New(),
 		nomixedscriptidentifiers.New(),
+		nomultilayerencoding.New(),
+		nononstandardwhitespace.New(),
 		nooverridecapabilityflow.New(),
 		nopowershelldownloadcradle.New(),
 		nopromptinjectionoverride.New(),
@@ -66,6 +73,7 @@ func NewRegistry() (*rules.Registry, error) {
 		noshellheredocpayload.New(),
 		noshellprofilemodification.New(),
 		nosshconfigmanipulation.New(),
+		skillhasbundledresources.New(),
 		nostageddownloadexecution.New(),
 		nosuspiciousbase64.New(),
 		notaintedplaceholderinstructions.New(),

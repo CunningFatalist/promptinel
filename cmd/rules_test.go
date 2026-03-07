@@ -38,8 +38,8 @@ func Test_Cmd_RulesListCommand_OutputIsSorted(t *testing.T) {
 	if !strings.Contains(lines[0], " no-bidi-control-characters ") {
 		t.Fatalf("expected first rule to be no-bidi-control-characters, got %q", lines[0])
 	}
-	if !strings.Contains(lines[len(lines)-1], " no-zero-width ") {
-		t.Fatalf("expected last rule to be no-zero-width, got %q", lines[len(lines)-1])
+	if !strings.Contains(lines[len(lines)-1], " skill-has-bundled-resources ") {
+		t.Fatalf("expected last rule to be skill-has-bundled-resources, got %q", lines[len(lines)-1])
 	}
 
 	pattern := regexp.MustCompile(`^\[ ([^]]+) \] `)

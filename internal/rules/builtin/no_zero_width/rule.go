@@ -1,9 +1,11 @@
 package nozerowidth
 
 import (
+	"fmt"
+
 	"github.com/CunningFatalist/promptinel/internal/config"
-	"github.com/CunningFatalist/promptinel/internal/lexer"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/rules/helpers"
 )
 
 const (
@@ -37,16 +39,22 @@ func Metadata() rules.Metadata {
 	}
 }
 
-// CheckTokens detects zero-width tokens in segments.
-func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) []rules.Finding {
+// CheckDocument detects invisible formatting runes that can hide prompt content.
+func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Finding {
 	findings := make([]rules.Finding, 0)
-	for _, token := range tokens {
-		if token.Type != lexer.TokenZeroWidth {
+	for offset, r := range doc.Content {
+		detail, ok := helpers.InvisibleFormattingInfo(r)
+		if !ok {
 			continue
 		}
+
+		message := "Zero-width character detected"
+		if detail.Class != "zero-width" {
+			message = fmt.Sprintf("Zero-width character detected (%s, %s)", detail.Name, detail.Class)
+		}
 		findings = append(findings, rules.Finding{
-			Message:  "Zero-width character detected",
-			Position: token.Position,
+			Message:  message,
+			Position: rules.PositionFromByteOffset(doc.Content, offset),
 		})
 	}
 	return findings

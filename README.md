@@ -286,6 +286,9 @@ scopes:
 
   - path: skills/**
     severity: high
+    rules:
+      - id: skill-has-bundled-resources
+        severity: low
 
   - path: prompts/**
     severity: medium
@@ -320,6 +323,9 @@ rules:
   - id: no-gitconfig-credential-helper
     severity: high
 
+  - id: no-hidden-directionality
+    severity: medium
+
   - id: no-hidden-html-instructions
     severity: medium
 
@@ -334,6 +340,12 @@ rules:
 
   - id: no-mixed-script-identifiers
     severity: high
+
+  - id: no-multilayer-encoding
+    severity: high
+
+  - id: no-nonstandard-whitespace
+    severity: medium
 
   - id: no-override-capability-flow
     severity: high
@@ -364,6 +376,9 @@ rules:
 
   - id: no-ssh-config-manipulation
     severity: high
+
+  - id: skill-has-bundled-resources
+    severity: low
 
   - id: no-staged-download-execution
     severity: high
@@ -537,6 +552,12 @@ scopes:
         enabled: false
       - id: no-bidi-control-characters
         severity: medium
+
+  - path: skills/**
+    severity: high
+    rules:
+      - id: skill-has-bundled-resources
+        severity: low
 ```
 
 Scope precedence is deterministic:
@@ -553,6 +574,8 @@ Scope precedence is deterministic:
 For per-rule overrides, only explicitly set fields in later scopes replace earlier values.
 Example: a later scope that only sets `severity` keeps the previous `enabled` value unchanged.
 To re-enable a previously disabled rule, set `enabled: true` explicitly in a later matching scope.
+This is useful for advisory rules such as `skill-has-bundled-resources`: if a broad
+`skills/**` scope is set to `high`, add a per-rule override to keep that rule at `low`.
 
 ### Built-In Rules
 
@@ -581,6 +604,9 @@ rules:
   - id: no-gitconfig-credential-helper
     severity: high
 
+  - id: no-hidden-directionality
+    severity: medium
+
   - id: no-hidden-html-instructions
     severity: medium
 
@@ -595,6 +621,12 @@ rules:
 
   - id: no-mixed-script-identifiers
     severity: high
+
+  - id: no-multilayer-encoding
+    severity: high
+
+  - id: no-nonstandard-whitespace
+    severity: medium
 
   - id: no-override-capability-flow
     severity: high
@@ -625,6 +657,9 @@ rules:
 
   - id: no-ssh-config-manipulation
     severity: high
+
+  - id: skill-has-bundled-resources
+    severity: low
 
   - id: no-staged-download-execution
     severity: high
