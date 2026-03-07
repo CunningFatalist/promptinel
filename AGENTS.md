@@ -27,7 +27,9 @@ and documentation.
 - Use `make test` to run all tests with coverage
 - Use `make lint` to check code quality with `golangci-lint`
 - Use `make vuln` to check for vulnerable dependencies with `govulncheck`
-- Use `make fmt` to format the code
+- Use `make fmt` to format code and documentation
+- Use `make fmt-docs` to docs only
+- Use `make fmt-code` to format code only
 - Use `make vet` to check for common mistakes
 - Use `make coverage` to generate a coverage report
 - Use `make vendor` to vendor dependencies
@@ -40,19 +42,13 @@ and documentation.
 
 Your task is considered complete when:
 
-- All tests pass
-- Code is properly formatted
-- Code is linted
-- Code is vetted
-- Code is documented
+- `make fmt fix vet vuln lint test` passes without errors
 - Documentation is updated
 - Test coverage is above 85% for new code
 
 If you add a rule or change a rule's behavior, metadata, or severity, update the corresponding
 file in `docs/rules/`, update `docs/Rules/Overview.md`, and add a new rule doc from
 `docs/rules/Template.md` when needed.
-
-**Tip:** Run required checks with `make fmt fix vet vuln lint test`.
 
 ## General Philosophy
 

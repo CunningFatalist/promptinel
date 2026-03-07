@@ -5,12 +5,12 @@
 Promptinel custom rules are configured in your Promptinel config file rather than compiled into the
 built-in rule registry. Today they are regex-based rules defined under `custom-rules`.
 
-| Field            | Value                                                                 |
-| ---------------- | --------------------------------------------------------------------- |
-| Rule ID          | Config-defined                                                        |
-| Default severity | Config-defined                                                        |
-| Summary          | `Custom regex rule`                                                   |
-| Description      | `User-defined regex-based rule from configuration.`                   |
+| Field            | Value                                               |
+| ---------------- | --------------------------------------------------- |
+| Rule ID          | Config-defined                                      |
+| Default severity | Config-defined                                      |
+| Summary          | `Custom regex rule`                                 |
+| Description      | `User-defined regex-based rule from configuration.` |
 
 ## What Custom Rules Do
 

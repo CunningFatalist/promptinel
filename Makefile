@@ -57,7 +57,10 @@ vuln: tidy vendor ## Run dependency vulnerability scan
 	fi
 
 .PHONY: fmt
-fmt: ## Format the code
+fmt: fmt-code fmt-docs ## Format code and documentation
+
+.PHONY: fmt-code
+fmt-code: ## Format the Go code
 	docker compose exec promptinel_app go fmt ./...
 
 .PHONY: fmt-docs
