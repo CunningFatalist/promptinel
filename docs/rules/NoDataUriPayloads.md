@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-data-uri-payloads` |
-| Default severity | `medium` |
-| Summary | Detects embedded base64 data URI payloads |
-| Description | Large embedded data URIs can hide executable or exfiltration payloads in prompt content. |
+| Field            | Value                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| Rule ID          | `no-data-uri-payloads`                                                                   |
+| Default severity | `medium`                                                                                 |
+| Summary          | Detects embedded base64 data URI payloads                                                |
+| Description      | Large embedded data URIs can hide executable or exfiltration payloads in prompt content. |
 
 ## What This Rule Does
 

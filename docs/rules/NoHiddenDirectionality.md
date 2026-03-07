@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-hidden-directionality` |
-| Default severity | `medium` |
-| Summary | Detects hidden RTL/LTR controls inside identifier-like tokens |
-| Description | Directionality controls inside URLs, paths, and similar tokens can disguise the true rendered order of high-risk prompt content. |
+| Field            | Value                                                                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-hidden-directionality`                                                                                                       |
+| Default severity | `medium`                                                                                                                         |
+| Summary          | Detects hidden RTL/LTR controls inside identifier-like tokens                                                                    |
+| Description      | Directionality controls inside URLs, paths, and similar tokens can disguise the true rendered order of high-risk prompt content. |
 
 ## What This Rule Does
 

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-interpreter-inline-exec` |
-| Default severity | `high` |
-| Summary | Detects inline interpreter execution flags |
-| Description | Inline interpreter execution flags like python -c or node -e can be used to execute injected payloads directly. |
+| Field            | Value                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-interpreter-inline-exec`                                                                                    |
+| Default severity | `high`                                                                                                          |
+| Summary          | Detects inline interpreter execution flags                                                                      |
+| Description      | Inline interpreter execution flags like python -c or node -e can be used to execute injected payloads directly. |
 
 ## What This Rule Does
 

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-multilayer-encoding` |
-| Default severity | `high` |
-| Summary | Detects multi-layer encoded payload staging |
-| Description | Combining URL encoding, base64-related content, and decode or decompress steps can hide executable payload staging in prompts. |
+| Field            | Value                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Rule ID          | `no-multilayer-encoding`                                                                                                       |
+| Default severity | `high`                                                                                                                         |
+| Summary          | Detects multi-layer encoded payload staging                                                                                    |
+| Description      | Combining URL encoding, base64-related content, and decode or decompress steps can hide executable payload staging in prompts. |
 
 ## What This Rule Does
 

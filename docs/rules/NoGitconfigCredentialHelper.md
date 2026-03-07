@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-gitconfig-credential-helper` |
-| Default severity | `high` |
-| Summary | Detects risky git credential-helper and HTTP header rewrites |
-| Description | Prompted git config rewrites can persist credentials or inject authorization headers into future Git traffic. |
+| Field            | Value                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-gitconfig-credential-helper`                                                                              |
+| Default severity | `high`                                                                                                        |
+| Summary          | Detects risky git credential-helper and HTTP header rewrites                                                  |
+| Description      | Prompted git config rewrites can persist credentials or inject authorization headers into future Git traffic. |
 
 ## What This Rule Does
 

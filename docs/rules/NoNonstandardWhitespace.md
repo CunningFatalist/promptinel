@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-nonstandard-whitespace` |
-| Default severity | `medium` |
-| Summary | Detects uncommon whitespace near actionable prompt content |
-| Description | Uncommon whitespace can hide or break up dangerous instructions in prompts, especially around command, exfiltration, and override text. |
+| Field            | Value                                                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-nonstandard-whitespace`                                                                                                             |
+| Default severity | `medium`                                                                                                                                |
+| Summary          | Detects uncommon whitespace near actionable prompt content                                                                              |
+| Description      | Uncommon whitespace can hide or break up dangerous instructions in prompts, especially around command, exfiltration, and override text. |
 
 ## What This Rule Does
 

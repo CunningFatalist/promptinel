@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-zero-width` |
-| Default severity | `high` |
-| Summary | Detects hidden zero-width Unicode characters |
-| Description | Invisible zero-width characters can hide instructions and make reviews unreliable. |
+| Field            | Value                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| Rule ID          | `no-zero-width`                                                                    |
+| Default severity | `high`                                                                             |
+| Summary          | Detects hidden zero-width Unicode characters                                       |
+| Description      | Invisible zero-width characters can hide instructions and make reviews unreliable. |
 
 ## What This Rule Does
 

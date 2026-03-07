@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-curl-pipe-shell` |
-| Default severity | `high` |
-| Summary | Detects direct piping from network download commands into shell interpreters |
-| Description | Piping curl/wget output directly to shell interpreters is a high-risk remote code execution pattern. |
+| Field            | Value                                                                                                |
+| ---------------- | ---------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-curl-pipe-shell`                                                                                 |
+| Default severity | `high`                                                                                               |
+| Summary          | Detects direct piping from network download commands into shell interpreters                         |
+| Description      | Piping curl/wget output directly to shell interpreters is a high-risk remote code execution pattern. |
 
 ## What This Rule Does
 

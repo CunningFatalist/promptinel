@@ -59,7 +59,7 @@ This project uses a maintainer-led enforcement model and does not use a separate
 reporting inbox.
 
 If you experience or witness unacceptable behavior, notify the maintainers in
-the project space (for example via a ping, issue or discussion). 
+the project space (for example via a ping, issue or discussion).
 Please avoid sharing sensitive personal details publicly.
 
 All reports will be reviewed and handled as promptly and fairly as possible.

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-unsafe-templates` |
-| Default severity | `medium` |
-| Summary | Detects risky template expressions with execution or exfiltration intent |
-| Description | Template expressions that invoke command, environment, or network-related operations increase prompt execution risk. |
+| Field            | Value                                                                                                                |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-unsafe-templates`                                                                                                |
+| Default severity | `medium`                                                                                                             |
+| Summary          | Detects risky template expressions with execution or exfiltration intent                                             |
+| Description      | Template expressions that invoke command, environment, or network-related operations increase prompt execution risk. |
 
 ## What This Rule Does
 

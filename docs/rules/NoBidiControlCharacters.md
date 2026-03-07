@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-bidi-control-characters` |
-| Default severity | `high` |
-| Summary | Detects bidirectional text control characters |
-| Description | Bidi control characters can visually reorder instructions and hide malicious intent in prompt text. |
+| Field            | Value                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-bidi-control-characters`                                                                        |
+| Default severity | `high`                                                                                              |
+| Summary          | Detects bidirectional text control characters                                                       |
+| Description      | Bidi control characters can visually reorder instructions and hide malicious intent in prompt text. |
 
 ## What This Rule Does
 

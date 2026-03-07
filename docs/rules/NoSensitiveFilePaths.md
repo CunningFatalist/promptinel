@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-sensitive-file-paths` |
-| Default severity | `high` |
-| Summary | Detects references to commonly targeted sensitive local files |
-| Description | Access to credential files, host secrets, or system identity files can indicate prompt-driven data exfiltration intent. |
+| Field            | Value                                                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-sensitive-file-paths`                                                                                               |
+| Default severity | `high`                                                                                                                  |
+| Summary          | Detects references to commonly targeted sensitive local files                                                           |
+| Description      | Access to credential files, host secrets, or system identity files can indicate prompt-driven data exfiltration intent. |
 
 ## What This Rule Does
 

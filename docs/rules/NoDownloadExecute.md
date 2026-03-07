@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-download-execute` |
-| Default severity | `medium` |
-| Summary | Detects mixed download and execution signals in one segment |
-| Description | Combining remote download references with execution commands can indicate remote code execution intent. |
+| Field            | Value                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-download-execute`                                                                                   |
+| Default severity | `medium`                                                                                                |
+| Summary          | Detects mixed download and execution signals in one segment                                             |
+| Description      | Combining remote download references with execution commands can indicate remote code execution intent. |
 
 ## What This Rule Does
 

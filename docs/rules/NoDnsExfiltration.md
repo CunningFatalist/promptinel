@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-dns-exfiltration` |
-| Default severity | `high` |
-| Summary | Detects DNS-based exfiltration chains |
-| Description | DNS lookup utilities combined with secret sources and external domains strongly suggest DNS-based exfiltration behavior. |
+| Field            | Value                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Rule ID          | `no-dns-exfiltration`                                                                                                    |
+| Default severity | `high`                                                                                                                   |
+| Summary          | Detects DNS-based exfiltration chains                                                                                    |
+| Description      | DNS lookup utilities combined with secret sources and external domains strongly suggest DNS-based exfiltration behavior. |
 
 ## What This Rule Does
 

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-suspicious-base64` |
-| Default severity | `medium` |
-| Summary | Detects long base64-like payloads |
-| Description | Long inline base64 payloads can hide executable or exfiltration content from casual review. |
+| Field            | Value                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-suspicious-base64`                                                                      |
+| Default severity | `medium`                                                                                    |
+| Summary          | Detects long base64-like payloads                                                           |
+| Description      | Long inline base64 payloads can hide executable or exfiltration content from casual review. |
 
 ## What This Rule Does
 

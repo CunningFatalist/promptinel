@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-secret-to-network-flow` |
-| Default severity | `high` |
-| Summary | Detects secret-source to outbound-network exfiltration chains |
-| Description | The combination of secret references, exfiltration language, and outbound network sinks suggests a high-risk exfiltration flow. |
+| Field            | Value                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-secret-to-network-flow`                                                                                                     |
+| Default severity | `high`                                                                                                                          |
+| Summary          | Detects secret-source to outbound-network exfiltration chains                                                                   |
+| Description      | The combination of secret references, exfiltration language, and outbound network sinks suggests a high-risk exfiltration flow. |
 
 ## What This Rule Does
 

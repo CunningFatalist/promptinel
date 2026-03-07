@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-shell-profile-modification` |
-| Default severity | `high` |
-| Summary | Detects write operations targeting shell profile files |
-| Description | Writing commands to shell startup profile files can establish persistence and should be treated as high risk in prompt instructions. |
+| Field            | Value                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Rule ID          | `no-shell-profile-modification`                                                                                                      |
+| Default severity | `high`                                                                                                                               |
+| Summary          | Detects write operations targeting shell profile files                                                                               |
+| Description      | Writing commands to shell startup profile files can establish persistence and should be treated as high risk in prompt instructions. |
 
 ## What This Rule Does
 

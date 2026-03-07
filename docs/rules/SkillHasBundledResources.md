@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `skill-has-bundled-resources` |
-| Default severity | `low` |
-| Summary | Detects skills that reference bundled local resources |
-| Description | Skills can include scripts, references, or assets outside SKILL.md. Promptinel does not review those transitively, so they should be reviewed manually and excluded after acceptance if appropriate. |
+| Field            | Value                                                                                                                                                                                                |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `skill-has-bundled-resources`                                                                                                                                                                        |
+| Default severity | `low`                                                                                                                                                                                                |
+| Summary          | Detects skills that reference bundled local resources                                                                                                                                                |
+| Description      | Skills can include scripts, references, or assets outside SKILL.md. Promptinel does not review those transitively, so they should be reviewed manually and excluded after acceptance if appropriate. |
 
 ## What This Rule Does
 

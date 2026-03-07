@@ -2,6 +2,15 @@ services:
   promptinel_app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: .docker/go/Dockerfile
+    volumes:
+      - .:/app
+
+  promptinel_node:
+    profiles:
+      - tooling
+    build:
+      context: .
+      dockerfile: .docker/node/Dockerfile
     volumes:
       - .:/app

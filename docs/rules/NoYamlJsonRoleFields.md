@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-yaml-json-role-fields` |
-| Default severity | `high` |
-| Summary | Detects embedded role/tool-call protocol payloads |
-| Description | Structured role, tool_call, and function_call payloads embedded in content can spoof agent protocol boundaries and tool invocation semantics. |
+| Field            | Value                                                                                                                                         |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-yaml-json-role-fields`                                                                                                                    |
+| Default severity | `high`                                                                                                                                        |
+| Summary          | Detects embedded role/tool-call protocol payloads                                                                                             |
+| Description      | Structured role, tool_call, and function_call payloads embedded in content can spoof agent protocol boundaries and tool invocation semantics. |
 
 ## What This Rule Does
 

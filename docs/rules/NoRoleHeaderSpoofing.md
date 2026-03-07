@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-role-header-spoofing` |
-| Default severity | `high` |
-| Summary | Detects structured role-header spoof patterns |
-| Description | Role header prefixes such as SYSTEM: or DEVELOPER: can be used to spoof higher-priority instruction channels in prompts. |
+| Field            | Value                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Rule ID          | `no-role-header-spoofing`                                                                                                |
+| Default severity | `high`                                                                                                                   |
+| Summary          | Detects structured role-header spoof patterns                                                                            |
+| Description      | Role header prefixes such as SYSTEM: or DEVELOPER: can be used to spoof higher-priority instruction channels in prompts. |
 
 ## What This Rule Does
 

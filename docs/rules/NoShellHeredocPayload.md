@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-shell-heredoc-payload` |
-| Default severity | `high` |
-| Summary | Detects suspicious heredoc payload containers used to stage scripts |
-| Description | Heredocs can stage executable payloads or exfiltration scripts inline, especially when paired with shell or file-write commands. |
+| Field            | Value                                                                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-shell-heredoc-payload`                                                                                                       |
+| Default severity | `high`                                                                                                                           |
+| Summary          | Detects suspicious heredoc payload containers used to stage scripts                                                              |
+| Description      | Heredocs can stage executable payloads or exfiltration scripts inline, especially when paired with shell or file-write commands. |
 
 ## What This Rule Does
 

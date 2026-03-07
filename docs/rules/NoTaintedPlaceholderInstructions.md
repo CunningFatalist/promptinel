@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-tainted-placeholder-instructions` |
-| Default severity | `high` |
-| Summary | Detects tainted placeholders near override or capability language |
-| Description | Untrusted placeholders placed next to override, execution, or capability language can act as injection boundaries and should be treated as high risk. |
+| Field            | Value                                                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-tainted-placeholder-instructions`                                                                                                                 |
+| Default severity | `high`                                                                                                                                                |
+| Summary          | Detects tainted placeholders near override or capability language                                                                                     |
+| Description      | Untrusted placeholders placed next to override, execution, or capability language can act as injection boundaries and should be treated as high risk. |
 
 ## What This Rule Does
 

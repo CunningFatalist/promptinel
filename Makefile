@@ -62,7 +62,7 @@ fmt: ## Format the code
 
 .PHONY: fmt-docs
 fmt-docs: ## Format Markdown documentation with Prettier
-	docker run --rm -v "$(PWD):/work" -w /work node:22.14.0-bookworm-slim sh -ec 'pnpx prettier@3.5.3 --write README.md "docs/**/*.md"'
+	docker compose --profile tooling run --rm --entrypoint sh promptinel_node -ec 'pnpm dlx prettier@3.5.3 --write README.md AGENTS.md CODE_OF_CONDUCT.md CONTRIBUTING.md SECURITY.md SUPPORT.md "docs/**/*.md"'
 
 .PHONY: vet
 vet: ## Vet the code

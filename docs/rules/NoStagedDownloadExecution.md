@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-staged-download-execution` |
-| Default severity | `high` |
-| Summary | Detects multi-step download-then-execute flows across segments |
-| Description | Attack prompts often split download and execution instructions across separate sections to avoid local pattern checks. |
+| Field            | Value                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-staged-download-execution`                                                                                         |
+| Default severity | `high`                                                                                                                 |
+| Summary          | Detects multi-step download-then-execute flows across segments                                                         |
+| Description      | Attack prompts often split download and execution instructions across separate sections to avoid local pattern checks. |
 
 ## What This Rule Does
 

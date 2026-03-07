@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-ssh-config-manipulation` |
-| Default severity | `high` |
-| Summary | Detects write operations to SSH trust stores |
-| Description | Modifying SSH config and trust-store files can establish persistent remote access and should be treated as high risk. |
+| Field            | Value                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-ssh-config-manipulation`                                                                                          |
+| Default severity | `high`                                                                                                                |
+| Summary          | Detects write operations to SSH trust stores                                                                          |
+| Description      | Modifying SSH config and trust-store files can establish persistent remote access and should be treated as high risk. |
 
 ## What This Rule Does
 

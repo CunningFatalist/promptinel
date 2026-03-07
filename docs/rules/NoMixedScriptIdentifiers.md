@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-mixed-script-identifiers` |
-| Default severity | `high` |
-| Summary | Detects mixed-script identifier and hostname spoofing |
-| Description | Mixed-script identifiers and hostnames can hide homoglyph spoofing that impersonates trusted names in prompts and tool inputs. |
+| Field            | Value                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Rule ID          | `no-mixed-script-identifiers`                                                                                                  |
+| Default severity | `high`                                                                                                                         |
+| Summary          | Detects mixed-script identifier and hostname spoofing                                                                          |
+| Description      | Mixed-script identifiers and hostnames can hide homoglyph spoofing that impersonates trusted names in prompts and tool inputs. |
 
 ## What This Rule Does
 

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-url-encoded-command-payload` |
-| Default severity | `high` |
-| Summary | Detects URL-encoded command payloads intended for execution |
-| Description | URL-encoded shell operators and payload fragments can hide decode-then-execute instructions from naive review. |
+| Field            | Value                                                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-url-encoded-command-payload`                                                                               |
+| Default severity | `high`                                                                                                         |
+| Summary          | Detects URL-encoded command payloads intended for execution                                                    |
+| Description      | URL-encoded shell operators and payload fragments can hide decode-then-execute instructions from naive review. |
 
 ## What This Rule Does
 

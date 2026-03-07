@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-tunnel-and-reverse-shell` |
-| Default severity | `high` |
-| Summary | Detects reverse shell and tunneling instructions |
-| Description | Reverse shell and tunnel setup commands can establish unauthorized remote control channels and should be blocked. |
+| Field            | Value                                                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-tunnel-and-reverse-shell`                                                                                     |
+| Default severity | `high`                                                                                                            |
+| Summary          | Detects reverse shell and tunneling instructions                                                                  |
+| Description      | Reverse shell and tunnel setup commands can establish unauthorized remote control channels and should be blocked. |
 
 ## What This Rule Does
 

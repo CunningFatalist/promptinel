@@ -3,7 +3,7 @@
 ## Workflow
 
 1. Fork the repository.
-2. Create a branch from your fork using a Conventional Commits style branch name 
+2. Create a branch from your fork using a Conventional Commits style branch name
    (for example: `feat/add-json-output`, `fix/handle-empty-input`).
 3. Open a pull request from your fork.
 4. Every pull request must close at least one issue (for example: `Closes #123`).

@@ -4,12 +4,12 @@
 
 Use a StudlyCase filename that matches the rule name, for example `NoCurlPipeShell.md`.
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `rule-id` |
-| Default severity | `high` |
-| Summary | Short summary from `promptinel rules list --description` |
-| Description | Full description from `promptinel rules list --description`. |
+| Field            | Value                                                        |
+| ---------------- | ------------------------------------------------------------ |
+| Rule ID          | `rule-id`                                                    |
+| Default severity | `high`                                                       |
+| Summary          | Short summary from `promptinel rules list --description`     |
+| Description      | Full description from `promptinel rules list --description`. |
 
 ## What This Rule Does
 

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-metadata-service-access` |
-| Default severity | `high` |
-| Summary | Detects URLs targeting cloud instance metadata endpoints |
-| Description | Cloud metadata services can expose credentials and environment secrets when accessed from compromised prompts. |
+| Field            | Value                                                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-metadata-service-access`                                                                                   |
+| Default severity | `high`                                                                                                         |
+| Summary          | Detects URLs targeting cloud instance metadata endpoints                                                       |
+| Description      | Cloud metadata services can expose credentials and environment secrets when accessed from compromised prompts. |
 
 ## What This Rule Does
 

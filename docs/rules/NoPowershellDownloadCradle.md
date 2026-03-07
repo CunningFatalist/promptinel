@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-powershell-download-cradle` |
-| Default severity | `high` |
-| Summary | Detects PowerShell download cradle chains |
-| Description | PowerShell download cradle patterns like Invoke-WebRequest or DownloadString piped into Invoke-Expression indicate high-risk remote execution intent. |
+| Field            | Value                                                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-powershell-download-cradle`                                                                                                                       |
+| Default severity | `high`                                                                                                                                                |
+| Summary          | Detects PowerShell download cradle chains                                                                                                             |
+| Description      | PowerShell download cradle patterns like Invoke-WebRequest or DownloadString piped into Invoke-Expression indicate high-risk remote execution intent. |
 
 ## What This Rule Does
 

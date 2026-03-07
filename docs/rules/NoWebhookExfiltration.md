@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-webhook-exfiltration` |
-| Default severity | `high` |
-| Summary | Detects secret/file exfiltration chains targeting webhook sinks |
-| Description | Webhook and request-bin sinks combined with sensitive data signals and transfer actions indicate likely exfiltration behavior. |
+| Field            | Value                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Rule ID          | `no-webhook-exfiltration`                                                                                                      |
+| Default severity | `high`                                                                                                                         |
+| Summary          | Detects secret/file exfiltration chains targeting webhook sinks                                                                |
+| Description      | Webhook and request-bin sinks combined with sensitive data signals and transfer actions indicate likely exfiltration behavior. |
 
 ## What This Rule Does
 

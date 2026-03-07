@@ -12,7 +12,7 @@
   />
 </p>
 
-It statically analyzes prompts *before an LLM or agent executes them* and detects instructions that could cause
+It statically analyzes prompts _before an LLM or agent executes them_ and detects instructions that could cause
 unintended external actions, such as data exfiltration, tool misuse, or environment manipulation.
 
 Promptinel treats prompts as executable artifacts.
@@ -47,7 +47,7 @@ docker run --rm \
 
 > [!WARNING]  
 > It is not recommended to use `@latest` in production or CI environments. Pin your versions instead.
-> Version pinning restricts dependencies to known, vetted versions, preventing automatic upgrades that could 
+> Version pinning restricts dependencies to known, vetted versions, preventing automatic upgrades that could
 > introduce malicious code, compromised packages, or breaking changes into the supply chain.
 
 ### As Docker Service
@@ -239,11 +239,11 @@ agents/**/prod* # Any file/dir starting with "prod" at any depth under agents/
 
 ## Exit Codes
 
-| Code | Meaning                            |
-|------|------------------------------------|
-| 0    | no reportable policy violations    |
-| 1    | warning threshold reached          |
-| 2    | failure threshold reached          |
+| Code | Meaning                         |
+| ---- | ------------------------------- |
+| 0    | no reportable policy violations |
+| 1    | warning threshold reached       |
+| 2    | failure threshold reached       |
 
 Code `0` can still occur when findings are filtered by `policy.warn-on` or suppressed by a baseline snapshot.
 
@@ -837,22 +837,22 @@ It can be combined with any runtime guardrail, firewall, or orchestration framew
 
 ### How It Differs From Other Tools
 
-- Guardrails AI: 
-  runtime input/output validation and automatic repair; 
+- Guardrails AI:
+  runtime input/output validation and automatic repair;
   operates after prompt execution and adds runtime overhead.
-- LangChain middleware and runtime guardrails: 
-  runtime orchestration and filtering inside execution chains; 
+- LangChain middleware and runtime guardrails:
+  runtime orchestration and filtering inside execution chains;
   focused on flow control and live validation, not CI linting.
-- Rebuff and LLM firewalls: 
-  runtime detection of prompt injection and adversarial inputs; 
+- Rebuff and LLM firewalls:
+  runtime detection of prompt injection and adversarial inputs;
   reactive mitigation rather than preventative authoring checks.
-- LLM orchestration frameworks (for example LangChain and LlamaIndex): 
-  composition frameworks for prompts, tools, and memory; 
+- LLM orchestration frameworks (for example LangChain and LlamaIndex):
+  composition frameworks for prompts, tools, and memory;
   execution systems rather than governance scanners.
 
 ### Why They Do Not Directly Compete
 
-Runtime tools primarily act during execution. 
+Runtime tools primarily act during execution.
 Promptinel acts _before_ execution.
 
 Runtime tools mitigate live abuse and runtime risk.

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-insecure-http` |
-| Default severity | `low` |
-| Summary | Detects plaintext HTTP URLs |
-| Description | HTTP URLs can be tampered with in transit and are risky when prompts retrieve executable instructions. |
+| Field            | Value                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| Rule ID          | `no-insecure-http`                                                                                     |
+| Default severity | `low`                                                                                                  |
+| Summary          | Detects plaintext HTTP URLs                                                                            |
+| Description      | HTTP URLs can be tampered with in transit and are risky when prompts retrieve executable instructions. |
 
 ## What This Rule Does
 

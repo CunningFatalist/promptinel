@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-hidden-html-instructions` |
-| Default severity | `medium` |
-| Summary | Detects suspicious instructions inside HTML comments |
-| Description | Hidden HTML comments can conceal instruction overrides and execution guidance in otherwise benign-looking prompt files. |
+| Field            | Value                                                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-hidden-html-instructions`                                                                                           |
+| Default severity | `medium`                                                                                                                |
+| Summary          | Detects suspicious instructions inside HTML comments                                                                    |
+| Description      | Hidden HTML comments can conceal instruction overrides and execution guidance in otherwise benign-looking prompt files. |
 
 ## What This Rule Does
 

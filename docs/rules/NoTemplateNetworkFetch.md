@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-template-network-fetch` |
-| Default severity | `medium` |
-| Summary | Detects dynamic network or tool fetch behavior in templates |
-| Description | Template expressions that dynamically construct network fetches or tool invocations can turn untrusted data into external actions. |
+| Field            | Value                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-template-network-fetch`                                                                                                        |
+| Default severity | `medium`                                                                                                                           |
+| Summary          | Detects dynamic network or tool fetch behavior in templates                                                                        |
+| Description      | Template expressions that dynamically construct network fetches or tool invocations can turn untrusted data into external actions. |
 
 ## What This Rule Does
 

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-command-chaining` |
-| Default severity | `medium` |
-| Summary | Detects chained shell command operators |
-| Description | Shell chaining operators like ';', '&&', and '||' often indicate complex or evasive execution flows. |
+| Field            | Value                                            |                                                        |
+| ---------------- | ------------------------------------------------ | ------------------------------------------------------ |
+| Rule ID          | `no-command-chaining`                            |                                                        |
+| Default severity | `medium`                                         |                                                        |
+| Summary          | Detects chained shell command operators          |                                                        |
+| Description      | Shell chaining operators like `;`, `&&`, and `'` | `'` often indicate complex or evasive execution flows. |
 
 ## What This Rule Does
 

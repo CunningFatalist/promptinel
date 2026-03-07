@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-transcript-injection` |
-| Default severity | `high` |
-| Summary | Detects transcript-style role alternation used for instruction smuggling |
-| Description | Fake multi-role transcripts embedded in prompt content can smuggle instructions across role boundaries and should be treated as suspicious. |
+| Field            | Value                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-transcript-injection`                                                                                                                   |
+| Default severity | `high`                                                                                                                                      |
+| Summary          | Detects transcript-style role alternation used for instruction smuggling                                                                    |
+| Description      | Fake multi-role transcripts embedded in prompt content can smuggle instructions across role boundaries and should be treated as suspicious. |
 
 ## What This Rule Does
 

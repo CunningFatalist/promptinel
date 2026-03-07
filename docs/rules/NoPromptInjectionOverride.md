@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-prompt-injection-override` |
-| Default severity | `medium` |
-| Summary | Detects common prompt-injection override phrases |
-| Description | Instruction-override language often appears in prompt-injection attempts designed to bypass system and developer controls. |
+| Field            | Value                                                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-prompt-injection-override`                                                                                             |
+| Default severity | `medium`                                                                                                                   |
+| Summary          | Detects common prompt-injection override phrases                                                                           |
+| Description      | Instruction-override language often appears in prompt-injection attempts designed to bypass system and developer controls. |
 
 ## What This Rule Does
 

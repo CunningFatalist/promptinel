@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-override-capability-flow` |
-| Default severity | `high` |
-| Summary | Detects prompt overrides combined with actionable capability signals |
-| Description | When instruction-override phrases are combined with shell, network, or sensitive file operations, risk increases significantly. |
+| Field            | Value                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-override-capability-flow`                                                                                                   |
+| Default severity | `high`                                                                                                                          |
+| Summary          | Detects prompt overrides combined with actionable capability signals                                                            |
+| Description      | When instruction-override phrases are combined with shell, network, or sensitive file operations, risk increases significantly. |
 
 ## What This Rule Does
 

@@ -2,12 +2,12 @@
 
 [Back to overview](../Rules/Overview.md)
 
-| Field | Value |
-| --- | --- |
-| Rule ID | `no-secret-exfiltration-intent` |
-| Default severity | `high` |
-| Summary | Detects co-occurrence of secret targets and exfiltration actions |
-| Description | Prompts that combine secret-related terms with transfer actions often indicate data exfiltration intent. |
+| Field            | Value                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------- |
+| Rule ID          | `no-secret-exfiltration-intent`                                                                          |
+| Default severity | `high`                                                                                                   |
+| Summary          | Detects co-occurrence of secret targets and exfiltration actions                                         |
+| Description      | Prompts that combine secret-related terms with transfer actions often indicate data exfiltration intent. |
 
 ## What This Rule Does
 
