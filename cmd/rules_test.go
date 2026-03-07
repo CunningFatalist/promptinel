@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/ruledocs"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	"github.com/CunningFatalist/promptinel/internal/util"
@@ -139,6 +140,36 @@ func Test_Cmd_RulesListCommand_WithDescriptionFlag_PrintsDescriptions(t *testing
 	}
 }
 
+func Test_Cmd_RulesListCommand_WithDocs_PrintsDocumentationURLs(t *testing.T) {
+	previousNoColor := color.NoColor
+	color.NoColor = true
+	t.Cleanup(func() {
+		color.NoColor = previousNoColor
+	})
+
+	output := captureStdout(t, func() {
+		if err := runRulesListWithOptions(rulesListOptions{
+			ShowDocs: true,
+		}); err != nil {
+			t.Fatalf("run rules list with docs: %v", err)
+		}
+	})
+
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	registry, err := builtin.NewRegistry()
+	if err != nil {
+		t.Fatalf("initialize builtin rule registry: %v", err)
+	}
+
+	expectedRuleCount := len(registry.List())
+	if len(lines) != expectedRuleCount*2 {
+		t.Fatalf("expected %d lines, got %d (%q)", expectedRuleCount*2, len(lines), output)
+	}
+	if !strings.Contains(output, ruledocs.URL("NoBidiControlCharacters.md")) {
+		t.Fatalf("expected docs URL in output, got %q", output)
+	}
+}
+
 func Test_Cmd_RulesDescribeCommand_DescribesKnownRule(t *testing.T) {
 	previousNoColor := color.NoColor
 	color.NoColor = true
@@ -157,6 +188,9 @@ func Test_Cmd_RulesDescribeCommand_DescribesKnownRule(t *testing.T) {
 	}
 	if !regexp.MustCompile(`\[ name +\] No Zero Width Characters`).MatchString(output) {
 		t.Fatalf("expected described rule name in output, got %q", output)
+	}
+	if !regexp.MustCompile(regexp.QuoteMeta("[ docs             ] " + ruledocs.URL("NoZeroWidth.md"))).MatchString(output) {
+		t.Fatalf("expected described rule docs URL in output, got %q", output)
 	}
 }
 

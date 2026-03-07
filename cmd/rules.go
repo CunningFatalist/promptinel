@@ -6,6 +6,7 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rulecatalog"
+	"github.com/CunningFatalist/promptinel/internal/ruledocs"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	"github.com/CunningFatalist/promptinel/internal/util"
@@ -44,14 +45,17 @@ var rulesDescribeCmd = &cobra.Command{
 func runRulesList(_ *cobra.Command, _ []string) error {
 	return runRulesListWithOptions(rulesListOptions{
 		ShowDescription: rulesListShowDescription,
+		ShowDocs:        rulesListShowDocs,
 	})
 }
 
 type rulesListOptions struct {
 	ShowDescription bool
+	ShowDocs        bool
 }
 
 var rulesListShowDescription bool
+var rulesListShowDocs bool
 
 func runRulesListWithOptions(options rulesListOptions) error {
 	ruleSet, err := rulecatalog.List(builtin.NewRegistry)
@@ -66,6 +70,10 @@ func runRulesListWithOptions(options rulesListOptions) error {
 		if options.ShowDescription {
 			indent := len(fmt.Sprintf("[ %s ] ", severityLabel))
 			fmt.Printf("%s%s\n", strings.Repeat(" ", indent), meta.Description)
+		}
+		if options.ShowDocs && meta.DocsFile != "" {
+			indent := len(fmt.Sprintf("[ %s ] ", severityLabel))
+			fmt.Printf("%s%s\n", strings.Repeat(" ", indent), ruledocs.URL(meta.DocsFile))
 		}
 	}
 	return nil
@@ -95,6 +103,9 @@ func runRulesDescribe(_ *cobra.Command, args []string) error {
 	fmt.Printf("[ %s ] %s\n", addColorToLabel("default severity"), meta.DefaultSeverity)
 	fmt.Printf("[ %s ] %s\n", addColorToLabel("summary         "), meta.Summary)
 	fmt.Printf("[ %s ] %s\n", addColorToLabel("description     "), meta.Description)
+	if meta.DocsFile != "" {
+		fmt.Printf("[ %s ] %s\n", addColorToLabel("docs            "), ruledocs.URL(meta.DocsFile))
+	}
 
 	return nil
 }
@@ -126,6 +137,12 @@ func init() {
 		"description",
 		false,
 		"show each rule's description on an additional line",
+	)
+	rulesListCmd.Flags().BoolVar(
+		&rulesListShowDocs,
+		"docs",
+		false,
+		"show each rule's documentation URL on an additional line",
 	)
 	rulesCmd.AddCommand(rulesListCmd)
 	rulesCmd.AddCommand(rulesDescribeCmd)

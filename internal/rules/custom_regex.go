@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/ruledocs"
 )
 
 type customRegexRule struct {
@@ -67,6 +68,7 @@ func compileCustomRule(cfg config.CustomRule) (Rule, error) {
 			Name:            cfg.ID,
 			Summary:         "Custom regex rule",
 			Description:     "User-defined regex-based rule from configuration.",
+			DocsFile:        ruledocs.CustomDocFile,
 			DefaultSeverity: cfg.Severity,
 		},
 		pattern: compiledPattern,

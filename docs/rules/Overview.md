@@ -53,3 +53,10 @@ refreshing an existing one.
 | [No YAML/JSON Role Fields](../rules/NoYamlJsonRoleFields.md)                        | `no-yaml-json-role-fields`            | `high`   | Detects embedded role/tool-call protocol payloads                            |
 | [No Zero Width Characters](../rules/NoZeroWidth.md)                                 | `no-zero-width`                       | `high`   | Detects hidden zero-width Unicode characters                                 |
 | [Skill Has Bundled Resources](../rules/SkillHasBundledResources.md)                 | `skill-has-bundled-resources`         | `low`    | Detects skills that reference bundled local resources                        |
+
+## Custom Rules
+
+Promptinel also supports config-defined custom regex rules. They are not part of the built-in rule
+catalog exposed by `promptinel rules list` or `promptinel rules describe`, because they only exist
+when loaded from a specific config file. See [Custom Rules](../rules/Custom.md) for the generic
+behavior and documentation model.

@@ -43,48 +43,95 @@ import (
 	skillhasbundledresources "github.com/CunningFatalist/promptinel/internal/rules/builtin/skill_has_bundled_resources"
 )
 
+type documentedRule struct {
+	rules.Rule
+	docsFile string
+}
+
+func (r documentedRule) Metadata() rules.Metadata {
+	meta := r.Rule.Metadata()
+	meta.DocsFile = r.docsFile
+	return meta
+}
+
+func (r documentedRule) CheckDocument(ctx rules.Context, doc rules.DocumentView) []rules.Finding {
+	documentRule, ok := r.Rule.(rules.DocumentRule)
+	if !ok {
+		return nil
+	}
+
+	return documentRule.CheckDocument(ctx, doc)
+}
+
+func (r documentedRule) CheckSegment(ctx rules.Context, segment rules.Segment) []rules.Finding {
+	segmentRule, ok := r.Rule.(rules.SegmentRule)
+	if !ok {
+		return nil
+	}
+
+	return segmentRule.CheckSegment(ctx, segment)
+}
+
+func (r documentedRule) CheckTokens(ctx rules.Context, segment rules.Segment, tokens []rules.Token) []rules.Finding {
+	tokenRule, ok := r.Rule.(rules.TokenRule)
+	if !ok {
+		return nil
+	}
+
+	return tokenRule.CheckTokens(ctx, segment, tokens)
+}
+
+func (r documentedRule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Finding {
+	flowRule, ok := r.Rule.(rules.FlowRule)
+	if !ok {
+		return nil
+	}
+
+	return flowRule.CheckFlow(ctx, doc)
+}
+
 // NewRegistry returns the registry containing built-in rules.
 func NewRegistry() (*rules.Registry, error) {
 	registry := rules.NewRegistry()
 
-	ruleSet := []rules.Rule{
-		nobidicontrolcharacters.New(),
-		nocommandchaining.New(),
-		nocurlpipeshell.New(),
-		nodatauripayloads.New(),
-		nodnsexfiltration.New(),
-		nodownloadexecute.New(),
-		nogitconfigcredentialhelper.New(),
-		nohiddendirectionality.New(),
-		nohiddenhtmlinstructions.New(),
-		noinsecurehttp.New(),
-		nointerpreterinlineexec.New(),
-		nometadataserviceaccess.New(),
-		nomixedscriptidentifiers.New(),
-		nomultilayerencoding.New(),
-		nononstandardwhitespace.New(),
-		nooverridecapabilityflow.New(),
-		nopowershelldownloadcradle.New(),
-		nopromptinjectionoverride.New(),
-		noroleheaderspoofing.New(),
-		nosecretexfiltrationintent.New(),
-		nosecrettonetworkflow.New(),
-		nosensitivefilepaths.New(),
-		noshellheredocpayload.New(),
-		noshellprofilemodification.New(),
-		nosshconfigmanipulation.New(),
-		skillhasbundledresources.New(),
-		nostageddownloadexecution.New(),
-		nosuspiciousbase64.New(),
-		notaintedplaceholderinstructions.New(),
-		notemplatenetworkfetch.New(),
-		notranscriptinjection.New(),
-		notunnelandreverseshell.New(),
-		nounsafetemplates.New(),
-		nourlencodedcommandpayload.New(),
-		nowebhookexfiltration.New(),
-		noyamljsonrolefields.New(),
-		nozerowidth.New(),
+	ruleSet := []documentedRule{
+		{Rule: nobidicontrolcharacters.New(), docsFile: "NoBidiControlCharacters.md"},
+		{Rule: nocommandchaining.New(), docsFile: "NoCommandChaining.md"},
+		{Rule: nocurlpipeshell.New(), docsFile: "NoCurlPipeShell.md"},
+		{Rule: nodatauripayloads.New(), docsFile: "NoDataUriPayloads.md"},
+		{Rule: nodnsexfiltration.New(), docsFile: "NoDnsExfiltration.md"},
+		{Rule: nodownloadexecute.New(), docsFile: "NoDownloadExecute.md"},
+		{Rule: nogitconfigcredentialhelper.New(), docsFile: "NoGitconfigCredentialHelper.md"},
+		{Rule: nohiddendirectionality.New(), docsFile: "NoHiddenDirectionality.md"},
+		{Rule: nohiddenhtmlinstructions.New(), docsFile: "NoHiddenHtmlInstructions.md"},
+		{Rule: noinsecurehttp.New(), docsFile: "NoInsecureHttp.md"},
+		{Rule: nointerpreterinlineexec.New(), docsFile: "NoInterpreterInlineExec.md"},
+		{Rule: nometadataserviceaccess.New(), docsFile: "NoMetadataServiceAccess.md"},
+		{Rule: nomixedscriptidentifiers.New(), docsFile: "NoMixedScriptIdentifiers.md"},
+		{Rule: nomultilayerencoding.New(), docsFile: "NoMultilayerEncoding.md"},
+		{Rule: nononstandardwhitespace.New(), docsFile: "NoNonstandardWhitespace.md"},
+		{Rule: nooverridecapabilityflow.New(), docsFile: "NoOverrideCapabilityFlow.md"},
+		{Rule: nopowershelldownloadcradle.New(), docsFile: "NoPowershellDownloadCradle.md"},
+		{Rule: nopromptinjectionoverride.New(), docsFile: "NoPromptInjectionOverride.md"},
+		{Rule: noroleheaderspoofing.New(), docsFile: "NoRoleHeaderSpoofing.md"},
+		{Rule: nosecretexfiltrationintent.New(), docsFile: "NoSecretExfiltrationIntent.md"},
+		{Rule: nosecrettonetworkflow.New(), docsFile: "NoSecretToNetworkFlow.md"},
+		{Rule: nosensitivefilepaths.New(), docsFile: "NoSensitiveFilePaths.md"},
+		{Rule: noshellheredocpayload.New(), docsFile: "NoShellHeredocPayload.md"},
+		{Rule: noshellprofilemodification.New(), docsFile: "NoShellProfileModification.md"},
+		{Rule: nosshconfigmanipulation.New(), docsFile: "NoSshConfigManipulation.md"},
+		{Rule: skillhasbundledresources.New(), docsFile: "SkillHasBundledResources.md"},
+		{Rule: nostageddownloadexecution.New(), docsFile: "NoStagedDownloadExecution.md"},
+		{Rule: nosuspiciousbase64.New(), docsFile: "NoSuspiciousBase64.md"},
+		{Rule: notaintedplaceholderinstructions.New(), docsFile: "NoTaintedPlaceholderInstructions.md"},
+		{Rule: notemplatenetworkfetch.New(), docsFile: "NoTemplateNetworkFetch.md"},
+		{Rule: notranscriptinjection.New(), docsFile: "NoTranscriptInjection.md"},
+		{Rule: notunnelandreverseshell.New(), docsFile: "NoTunnelAndReverseShell.md"},
+		{Rule: nounsafetemplates.New(), docsFile: "NoUnsafeTemplates.md"},
+		{Rule: nourlencodedcommandpayload.New(), docsFile: "NoUrlEncodedCommandPayload.md"},
+		{Rule: nowebhookexfiltration.New(), docsFile: "NoWebhookExfiltration.md"},
+		{Rule: noyamljsonrolefields.New(), docsFile: "NoYamlJsonRoleFields.md"},
+		{Rule: nozerowidth.New(), docsFile: "NoZeroWidth.md"},
 	}
 
 	for _, rule := range ruleSet {

@@ -174,7 +174,10 @@ promptinel rules list
 # List all available rules and include full descriptions
 promptinel rules list --description
 
-# Explain the no-unsafe-templates rule
+# List all available rules and include documentation URLs
+promptinel rules list --docs
+
+# Explain the no-unsafe-templates rule and show its documentation URL
 promptinel rules describe no-unsafe-templates
 ```
 

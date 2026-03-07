@@ -13,6 +13,7 @@ type Metadata struct {
 	Name            string
 	Summary         string
 	Description     string
+	DocsFile        string
 	DefaultSeverity config.Severity
 }
 
