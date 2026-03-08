@@ -1,26 +1,29 @@
 # Documentation Index
 
-Use this directory as the reference set for Promptinel's current behavior.
+Use this directory when the main readme file is no longer enough, 
+and you need the reasoning behind current behavior.
 
-## Start Here
+## Where To Start
 
-- [Architecture](./Architecture.md): package boundaries, runtime model, and current roadmap
-- [Configuration And Precedence](./Config.md): config loading, CLI overrides, and scope precedence
-- [Scan Pipeline](./ScanPipeline.md): shared scan flow and scan-only post-processing
-- [Severity Handling](./Severity.md): severity sources, filtering, and exit-code effects
-- [Trust Processing](./Trust.md): trust levels, span overlays, and rule-facing trust helpers
+If you are new to the project:
+
+1. read the main [README](../README.md)
+2. read [Onboarding](./Onboarding.md)
+3. use the documents below based on the change you want to make
+
+## By Topic
+
+- [Architecture](./Architecture.md): package boundaries and the main runtime model
+- [Design](./Design.md): product intent, tradeoffs, and non-goals
+- [Configuration And Precedence](./Config.md): config loading, overrides, and scope behavior
+- [Scan Pipeline](./ScanPipeline.md): how scan and baseline processing flow through the system
+- [Severity Handling](./Severity.md): where severity comes from and how it affects output
+- [Trust Processing](./Trust.md): how trust changes rule behavior
 - [Rule Architecture](./Rules.md): rule phases, registry behavior, and authoring guidance
-
-## Audience Guide
-
-- New contributors: start with [Onboarding](./Onboarding.md), then read this index top to bottom
-- Users configuring the scanner: start with [Configuration And Precedence](./Config.md)
-- Contributors changing detection behavior: read [Rule Architecture](./Rules.md),
-  [Trust Processing](./Trust.md), and [Severity Handling](./Severity.md)
-- Contributors debugging scan output: read [Scan Pipeline](./ScanPipeline.md) and
-  [Architecture](./Architecture.md)
+- [Release](./Release.md): release workflow and packaging
 
 ## Rule Reference
 
 - [Rule Documentation Overview](./rules/Overview.md): built-in rule catalog
-- [`docs/rules/`](./rules/): per-rule user-facing documentation
+- [Custom Rules](./rules/Custom.md): how config-defined regex rules fit into the model
+- [`docs/rules/`](./rules/): per-rule documentation for built-in rules

@@ -1,59 +1,37 @@
 # Promptinel Design
 
-This document describes the product/design intent and how it maps to the current implementation.
-For package-level technical detail, see [Architecture](./Architecture.md).
+This document captures the product intent behind Promptinel. It is the shortest explanation
+of what the project is trying to optimize for and what it is deliberately not trying to do.
 
-## Current State
-
-### Product Principles
+## What Promptinel Optimizes For
 
 Promptinel is designed to be:
 
-- deterministic and reproducible
-- offline-first (no network dependency for detection)
-- CI-friendly (stable ordering and machine-readable outputs)
-- conservative in capability/trust assumptions
+- deterministic
+- offline-first
+- useful in CI and local review workflows
+- conservative about trust and capability assumptions
+- small enough to understand without a large platform around it
 
-### Implemented Command Surface
+## Product Shape
 
-- `scan`: static prompt security analysis with policy-based exit behavior
-- `sanitize`: safe, explicit prompt normalization workflow
-- `baseline create|update`: snapshot and incremental adoption support
-- `rules list|describe`: discoverability for built-in rules
+Promptinel is a static analysis tool for prompt content. It aims to help teams review prompts
+before they are executed by an LLM or agent. That affects several design decisions:
 
-### Implemented Output Modes
-
-`scan --output` currently supports:
-
-- `text`
-- `json`
-- `sarif`
-
-Design intent for output compatibility:
-
-- text mode optimizes for operator readability in terminals and CI logs
-- JSON mode provides a stable Promptinel schema with explicit schema versioning
-- SARIF mode enables code-scanning/security tooling ingestion
-
-### Trust and Environment Design
-
-Detection behavior is context-aware by design:
-
-- environment capability flags gate or adjust rule behavior
-- trust levels (`trusted`, `untrusted`, `tainted`) tighten matching where needed
-
-## Planned Roadmap
-
-These are goals, not implementation guarantees:
-
-- broaden flow-analysis coverage across more prompt attack patterns
-- expose scanner worker limit tuning as a user-facing configuration
-- expand machine-readable output options beyond `scan`
+- findings should be explainable
+- outputs should be stable enough for automation
+- configuration should remain explicit
+- rules should be documented in user-facing language
 
 ## Non-Goals
 
-Promptinel does not aim to provide:
+Promptinel is **not** intended to provide:
 
-- runtime sandboxing or runtime monitoring
-- probabilistic content moderation/classification
-- guarantees of complete attack detection
+- runtime sandboxing
+- runtime monitoring
+- broad content moderation
+- a guarantee of complete prompt-attack detection
+- an all-in-one platform for prompt security
+- your only line of defense against prompt attacks
+
+It works best as one layer in a broader review and security process.

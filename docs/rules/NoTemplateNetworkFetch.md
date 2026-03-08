@@ -1,6 +1,6 @@
 # No Template Network Fetch
 
-[Back to overview](../Rules/Overview.md)
+[Back to overview](./Overview.md)
 
 | Field            | Value                                                                                                                              |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |

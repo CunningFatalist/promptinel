@@ -128,6 +128,67 @@ There is currently no dedicated CLI syntax for "clear the configured include/exc
 the other side unchanged." A repeated flag replaces the corresponding config value with the values
 provided on the command line.
 
+## How Globbing Works
+
+Promptinel uses glob patterns for both `filters.include` / `filters.exclude` and `scopes[].path`.
+
+The matcher combines two behaviors:
+
+- standard `filepath.Match` syntax such as `*`, `?`, and character classes like `[ab]`
+- recursive `**` path segments, where `docs/**` matches `docs/file.md` and `docs/nested/file.md`
+
+Path separators are normalized to `/` before matching, so the same pattern works across platforms.
+
+### What A Pattern Is Matched Against
+
+For include and exclude filters, Promptinel first computes a path relative to the current working
+directory when possible.
+
+It then tries the glob against:
+
+- the relative path, such as `docs/prompt.md`
+- the file basename, such as `prompt.md`
+
+The basename fallback is important. A pattern like `*.md` matches Markdown files in nested
+directories too, because `docs/prompt.md` does not match `*.md` as a full path, but its basename
+`prompt.md` does.
+
+For scopes, the same glob matcher is used, but matching is path-based only. In practice, scope
+patterns should usually describe directories or relative file paths such as `docs/**` or
+`agents/review.md`.
+
+### Include And Exclude Semantics
+
+Globbing is applied in this order:
+
+1. if there are no include patterns, the file starts as included
+2. if include patterns exist, at least one of them must match
+3. if any exclude pattern matches, the file is excluded even if an include matched
+
+This means excludes always win.
+
+### Examples
+
+```yaml
+filters:
+  include:
+    - "*.md"
+    - "docs/**"
+  exclude:
+    - "docs/archive/**"
+
+scopes:
+  - path: "docs/security/**"
+    severity: high
+```
+
+With that configuration:
+
+- `README.md` is included by `*.md`
+- `docs/guide/intro.txt` is included by `docs/**`
+- `docs/archive/old.md` is excluded because exclude patterns override includes
+- `docs/security/model.md` matches the scope path `docs/security/**`
+
 ## Command-Specific Effective Settings
 
 ### `scan`
@@ -162,7 +223,7 @@ These do not come from `.promptinel.yaml`.
 `sanitize` does not use scan policy, rule evaluation, or baseline behavior. Its `--apply` flag is
 CLI-only.
 
-### `baseline create|update`
+### `baseline create` and `baseline update`
 
 Baseline commands use the same shared scan configuration as `scan`:
 

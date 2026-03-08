@@ -1,30 +1,33 @@
 # Release
 
-## Purpose
+Promptinel releases are built around GoReleaser and GitHub Actions.
 
-The release flow is built around GoReleaser and GitHub Actions.
+## What The Release Flow Does
 
-## Versioning
+The release workflow has two jobs:
 
-Promptinel embeds its version in `cmd.Version` at build time using linker flags. Release artifacts are expected to use
-semantic versions with a leading `v`, such as `v1.2.3`. When the binary is built in development mode, the CLI prints
-`development`. When a concrete version is set, the CLI prints that version with a `v` prefix if needed.
+- continuously validate packaging on the main branch
+- publish release artifacts when a version tag is pushed
 
-## Local Release Validation
+The workflow definition lives in `.github/workflows/release.yml`, and the packaging
+configuration lives in `.goreleaser.yml`.
 
-Run `make setup` to start the development container, then run `make goreleaser-check` to validate `.goreleaser.yml` and
-`make goreleaser-healthcheck` to verify the release environment. These checks run GoReleaser inside the `promptinel_app`
-container so tool versions are consistent with the project Docker image.
+## Local Validation
 
-## GitHub Release Workflow
+To validate release configuration locally, start the development environment and run the
+GoReleaser checks from there:
 
-The release workflow is defined in `.github/workflows/release.yml`. It runs on pushes to `main` and on tags that start
-with `v`. On `main`, the workflow runs a GoReleaser snapshot build with publishing disabled to continuously verify
-packaging. On version tags, the workflow runs a full GoReleaser release and publishes artifacts through the repository
-`GITHUB_TOKEN`.
+```bash
+make setup
+make goreleaser-check
+make goreleaser-healthcheck
+```
 
-## GoReleaser Configuration
+## Release Behavior
 
-The GoReleaser configuration is in `.goreleaser.yml`. It builds `./main.go` as `promptinel` for Linux, macOS, and
-Windows on both `amd64` and `arm64`. The build uses `CGO_ENABLED=0` and injects the resolved version into `cmd.Version`.
-Archive output is `tar.gz` by default, with `zip` used for Windows.
+Main-branch runs perform a snapshot-style verification so packaging problems are caught early.
+Tagged releases perform the real publication flow and publish artifacts through the repository
+token available in GitHub Actions.
+
+The build embeds the resolved version into `cmd.Version` so the CLI can report the version it
+was built with.

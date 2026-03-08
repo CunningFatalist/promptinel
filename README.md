@@ -3,8 +3,6 @@
 [![CI](https://github.com/CunningFatalist/promptinel/actions/workflows/ci.yml/badge.svg)](https://github.com/CunningFatalist/promptinel/actions/workflows/ci.yml)
 ![GitHub Release](https://img.shields.io/github/v/release/CunningFatalist/promptinel)
 
-**Promptinel** is a deterministic security scanner for machine-interpreted natural language.
-
 <p align="center">
   <img width="320" 
        src="./docs/image/logo.png" 
@@ -12,30 +10,44 @@
   />
 </p>
 
-It statically analyzes prompts _before an LLM or agent executes them_ and detects instructions that could cause
-unintended external actions, such as data exfiltration, tool misuse, or environment manipulation.
+Promptinel is a deterministic security scanner for machine-interpreted natural language.
+It statically analyzes prompts before an LLM or agent executes them and flags instructions
+that could trigger unintended external actions such as data exfiltration, tool misuse,
+credential access, or environment manipulation. Promptinel treats prompts as executable artifacts.
 
-Promptinel treats prompts as executable artifacts.
+## Why Use It
 
-`scan` processes files concurrently with deterministic output ordering to keep CI results stable.
+Promptinel is built for teams that review prompts the same way they review code:
 
----
+- before execution, not after damage
+- in CI as well as local development
+- with deterministic output that is easy to diff and automate
+- without relying on network access during detection
+
+It is a focused scanner, not a runtime guardrail platform. The goal is to catch risky
+prompt content early and make review practical.
+
+Promptinel was designed as an additional security layer.
+It does not replace other security measures.
 
 ## Installation
 
-### With Go
+### Go Install
 
 ```bash
 go install github.com/CunningFatalist/promptinel@latest
 ```
 
-`@latest` is shown here for quick demonstration only. For reproducible installs, pin an explicit version tag (for example `@v0.2.0`).
+The binary is installed to `GOBIN` or `$(go env GOPATH)/bin`.
 
-The `promptinel` binary will be installed into your `GOBIN` (or `$(go env GOPATH)/bin`).
+> [!WARNING]  
+> It is not recommended to use `@latest` in production or CI environments. Pin your versions instead.
+> Version pinning restricts dependencies to known, vetted versions, preventing automatic upgrades that could
+> introduce malicious code, compromised packages, or breaking changes into the supply chain.
 
 ### As Docker Command
 
-This example also uses `@latest` for demonstration. For production/CI, pin an explicit release tag.
+This example also uses `@latest` for demonstration. Again, it is recommended to use a pinned version instead.
 
 ```bash
 docker run --rm \
@@ -45,229 +57,90 @@ docker run --rm \
   sh -lc 'set -eu; GOBIN=/tmp/bin /usr/local/go/bin/go install github.com/CunningFatalist/promptinel@latest && /tmp/bin/promptinel scan .'
 ```
 
-> [!WARNING]  
-> It is not recommended to use `@latest` in production or CI environments. Pin your versions instead.
-> Version pinning restricts dependencies to known, vetted versions, preventing automatic upgrades that could
-> introduce malicious code, compromised packages, or breaking changes into the supply chain.
+### Run And Build From Source
 
-### As Docker Service
-
-Minimal Compose + Dockerfile (recommended)
-
-Create `Dockerfile.promptinel`:
-
-```dockerfile
-FROM golang:1.26.1
-
-ARG PROMPTINEL_VERSION=vX.Y.Z
-
-RUN GOBIN=/usr/local/bin go install github.com/CunningFatalist/promptinel@${PROMPTINEL_VERSION}
-
-WORKDIR /work
-ENTRYPOINT ["promptinel"]
-```
-
-Create `docker-compose.promptinel.yml`:
-
-```yaml
-services:
-  promptinel:
-    build:
-      context: .
-      dockerfile: Dockerfile.promptinel
-      args:
-        PROMPTINEL_VERSION: vX.Y.Z
-    working_dir: /work
-    volumes:
-      - ./:/work
-    command: ["scan", "."]
-```
-
-Build and run:
+To run the CLI from a checkout with a compatible Go toolchain:
 
 ```bash
-docker compose -f docker-compose.promptinel.yml build
-
-docker compose -f docker-compose.promptinel.yml run --rm promptinel
+go run main.go --help
 ```
 
-### Build from Source
+If you want the repository's container-backed development environment and build target, use:
 
 ```bash
-# Start the development container first (once per environment)
 make setup
-
-# Build inside the development container (required for release version metadata)
-export BUILD_VERSION=x.x.x && make build
+export BUILD_VERSION=x.x.x
+make build
 ```
 
-`BUILD_VERSION` is required for `make build`; the binary is written to `build/promptinel`.
+The build output is written to `build/promptinel`.
 
----
+## Quick Start
 
-## Usage
-
-### Print Version
+Scan a directory of prompts:
 
 ```bash
-promptinel --version
-```
-
-### Scan Prompts
-
-```bash
-# Scan all files in the prompts/ directory with default rules
 promptinel scan prompts/
+```
 
-# Scan with a custom config file
+Scan with an explicit config file:
+
+```bash
 promptinel scan --config .promptinel.yaml prompts/
+```
 
-# Scan with built-in defaults only (do not auto-discover .promptinel.yaml)
-promptinel scan --no-config-discovery prompts/
+Generate JSON or SARIF for automation:
 
-# Scan only Markdown files
-promptinel scan --include "*.md" prompts/
-
-# Scan all files except YAML files
-promptinel scan --exclude "*.yaml" prompts/
-
-# Emit structured JSON output (for CI parsers)
+```bash
 promptinel scan --output json prompts/
-
-# Emit SARIF output (for GitHub/code-scanning ingestion)
 promptinel scan --output sarif prompts/ > promptinel.sarif
 ```
 
-### Sanitize Prompts
-
-This command is restricted to safe transformations, for example removing invisible characters.
+Preview safe sanitization changes:
 
 ```bash
-# Preview transformations without applying them
 promptinel sanitize prompts/
-
-# Apply transformations to all files in the prompts/ directory
-promptinel sanitize --apply prompts/
-
-# Use a custom config file for sanitization
-promptinel sanitize --config .promptinel.yaml --apply prompts/
-
-# Sanitize with built-in defaults only (do not auto-discover .promptinel.yaml)
-promptinel sanitize --no-config-discovery --apply prompts/
-
-# Only apply transformations to Markdown files
-promptinel sanitize --include "*.md" --apply prompts/
-
-# Apply transformations to all files except YAML files
-promptinel sanitize --exclude "*.yaml" --apply prompts/
 ```
 
-### Viewing and Explaining Rules
-
-See [Rule Documentation Overview](docs/Rules/Overview.md) for the full built-in rule index and
-links to the per-rule pages in [`docs/rules/`](docs/rules/).
+Apply sanitization changes:
 
 ```bash
-# List all available rules
+promptinel sanitize --apply prompts/
+```
+
+List built-in rules:
+
+```bash
 promptinel rules list
-
-# List all available rules and include full descriptions
-promptinel rules list --description
-
-# List all available rules and include documentation URLs
-promptinel rules list --docs
-
-# Explain the no-unsafe-templates rule and show its documentation URL
 promptinel rules describe no-unsafe-templates
 ```
 
-### Baseline for CI Adoption
+## Core Commands
 
-```bash
-# Create a baseline file with current findings (e.g. to ignore existing issues in CI)
-promptinel baseline create
+### `scan`
 
-# Update the baseline file with new findings (e.g. after fixing some issues)
-promptinel baseline update
+Scans files for prompt-security findings and returns a policy-based exit code.
 
-# Scan while suppressing accepted findings from a baseline snapshot
-promptinel scan --baseline .promptinel-baseline.json prompts/
-```
+### `sanitize`
 
-`baseline create` and `baseline update` write `.promptinel-baseline.json` by default.  
-Use `--file` to select a different baseline path.
+Applies safe, deterministic cleanup steps such as removing invisible characters.
 
-Baseline snapshots are generated from raw scan findings (before `policy.warn-on` filtering), so accepted low-severity
-findings can still be tracked and suppressed consistently in CI.
+### `baseline create` and `baseline update`
 
-### Globbing
+Create or refresh a baseline file so teams can adopt Promptinel in CI without fixing
+all historical findings at once.
 
-Promptinel uses glob patterns for:
+### `rules list` and `rules describe`
 
-- `scan --include`
-- `scan --exclude`
-- `baseline create --include`
-- `baseline create --exclude`
-- `baseline update --include`
-- `baseline update --exclude`
-- `sanitize --include`
-- `sanitize --exclude`
-- `filters.include[]` in `.promptinel.yaml`
-- `filters.exclude[]` in `.promptinel.yaml`
-- `scopes[].path` in `.promptinel.yaml`
-
-#### Supported Pattern Behavior
-
-- `*` matches any sequence of characters inside one path segment
-- `?` matches exactly one character inside one path segment
-- `[abc]` matches one character from a set
-- `**` matches recursively across directory boundaries
-
-#### Examples
-
-```text
-*.md            # Markdown files by basename
-docs/*.md       # Markdown files directly under docs/
-docs/**         # All files under docs/ recursively
-agents/**/prod* # Any file/dir starting with "prod" at any depth under agents/
-```
-
-#### Practical Guidance
-
-- Prefer anchored patterns like `docs/**` over broad top-level patterns such as `**/*.md`.
-- Keep include/exclude lists focused and specific in large repositories.
-- Use `**` only when recursive matching is needed; prefer `*` for single-segment matches.
-
----
-
-## Exit Codes
-
-| Code | Meaning                         |
-| ---- | ------------------------------- |
-| 0    | no reportable policy violations |
-| 1    | warning threshold reached       |
-| 2    | failure threshold reached       |
-
-Code `0` can still occur when findings are filtered by `policy.warn-on` or suppressed by a baseline snapshot.
-
----
+Show the built-in rule catalog and explain individual rules.
 
 ## Configuration
 
-Promptinel now keeps the detailed scanner reference in the `docs/` directory instead of duplicating
-all of it here.
+Promptinel reads the config file you pass via `--config`, or auto-discovers
+`.promptinel.yaml` from the current directory and `$HOME` unless you disable discovery with
+`--no-config-discovery`.
 
-Start with:
-
-- [Documentation Index](docs/README.md)
-- [Configuration And Precedence](docs/Config.md)
-- [Severity Handling](docs/Severity.md)
-- [Trust Processing](docs/Trust.md)
-- [Rule Architecture](docs/Rules.md)
-- [Rule Documentation Overview](docs/rules/Overview.md)
-
-Promptinel uses a `.promptinel.yaml` file for policy, environment, trust, limits, filters, scopes,
-and rule configuration.
+This is a small but representative configuration:
 
 ```yaml
 policy:
@@ -303,103 +176,75 @@ rules:
     severity: high
 
 custom-rules:
-  - id: forbidden-host
-    pattern: "evilcorp\\.com"
+  - id: blocked-domain
+    pattern: "evilcorp\\.example"
     severity: high
-    message: "Disallowed external domain"
+    message: "Disallowed external domain referenced in prompt"
 ```
 
-If `--config` is not set, Promptinel auto-discovers `.promptinel.yaml` from the current directory
-and `$HOME`. Use `--no-config-discovery` on `scan`, `sanitize`, `baseline create`, and
-`baseline update` to force defaults unless you explicitly pass `--config`.
+Important rules of thumb:
 
-Useful rules of thumb:
-
-- `--include` and `--exclude` replace the corresponding config filter values
+- `--include` and `--exclude` replace the corresponding config filters
 - `policy.warn-on` controls which findings become reportable
-- baseline snapshots are built from raw findings before `warn-on` filtering
-- oversized-file skips remain informational and do not affect exit codes
+- baseline snapshots are built from raw findings, not only reportable findings
 - later matching scopes override earlier ones
 
----
+For the full reference, start with [Configuration And Precedence](./docs/Config.md).
 
-## Output Example
+## Output And Exit Codes
 
-### Output Formats
+`scan` supports three output formats:
 
-`scan` supports three output formats via `--output`:
+- `text` for local review and CI logs
+- `json` for custom integrations
+- `sarif` for security and code-scanning platforms
 
-- `text` (default): human-readable report for local usage and CI logs
-- `json`: machine-readable Promptinel schema for custom integrations
-- `sarif`: SARIF 2.1.0 report for security/code-scanning platforms
+Promptinel uses the following exit codes:
 
-JSON compatibility expectations:
+- `0`: no reportable findings
+- `1`: warning threshold reached
+- `2`: failure threshold reached
 
-- `schema_version` uses semantic versioning
-- additive fields are backward-compatible within the same major version
-- breaking schema changes require a major version bump
+Oversized-file skips are informational and do not affect exit status.
 
-Deterministic ordering guarantees:
+## Built-In Rules
 
-- findings are grouped and sorted by file path and rule ID
-- line lists are deduplicated and sorted numerically
-- SARIF rule descriptors are sorted by rule ID
+Promptinel ships with a built-in rule set for common prompt attack patterns, including:
 
-### CI SARIF Validation
+- prompt override and role spoofing patterns
+- download-and-execute chains
+- template execution and network fetch behavior
+- secret exfiltration intent
+- invisible Unicode and obfuscation tricks
+- local sensitive file references
 
-The CI pipeline validates SARIF output end-to-end by:
+Start with the [Rule Documentation Overview](./docs/rules/Overview.md) for the full catalog.
 
-- running the real CLI command (`go run main.go scan --output sarif ...`) against a clean fixture set used only for CI SARIF upload validation
-- verifying core SARIF fields (`version`, `$schema`, run/tool/result structure)
-- uploading the generated `promptinel.sarif` file as a CI artifact
-- uploading SARIF to GitHub Code Scanning when permissions are available
+## Documentation Map
 
-The e2e test fixtures that intentionally contain findings are kept separate from this CI upload fixture so code-scanning uploads do not create synthetic alerts.
+The README is the shortest path to first use. The deeper docs are organized by task:
 
-### Text Mode (`--output text`)
+- [Documentation Index](./docs/README.md)
+- [Onboarding](./docs/Onboarding.md)
+- [Architecture](./docs/Architecture.md)
+- [Scan Pipeline](./docs/ScanPipeline.md)
+- [Configuration And Precedence](./docs/Config.md)
+- [Trust Processing](./docs/Trust.md)
+- [Severity Handling](./docs/Severity.md)
+- [Rule Architecture](./docs/Rules.md)
+- [Rule Documentation Overview](./docs/rules/Overview.md)
 
-```
-Capabilities:
- - can_execute_shell: true
- - can_access_filesystem: true
- - can_access_network: true
- - has_secrets: true
+## Design Goals
 
-File: agents/build.md
- - lines 12 [high] no-zero-width: Zero-width character detected
- - lines 18 [medium] no-unsafe-templates: Unsafe template expression detected
+Promptinel is designed to be:
 
-Oversized Skips: none
+- deterministic
+- offline-first
+- conservative about capability and trust assumptions
+- useful in CI, local review, and repository workflows
 
-Summary:
- - findings: 2
- - policy: FAIL
-```
-
----
-
-## Design Goals and Non-Goals
-
-Promptinel is designed to be deterministic, offline, reproducible, CI- and agent-friendly,
-and to provide a simple, extensible configuration model. It is also designed with a focus
-on minimal false positives, and to be conservative in its assumptions about the environment
-and trust model.
-
-Non-goals for Promptinel include runtime monitoring, LLM, moderation, content filtering,
-or subjective safety assessments. It is not designed to be a comprehensive security solution,
-but rather a simple, focused tool to catch common prompt-based attack vectors before they are
-executed.
-
-Promptinel assumes the LLM will faithfully execute instructions. Furthermore, no one can build
-a perfect scanner that guarantees to catch all possible attack vectors. I highly recommend reading
-any prompts you can download from the internet in `vim` or another text editor which will show
-you "invisible" characters. Don't trust online sources. Don't trust Markdown readers. Don't trust LLMs.
-You don't have to be paranoid, but you should be aware of the risks and take reasonable precautions.
-
-Intended Promptinel use cases include pre-commit hooks, CI pipelines, prompt marketplaces,
-and local development environments.
-
----
+Promptinel is not trying to provide runtime sandboxing, runtime monitoring, or a complete
+guarantee that every prompt attack will be detected.
 
 ## Motivation
 
@@ -427,12 +272,9 @@ for security issues before they are consumed by an LLM or agent.
 
 Stay safe, and happy coding! ✌️
 
----
-
-## How Promptinel Compares to Other Tools
+## How Promptinel Compares
 
 Promptinel performs static analysis before a prompt ever reaches an LLM.
-
 It enforces structure, policy, and quality at development time, not at runtime.
 
 What this means in practice:
@@ -443,76 +285,24 @@ What this means in practice:
 - fully free and open source
 - designed to complement, not replace, runtime systems
 
-Promptinel shifts governance left. It prevents flawed prompts from being deployed.
+In short, it prevents flawed prompts from being deployed.
 It can be combined with any runtime guardrail, firewall, or orchestration framework.
 
-### How It Differs From Other Tools
+## Contributing
 
-- Guardrails AI:
-  runtime input/output validation and automatic repair;
-  operates after prompt execution and adds runtime overhead.
-- LangChain middleware and runtime guardrails:
-  runtime orchestration and filtering inside execution chains;
-  focused on flow control and live validation, not CI linting.
-- Rebuff and LLM firewalls:
-  runtime detection of prompt injection and adversarial inputs;
-  reactive mitigation rather than preventative authoring checks.
-- LLM orchestration frameworks (for example LangChain and LlamaIndex):
-  composition frameworks for prompts, tools, and memory;
-  execution systems rather than governance scanners.
+If you plan to contribute, start with [Onboarding](./docs/Onboarding.md) and then read
+[Contributing](./CONTRIBUTING.md).
 
-### Why They Do Not Directly Compete
+Before opening a pull request, run:
 
-Runtime tools primarily act during execution.
-Promptinel acts _before_ execution.
+```bash
+make fmt fix vet vuln lint test
+```
 
-Runtime tools mitigate live abuse and runtime risk.
-Promptinel tries to prevent flawed prompts from ever reaching runtime.
+## Support And Security
 
-Promptinel is complementary infrastructure, not a competing runtime system.
+Use [GitHub Issues](https://github.com/CunningFatalist/promptinel/issues) for bug reports,
+feature requests, and documentation improvements.
 
----
-
-## Image Credits
-
-The logo was created with ChatGPT and refined with Nano Banana.
-
----
-
-## Contributing to Promptinel
-
-If you are new to the repository, start with the [Onboarding Guide](docs/Onboarding.md).
-
-See [Contributing](CONTRIBUTING.md) for the contribution workflow and required local checks.
-
-### General Conventions
-
-This project follows [Conventional Commits](https://www.conventionalcommits.org) for commit messages and
-pull request titles.
-
-Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
-
-When opening issues or pull requests, use the available templates:
-
-- [Issue templates](.github/ISSUE_TEMPLATE/)
-- [Pull request template](.github/pull_request_template.md)
-
-## Development Conventions
-
-When implementing Cobra commands in `cmd/*`:
-
-- use `Run` (not `RunE`) for command handlers
-- keep core command logic in helper functions that return `error`
-- call `util.ExitOnCommandError(...)` directly from `Run` (without `if err != nil`) to centralize process exits
-- return `exitcode.Error` from helper logic when a command needs a specific non-zero exit code
-
-### Testing Scope
-
-- Tests in `cmd` packages must only cover command behavior
-  (argument validation, flag handling, output, and exit behavior).
-- Algorithmic or reusable logic must not be tested through `cmd`;
-  it must live in `internal/...` packages and be tested there.
-- Use the general test naming format `Test_PackageName_Functionality_OptionalModifier`
-  (for example, `Test_Config_Validation` or `Test_Config_Validation_InvalidInput`).
-- Use `cmd` test names in the format `Test_Cmd_CommandName_WhatItDoes` (for example,
-  `Test_Cmd_RootCommand_PrintsReleaseVersion`).
+Security issues are reported through the same repository issue tracker. See
+[Security Policy](./SECURITY.md).

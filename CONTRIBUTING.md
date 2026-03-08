@@ -1,23 +1,23 @@
 # Contributing
 
-If you are new to the repository, read the [Onboarding Guide](docs/Onboarding.md) first.
+If you are new to the repository, start with the [Onboarding Guide](./docs/Onboarding.md).
 
-## Workflow
+## Contribution Workflow
 
 1. Fork the repository.
-2. Create a branch from your fork using a Conventional Commits style branch name
-   (for example: `feat/add-json-output`, `fix/handle-empty-input`).
+2. Create a branch with a Conventional Commits style name, such as
+   `feat/add-json-output` or `fix/handle-empty-input`.
 3. Open a pull request from your fork.
-4. Every pull request must close at least one issue (for example: `Closes #123`).
+4. Link the pull request to the issue it resolves.
 
-## Requirements
+## Expectations
 
-- Pull requests must have green pipelines.
-- Commits must follow Conventional Commits.
-- Pull request titles must follow Conventional Commits.
-- Contributions must include tests for behavior changes and bug fixes.
-- New or changed code must keep test coverage at 85% or higher. If coverage is lower, the pull request must explain why.
-- When behavior changes, documentation updates are required.
+- pull requests should have green pipelines
+- commits should follow Conventional Commits
+- pull request titles should follow Conventional Commits
+- behavior changes and bug fixes should include tests
+- new or changed code should keep coverage at or above the project target, or explain the gap
+- behavior changes should update documentation in the same change
 
 ## Local Checks
 

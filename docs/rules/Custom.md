@@ -1,6 +1,6 @@
 # Custom Rules
 
-[Back to overview](../Rules/Overview.md)
+[Back to overview](./Overview.md)
 
 Promptinel custom rules are configured in your Promptinel config file rather than compiled into the
 built-in rule registry. Today they are regex-based rules defined under `custom-rules`.
@@ -25,8 +25,9 @@ separate static markdown page for every possible custom rule id.
 
 ## How Custom Rules Work Technically
 
-Promptinel compiles each configured custom rule into a token-based regex matcher at load time. The
-pattern runs against token values and emits findings using the configured message and severity.
+Promptinel compiles each configured custom rule into a token-based regex matcher during rule
+compilation before scanning starts. The pattern runs against token values and emits findings using
+the configured message and severity.
 
 ## How To Configure Custom Rules
 
@@ -47,8 +48,8 @@ custom-rules:
     message: "Disallowed external domain referenced in prompt"
 ```
 
-Promptinel validates custom rule ids for uniqueness, compiles the regex at config-load time, and
-rejects invalid patterns before scanning starts.
+Promptinel validates custom rule ids for uniqueness and rejects invalid regex patterns before
+scanning starts.
 
 ## Example Configurations
 
