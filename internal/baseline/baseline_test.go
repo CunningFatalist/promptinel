@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
@@ -81,6 +82,23 @@ func Test_Baseline_FilterFindings_RemovesAcceptedEntries(t *testing.T) {
 	assert.Equal(t, newFinding.ID, filtered[0].ID)
 }
 
+func Test_Baseline_FilterFindings_ReturnsInputWhenSnapshotEmpty(t *testing.T) {
+	findings := []finding.FileFinding{
+		{
+			Path: "a.md",
+			Finding: rules.Finding{
+				ID:       "rule-a",
+				Severity: config.SeverityLow,
+				Message:  "message",
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		},
+	}
+
+	filtered := FilterFindings(findings, Snapshot{})
+	require.Equal(t, findings, filtered)
+}
+
 func Test_Baseline_ReadWrite_RoundTrip(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "baseline.json")
 	snapshot := Snapshot{
@@ -147,6 +165,42 @@ func Test_Baseline_Write_OverwritesExistingFile(t *testing.T) {
 	assert.Equal(t, replacement.Entries, loaded.Entries)
 }
 
+func Test_Baseline_Read_ReturnsErrorWhenFileIsInvalidJSON(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "baseline.json")
+	require.NoError(t, os.WriteFile(file, []byte("{invalid"), 0o644))
+
+	_, err := Read(file)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse baseline file")
+}
+
+func Test_Baseline_Read_ReturnsErrorWhenFileMissing(t *testing.T) {
+	_, err := Read(filepath.Join(t.TempDir(), "missing.json"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read baseline file")
+}
+
+func Test_Baseline_Read_ReturnsErrorWhenVersionIsUnsupported(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "baseline.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"version":999,"entries":[]}`), 0o644))
+
+	_, err := Read(file)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported baseline version")
+}
+
+func Test_Baseline_Read_SortsEntriesByHash(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "baseline.json")
+	content := `{"version":1,"entries":[{"hash":"zzz","path":"z.md","rule_id":"rule-z","severity":"high","message":"z","line":2,"column":1},{"hash":"aaa","path":"a.md","rule_id":"rule-a","severity":"low","message":"a","line":1,"column":1}]}`
+	require.NoError(t, os.WriteFile(file, []byte(content), 0o644))
+
+	snapshot, err := Read(file)
+	require.NoError(t, err)
+	require.Len(t, snapshot.Entries, 2)
+	assert.Equal(t, "aaa", snapshot.Entries[0].Hash)
+	assert.Equal(t, "zzz", snapshot.Entries[1].Hash)
+}
+
 func Test_Baseline_HashFinding_IsDeterministic(t *testing.T) {
 	finding := finding.FileFinding{
 		Path: "a.md",
@@ -161,6 +215,80 @@ func Test_Baseline_HashFinding_IsDeterministic(t *testing.T) {
 	first := HashFinding(finding)
 	second := HashFinding(finding)
 	assert.Equal(t, first, second)
+}
+
+func Test_Baseline_HashFinding_ChangesWhenFindingChanges(t *testing.T) {
+	base := finding.FileFinding{
+		Path: "a.md",
+		Finding: rules.Finding{
+			ID:       "rule-a",
+			Severity: config.SeverityHigh,
+			Message:  "msg",
+			Position: rules.Position{Line: 10, Column: 8},
+		},
+	}
+	changed := base
+	changed.Position.Column = 9
+
+	assert.NotEqual(t, HashFinding(base), HashFinding(changed))
+}
+
+func Test_Baseline_Write_CreatesParentDirectoryAndNormalizesVersion(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "nested", "baseline.json")
+	snapshot := Snapshot{
+		Version: 0,
+		Entries: []Entry{
+			{
+				Hash:     "hash",
+				Path:     "a.md",
+				RuleID:   "rule-a",
+				Severity: config.SeverityMedium,
+				Message:  "msg",
+				Line:     2,
+				Column:   3,
+			},
+		},
+	}
+
+	require.NoError(t, Write(file, snapshot))
+	loaded, err := Read(file)
+	require.NoError(t, err)
+	assert.Equal(t, SnapshotVersion, loaded.Version)
+	assert.DirExists(t, filepath.Dir(file))
+}
+
+func Test_Baseline_Write_SortsEntriesBeforePersisting(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "baseline.json")
+	snapshot := Snapshot{
+		Version: SnapshotVersion,
+		Entries: []Entry{
+			{
+				Hash:     "zzz",
+				Path:     "z.md",
+				RuleID:   "rule-z",
+				Severity: config.SeverityHigh,
+				Message:  "z",
+				Line:     3,
+				Column:   1,
+			},
+			{
+				Hash:     "aaa",
+				Path:     "a.md",
+				RuleID:   "rule-a",
+				Severity: config.SeverityLow,
+				Message:  "a",
+				Line:     1,
+				Column:   1,
+			},
+		},
+	}
+
+	require.NoError(t, Write(file, snapshot))
+
+	content, err := os.ReadFile(file)
+	require.NoError(t, err)
+	text := string(content)
+	assert.Less(t, strings.Index(text, `"hash": "aaa"`), strings.Index(text, `"hash": "zzz"`))
 }
 
 func Test_Baseline_Write_RejectsSymlinkDestination(t *testing.T) {
@@ -222,4 +350,27 @@ func Test_Baseline_Write_ReturnsErrorWhenAtomicWriteFails(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "forced write failure")
+}
+
+func Test_Baseline_Write_ReturnsErrorWhenParentPathIsAFile(t *testing.T) {
+	workingDir := t.TempDir()
+	parentPath := filepath.Join(workingDir, "not-a-directory")
+	require.NoError(t, os.WriteFile(parentPath, []byte("fixture"), 0o644))
+
+	err := Write(filepath.Join(parentPath, "baseline.json"), Snapshot{
+		Version: SnapshotVersion,
+		Entries: []Entry{
+			{
+				Hash:     "abc",
+				Path:     "a.md",
+				RuleID:   "rule-a",
+				Severity: config.SeverityLow,
+				Message:  "message",
+				Line:     1,
+				Column:   1,
+			},
+		},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create baseline directory")
 }

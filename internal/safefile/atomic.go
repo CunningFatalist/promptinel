@@ -8,6 +8,24 @@ import (
 	"runtime"
 )
 
+type tempFile interface {
+	Name() string
+	Chmod(mode os.FileMode) error
+	Write([]byte) (int, error)
+	Sync() error
+	Close() error
+}
+
+var (
+	lstatPath      = os.Lstat
+	createTempFile = func(dir string, pattern string) (tempFile, error) {
+		return os.CreateTemp(dir, pattern)
+	}
+	renamePath  = os.Rename
+	removePath  = os.Remove
+	currentGOOS = runtime.GOOS
+)
+
 // AtomicWriteOptions controls atomic file replacement behavior.
 type AtomicWriteOptions struct {
 	TempPattern              string
@@ -17,7 +35,7 @@ type AtomicWriteOptions struct {
 // WriteFileAtomically writes content to a temporary file and atomically replaces the destination.
 func WriteFileAtomically(path string, content []byte, perm os.FileMode, options AtomicWriteOptions) (returnErr error) {
 	if options.RefuseDestinationSymlink {
-		info, err := os.Lstat(path)
+		info, err := lstatPath(path)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("lstat destination: %w", err)
 		}
@@ -31,7 +49,7 @@ func WriteFileAtomically(path string, content []byte, perm os.FileMode, options 
 		tempPattern = ".promptinel-*"
 	}
 
-	tempFile, err := os.CreateTemp(filepath.Dir(path), tempPattern)
+	tempFile, err := createTempFile(filepath.Dir(path), tempPattern)
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
@@ -39,7 +57,7 @@ func WriteFileAtomically(path string, content []byte, perm os.FileMode, options 
 	tempPath := tempFile.Name()
 	defer func() {
 		if returnErr != nil {
-			_ = os.Remove(tempPath)
+			_ = removePath(tempPath)
 		}
 	}()
 
@@ -66,20 +84,20 @@ func WriteFileAtomically(path string, content []byte, perm os.FileMode, options 
 }
 
 func replaceDestinationFile(tempPath string, destinationPath string) error {
-	renameErr := os.Rename(tempPath, destinationPath)
+	renameErr := renamePath(tempPath, destinationPath)
 	if renameErr == nil {
 		return nil
 	}
 
 	// On Windows, os.Rename cannot replace an existing destination.
-	if runtime.GOOS != "windows" {
+	if currentGOOS != "windows" {
 		return renameErr
 	}
 
-	if err := os.Remove(destinationPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := removePath(destinationPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("remove existing destination: %w", err)
 	}
-	if err := os.Rename(tempPath, destinationPath); err != nil {
+	if err := renamePath(tempPath, destinationPath); err != nil {
 		return err
 	}
 	return nil

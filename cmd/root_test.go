@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func Test_Cmd_RootCommand_PrintsDevelopmentVersion(t *testing.T) {
@@ -120,5 +122,38 @@ func Test_Cmd_Execute_ExitsOnInvalidArguments(t *testing.T) {
 	}
 	if !strings.Contains(string(output), "command execution failed") {
 		t.Fatalf("expected command execution failure output, got %q", string(output))
+	}
+}
+
+func Test_Cmd_DisplayVersion(t *testing.T) {
+	tests := []struct {
+		name     string
+		version  string
+		expected string
+	}{
+		{name: "development", version: DevelopmentVersion, expected: DevelopmentVersion},
+		{name: "release", version: "1.2.3", expected: "v1.2.3"},
+		{name: "already prefixed", version: "v1.2.3", expected: "v1.2.3"},
+	}
+
+	previousVersion := Version
+	t.Cleanup(func() {
+		Version = previousVersion
+	})
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Version = tt.version
+			if actual := displayVersion(); actual != tt.expected {
+				t.Fatalf("expected %q, got %q", tt.expected, actual)
+			}
+		})
+	}
+}
+
+func Test_Cmd_ParseRootOptions_ReturnsErrorWhenFlagMissing(t *testing.T) {
+	_, err := parseRootOptions(&cobra.Command{})
+	if err == nil {
+		t.Fatal("expected missing version flag error")
 	}
 }

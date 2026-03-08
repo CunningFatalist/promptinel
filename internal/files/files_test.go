@@ -1,6 +1,7 @@
 package files
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -107,6 +108,30 @@ func Test_Files_Collect_ReturnsConfiguredPathStatPrefix(t *testing.T) {
 	}
 }
 
+func Test_Files_CollectOptions_ReturnModeSpecificMessages(t *testing.T) {
+	scanOptions := ScanCollectOptions()
+	sanitizeOptions := SanitizeCollectOptions()
+
+	if scanOptions.PathStatErrorPrefix != "stat path" {
+		t.Fatalf("unexpected scan stat prefix: %#v", scanOptions)
+	}
+	if sanitizeOptions.PathStatErrorPrefix != "lstat path" {
+		t.Fatalf("unexpected sanitize stat prefix: %#v", sanitizeOptions)
+	}
+	if scanOptions.SymlinkSkipReason != "symbolic links are not scanned" {
+		t.Fatalf("unexpected scan symlink reason: %#v", scanOptions)
+	}
+	if sanitizeOptions.SymlinkSkipReason != "symbolic links are not sanitized" {
+		t.Fatalf("unexpected sanitize symlink reason: %#v", sanitizeOptions)
+	}
+	if got := scanOptions.MetadataErrorReason(errors.New("boom")); got != "metadata read failed (boom)" {
+		t.Fatalf("unexpected scan metadata error reason: %q", got)
+	}
+	if got := sanitizeOptions.MetadataErrorReason(errors.New("boom")); got != "metadata error: boom" {
+		t.Fatalf("unexpected sanitize metadata error reason: %q", got)
+	}
+}
+
 func Test_Files_Collect_SkipsNonRegularFile(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("named pipes are not supported in this test on windows")
@@ -127,6 +152,33 @@ func Test_Files_Collect_SkipsNonRegularFile(t *testing.T) {
 	}
 	if len(skipped) != 1 || skipped[0].Reason != "non-regular file" {
 		t.Fatalf("expected one non-regular skip, got %#v", skipped)
+	}
+}
+
+func Test_Files_Collect_SkipsSymlinkInsideDirectoryWalk(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	target := filepath.Join(workingDir, "target.md")
+	if err := os.WriteFile(target, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write target file: %v", err)
+	}
+	link := filepath.Join(workingDir, "link.md")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	collected, skipped, err := Collect([]string{workingDir}, ScanCollectOptions())
+	if err != nil {
+		t.Fatalf("collect files: %v", err)
+	}
+	if len(collected) != 1 || collected[0] != target {
+		t.Fatalf("unexpected collected files: %#v", collected)
+	}
+	if len(skipped) != 1 || skipped[0].Path != link || skipped[0].Reason != "symbolic links are not scanned" {
+		t.Fatalf("unexpected skipped files: %#v", skipped)
 	}
 }
 
@@ -178,6 +230,33 @@ func Test_Files_CollectTargets_CollectsAndFiltersInOneStep(t *testing.T) {
 	}
 }
 
+func Test_Files_Collect_SkipsNonRegularFileDuringDirectoryWalk(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("named pipes are not supported in this test on windows")
+	}
+
+	workingDir := t.TempDir()
+	regularPath := filepath.Join(workingDir, "keep.md")
+	if err := os.WriteFile(regularPath, []byte("keep"), 0o644); err != nil {
+		t.Fatalf("write regular file: %v", err)
+	}
+	pipePath := filepath.Join(workingDir, "pipe.fifo")
+	if err := syscall.Mkfifo(pipePath, 0o600); err != nil {
+		t.Fatalf("create fifo: %v", err)
+	}
+
+	collected, skipped, err := Collect([]string{workingDir}, ScanCollectOptions())
+	if err != nil {
+		t.Fatalf("collect files: %v", err)
+	}
+	if len(collected) != 1 || collected[0] != regularPath {
+		t.Fatalf("unexpected collected files: %#v", collected)
+	}
+	if len(skipped) != 1 || skipped[0].Path != pipePath || skipped[0].Reason != "non-regular file" {
+		t.Fatalf("unexpected skipped files: %#v", skipped)
+	}
+}
+
 func Test_Files_RelativePathFromWorkingDir_ReturnsRelativeWhenPossible(t *testing.T) {
 	workingDir := t.TempDir()
 	absolutePath := filepath.Join(workingDir, "nested", "file.md")
@@ -185,5 +264,34 @@ func Test_Files_RelativePathFromWorkingDir_ReturnsRelativeWhenPossible(t *testin
 	relative := RelativePathFromWorkingDir(workingDir, absolutePath)
 	if relative != filepath.Join("nested", "file.md") {
 		t.Fatalf("unexpected relative path: %q", relative)
+	}
+}
+
+func Test_Files_RelativePathFromWorkingDir_ReturnsInputWhenWorkingDirEmpty(t *testing.T) {
+	absolutePath := filepath.Join(t.TempDir(), "file.md")
+
+	if relative := RelativePathFromWorkingDir("   ", absolutePath); relative != absolutePath {
+		t.Fatalf("expected original path when working dir is empty, got %q", relative)
+	}
+}
+
+func Test_Files_AppendUniqueFile_CanonicalizesPaths(t *testing.T) {
+	workingDir := t.TempDir()
+	path := filepath.Join(workingDir, "nested", "..", "file.md")
+
+	seen := make(map[string]struct{})
+	paths := appendUniqueFile(nil, seen, path)
+	paths = appendUniqueFile(paths, seen, filepath.Clean(path))
+
+	if len(paths) != 1 || paths[0] != filepath.Clean(path) {
+		t.Fatalf("expected canonicalized deduplication, got %#v", paths)
+	}
+}
+
+func Test_Files_CanonicalizePath_ReturnsCleanPathWhenSymlinkResolutionFails(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing", "..", "file.md")
+
+	if canonical := canonicalizePath(path); canonical != filepath.Clean(path) {
+		t.Fatalf("expected cleaned path fallback, got %q", canonical)
 	}
 }

@@ -35,6 +35,8 @@ const (
 )
 
 var writeFileAtomically = safefile.WriteFileAtomically
+var lstatPath = os.Lstat
+var readFile = os.ReadFile
 
 // Event captures one emitted sanitize operation entry.
 type Event struct {
@@ -101,7 +103,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 			return Result{}, err
 		}
 
-		info, statErr := os.Lstat(target.AbsolutePath)
+		info, statErr := lstatPath(target.AbsolutePath)
 		if statErr != nil {
 			if errors.Is(statErr, os.ErrNotExist) {
 				result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: "path no longer exists"})
@@ -128,7 +130,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 			continue
 		}
 
-		content, readErr := os.ReadFile(target.AbsolutePath)
+		content, readErr := readFile(target.AbsolutePath)
 		if readErr != nil {
 			result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: fmt.Sprintf("read error: %v", readErr)})
 			result.Summary.Skipped++
@@ -150,7 +152,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 				return Result{}, err
 			}
 
-			latestInfo, latestErr := os.Lstat(target.AbsolutePath)
+			latestInfo, latestErr := lstatPath(target.AbsolutePath)
 			if latestErr != nil {
 				if errors.Is(latestErr, os.ErrNotExist) {
 					result.Events = append(result.Events, Event{Path: target.RelativePath, Action: ActionSkipped, Reason: "path no longer exists"})

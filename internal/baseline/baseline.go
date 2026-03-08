@@ -63,25 +63,7 @@ func BuildSnapshot(findings []finding.FileFinding) Snapshot {
 	}
 
 	sort.SliceStable(entries, func(i, j int) bool {
-		if entries[i].Hash != entries[j].Hash {
-			return entries[i].Hash < entries[j].Hash
-		}
-		if entries[i].Path != entries[j].Path {
-			return entries[i].Path < entries[j].Path
-		}
-		if entries[i].Line != entries[j].Line {
-			return entries[i].Line < entries[j].Line
-		}
-		if entries[i].Column != entries[j].Column {
-			return entries[i].Column < entries[j].Column
-		}
-		if entries[i].RuleID != entries[j].RuleID {
-			return entries[i].RuleID < entries[j].RuleID
-		}
-		if entries[i].Severity != entries[j].Severity {
-			return entries[i].Severity < entries[j].Severity
-		}
-		return entries[i].Message < entries[j].Message
+		return entries[i].Hash < entries[j].Hash
 	})
 
 	return Snapshot{

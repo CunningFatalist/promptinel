@@ -197,6 +197,38 @@ func Test_Report_WriteScanSARIF_ReturnsErrorWhenWriterFails(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_Report_RegisterSARIFDescriptor_UsesMostSevereLevel(t *testing.T) {
+	descriptors := map[string]sarifReportingDescriptor{}
+
+	registerSARIFDescriptor(descriptors, groupedFinding{
+		id:       "rule-a",
+		message:  "message",
+		severity: config.SeverityLow,
+	})
+	registerSARIFDescriptor(descriptors, groupedFinding{
+		id:       "rule-a",
+		message:  "message",
+		severity: config.SeverityHigh,
+	})
+
+	require.Len(t, descriptors, 1)
+	assert.Equal(t, "error", descriptors["rule-a"].DefaultConfiguration.Level)
+}
+
+func Test_Report_BuildSARIFLocationsAndLevelHelpers(t *testing.T) {
+	locations := buildSARIFLocations("file.md", []int{0, -1})
+	require.Len(t, locations, 1)
+	assert.Equal(t, 1, locations[0].PhysicalLocation.Region.StartLine)
+	assert.Equal(t, 1, locations[0].PhysicalLocation.Region.StartColumn)
+
+	assert.Equal(t, "error", sarifLevelForSeverity(config.SeverityHigh))
+	assert.Equal(t, "warning", sarifLevelForSeverity(config.SeverityMedium))
+	assert.Equal(t, "note", sarifLevelForSeverity(config.SeverityLow))
+	assert.Equal(t, 3, sarifLevelRank("error"))
+	assert.Equal(t, 2, sarifLevelRank("warning"))
+	assert.Equal(t, 1, sarifLevelRank("note"))
+}
+
 func scanMachineSummaryForTest() ScanSummary {
 	return ScanSummary{
 		Findings: []finding.FileFinding{

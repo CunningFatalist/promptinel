@@ -3,6 +3,8 @@ package builtin
 import (
 	"testing"
 
+	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,4 +66,68 @@ func Test_Builtin_NewRegistry_DescribeKnownRule(t *testing.T) {
 	meta, ok := registry.Describe("no-zero-width")
 	require.True(t, ok)
 	assert.Equal(t, "No Zero Width Characters", meta.Name)
+}
+
+type stubRule struct {
+	documentFindings []rules.Finding
+	segmentFindings  []rules.Finding
+	tokenFindings    []rules.Finding
+	flowFindings     []rules.Finding
+}
+
+func (r stubRule) Metadata() rules.Metadata {
+	return rules.Metadata{
+		ID:              "stub-rule",
+		Name:            "Stub Rule",
+		DefaultSeverity: config.SeverityMedium,
+	}
+}
+
+func (r stubRule) CheckDocument(_ rules.Context, _ rules.DocumentView) []rules.Finding {
+	return r.documentFindings
+}
+
+func (r stubRule) CheckSegment(_ rules.Context, _ rules.Segment) []rules.Finding {
+	return r.segmentFindings
+}
+
+func (r stubRule) CheckTokens(_ rules.Context, _ rules.Segment, _ []rules.Token) []rules.Finding {
+	return r.tokenFindings
+}
+
+func (r stubRule) CheckFlow(_ rules.Context, _ rules.AnalyzedDocument) []rules.Finding {
+	return r.flowFindings
+}
+
+type metadataOnlyRule struct{}
+
+func (metadataOnlyRule) Metadata() rules.Metadata {
+	return rules.Metadata{ID: "metadata-only", Name: "Metadata Only"}
+}
+
+func Test_Builtin_DocumentedRule_DelegatesSupportedInterfaces(t *testing.T) {
+	rule := documentedRule{
+		Rule: stubRule{
+			documentFindings: []rules.Finding{{Message: "document"}},
+			segmentFindings:  []rules.Finding{{Message: "segment"}},
+			tokenFindings:    []rules.Finding{{Message: "token"}},
+			flowFindings:     []rules.Finding{{Message: "flow"}},
+		},
+		docsFile: "StubRule.md",
+	}
+
+	assert.Equal(t, "StubRule.md", rule.Metadata().DocsFile)
+	assert.Len(t, rule.CheckDocument(rules.Context{}, rules.DocumentView{}), 1)
+	assert.Len(t, rule.CheckSegment(rules.Context{}, rules.Segment{}), 1)
+	assert.Len(t, rule.CheckTokens(rules.Context{}, rules.Segment{}, nil), 1)
+	assert.Len(t, rule.CheckFlow(rules.Context{}, rules.AnalyzedDocument{}), 1)
+}
+
+func Test_Builtin_DocumentedRule_ReturnsNilForUnsupportedInterfaces(t *testing.T) {
+	rule := documentedRule{Rule: metadataOnlyRule{}, docsFile: "MetadataOnly.md"}
+
+	assert.Nil(t, rule.CheckDocument(rules.Context{}, rules.DocumentView{}))
+	assert.Nil(t, rule.CheckSegment(rules.Context{}, rules.Segment{}))
+	assert.Nil(t, rule.CheckTokens(rules.Context{}, rules.Segment{}, nil))
+	assert.Nil(t, rule.CheckFlow(rules.Context{}, rules.AnalyzedDocument{}))
 }

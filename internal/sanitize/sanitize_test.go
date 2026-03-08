@@ -7,10 +7,50 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/CunningFatalist/promptinel/internal/safefile"
 )
+
+type errSequenceContext struct {
+	context.Context
+	errs  []error
+	calls int
+}
+
+func (c *errSequenceContext) Err() error {
+	if c.calls >= len(c.errs) {
+		return nil
+	}
+	err := c.errs[c.calls]
+	c.calls++
+	return err
+}
+
+type stubFileInfo struct {
+	name string
+	size int64
+	mode os.FileMode
+}
+
+func (s stubFileInfo) Name() string       { return s.name }
+func (s stubFileInfo) Size() int64        { return s.size }
+func (s stubFileInfo) Mode() os.FileMode  { return s.mode }
+func (s stubFileInfo) ModTime() time.Time { return time.Time{} }
+func (s stubFileInfo) IsDir() bool        { return s.mode.IsDir() }
+func (s stubFileInfo) Sys() any           { return nil }
+
+func writeSanitizeFixture(t *testing.T, workingDir string, name string, content string) string {
+	t.Helper()
+
+	path := filepath.Join(workingDir, name)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+	return path
+}
 
 func Test_Sanitize_Run_ReturnsCanceledContextWhenAlreadyCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -22,6 +62,20 @@ func Test_Sanitize_Run_ReturnsCanceledContextWhenAlreadyCanceled(t *testing.T) {
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
+
+func Test_Sanitize_Run_AllowsNilContext(t *testing.T) {
+	workingDir := t.TempDir()
+	writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+	var ctx context.Context
+
+	result, err := Run(ctx, Request{Paths: []string{workingDir}, Discover: false})
+	if err != nil {
+		t.Fatalf("run sanitize with nil context: %v", err)
+	}
+	if result.Summary.Changed != 1 {
+		t.Fatalf("expected changed files=1, got %d", result.Summary.Changed)
 	}
 }
 
@@ -260,6 +314,43 @@ func Test_Sanitize_Run_ReturnsErrorWhenCollectionFails(t *testing.T) {
 	}
 }
 
+func Test_Sanitize_Run_ReturnsErrorWhenConfigLoadFails(t *testing.T) {
+	_, err := Run(context.Background(), Request{
+		Paths:      []string{"."},
+		ConfigFile: filepath.Join(t.TempDir(), "missing.yaml"),
+		Discover:   false,
+	})
+	if err == nil {
+		t.Fatal("expected config load error")
+	}
+	if !strings.Contains(err.Error(), "load config") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Sanitize_Run_SkipsNonRegularFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("named pipes are not supported in this test on windows")
+	}
+
+	workingDir := t.TempDir()
+	pipePath := filepath.Join(workingDir, "prompt.fifo")
+	if err := syscall.Mkfifo(pipePath, 0o600); err != nil {
+		t.Fatalf("create fifo: %v", err)
+	}
+
+	result, err := Run(context.Background(), Request{Paths: []string{pipePath}, Discover: false})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+	if len(result.Events) != 1 || result.Events[0].Action != ActionSkipped {
+		t.Fatalf("expected one skipped event, got %#v", result.Events)
+	}
+	if result.Events[0].Reason != "non-regular file" {
+		t.Fatalf("unexpected skip reason: %#v", result.Events)
+	}
+}
+
 func Test_Sanitize_Run_ReturnsErrorWhenAtomicWriteFails(t *testing.T) {
 	workingDir := t.TempDir()
 	file := filepath.Join(workingDir, "prompt.md")
@@ -284,5 +375,251 @@ func Test_Sanitize_Run_ReturnsErrorWhenAtomicWriteFails(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "forced write failure") {
 		t.Fatalf("expected forced write failure in error, got: %v", err)
+	}
+}
+
+func Test_Sanitize_Run_ReturnsCanceledContextAfterConfigLoad(t *testing.T) {
+	ctx := &errSequenceContext{
+		Context: context.Background(),
+		errs:    []error{nil, nil, context.Canceled},
+	}
+
+	_, err := Run(ctx, Request{Paths: []string{"."}, Discover: false})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
+
+func Test_Sanitize_Run_ReturnsCanceledContextAfterCollection(t *testing.T) {
+	workingDir := t.TempDir()
+	writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+	ctx := &errSequenceContext{
+		Context: context.Background(),
+		errs:    []error{nil, nil, nil, context.Canceled},
+	}
+
+	_, err := Run(ctx, Request{Paths: []string{workingDir}, Discover: false})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
+
+func Test_Sanitize_Run_ReturnsCanceledContextWhileProcessingDiscoveredSkip(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	target := writeSanitizeFixture(t, workingDir, "target.md", "line1\r\n")
+	link := filepath.Join(workingDir, "link.md")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+	ctx := &errSequenceContext{
+		Context: context.Background(),
+		errs:    []error{nil, nil, nil, nil, context.Canceled},
+	}
+
+	_, err := Run(ctx, Request{Paths: []string{workingDir}, Discover: false})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
+
+func Test_Sanitize_Run_ReturnsCanceledContextBeforeApplyWrite(t *testing.T) {
+	workingDir := t.TempDir()
+	writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+	ctx := &errSequenceContext{
+		Context: context.Background(),
+		errs:    []error{nil, nil, nil, nil, context.Canceled},
+	}
+
+	_, err := Run(ctx, Request{Paths: []string{workingDir}, Discover: false, Apply: true})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
+
+func Test_Sanitize_Run_SkipsPathWhenLstatReportsNotExistAfterCollection(t *testing.T) {
+	workingDir := t.TempDir()
+	file := writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+
+	originalLstat := lstatPath
+	lstatPath = func(path string) (os.FileInfo, error) {
+		if path == file {
+			return nil, os.ErrNotExist
+		}
+		return originalLstat(path)
+	}
+	t.Cleanup(func() {
+		lstatPath = originalLstat
+	})
+
+	result, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+	if len(result.Events) != 1 || result.Events[0].Reason != "path no longer exists" {
+		t.Fatalf("unexpected events: %#v", result.Events)
+	}
+}
+
+func Test_Sanitize_Run_ReturnsErrorWhenLstatFailsAfterCollection(t *testing.T) {
+	workingDir := t.TempDir()
+	file := writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+
+	originalLstat := lstatPath
+	lstatPath = func(path string) (os.FileInfo, error) {
+		if path == file {
+			return nil, errors.New("forced lstat failure")
+		}
+		return originalLstat(path)
+	}
+	t.Cleanup(func() {
+		lstatPath = originalLstat
+	})
+
+	_, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false})
+	if err == nil {
+		t.Fatal("expected lstat error")
+	}
+	if !strings.Contains(err.Error(), "lstat file") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Sanitize_Run_SkipsReadErrors(t *testing.T) {
+	workingDir := t.TempDir()
+	file := writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+
+	originalReadFile := readFile
+	readFile = func(path string) ([]byte, error) {
+		if path == file {
+			return nil, errors.New("forced read failure")
+		}
+		return originalReadFile(path)
+	}
+	t.Cleanup(func() {
+		readFile = originalReadFile
+	})
+
+	result, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+	if len(result.Events) != 1 || !strings.Contains(result.Events[0].Reason, "read error: forced read failure") {
+		t.Fatalf("unexpected events: %#v", result.Events)
+	}
+}
+
+func Test_Sanitize_Run_SkipsPathWhenFileDisappearsBeforeApply(t *testing.T) {
+	workingDir := t.TempDir()
+	file := writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+
+	originalLstat := lstatPath
+	callCount := 0
+	lstatPath = func(path string) (os.FileInfo, error) {
+		if path == file {
+			callCount++
+			if callCount == 2 {
+				return nil, os.ErrNotExist
+			}
+		}
+		return originalLstat(path)
+	}
+	t.Cleanup(func() {
+		lstatPath = originalLstat
+	})
+
+	result, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false, Apply: true})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+	if len(result.Events) != 1 || result.Events[0].Reason != "path no longer exists" {
+		t.Fatalf("unexpected events: %#v", result.Events)
+	}
+}
+
+func Test_Sanitize_Run_ReturnsErrorWhenSecondLstatFailsBeforeApply(t *testing.T) {
+	workingDir := t.TempDir()
+	file := writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+
+	originalLstat := lstatPath
+	callCount := 0
+	lstatPath = func(path string) (os.FileInfo, error) {
+		if path == file {
+			callCount++
+			if callCount == 2 {
+				return nil, errors.New("forced late lstat failure")
+			}
+		}
+		return originalLstat(path)
+	}
+	t.Cleanup(func() {
+		lstatPath = originalLstat
+	})
+
+	_, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false, Apply: true})
+	if err == nil {
+		t.Fatal("expected second lstat error")
+	}
+	if !strings.Contains(err.Error(), "lstat file before write") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Sanitize_Run_SkipsSymlinkWhenPathChangesBeforeApply(t *testing.T) {
+	workingDir := t.TempDir()
+	file := writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+
+	originalLstat := lstatPath
+	callCount := 0
+	lstatPath = func(path string) (os.FileInfo, error) {
+		if path == file {
+			callCount++
+			if callCount == 2 {
+				return stubFileInfo{name: "prompt.md", mode: os.ModeSymlink}, nil
+			}
+		}
+		return originalLstat(path)
+	}
+	t.Cleanup(func() {
+		lstatPath = originalLstat
+	})
+
+	result, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false, Apply: true})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+	if len(result.Events) != 1 || result.Events[0].Reason != "symbolic links are not sanitized" {
+		t.Fatalf("unexpected events: %#v", result.Events)
+	}
+}
+
+func Test_Sanitize_Run_SkipsNonRegularFileWhenPathChangesBeforeApply(t *testing.T) {
+	workingDir := t.TempDir()
+	file := writeSanitizeFixture(t, workingDir, "prompt.md", "line1\r\n")
+
+	originalLstat := lstatPath
+	callCount := 0
+	lstatPath = func(path string) (os.FileInfo, error) {
+		if path == file {
+			callCount++
+			if callCount == 2 {
+				return stubFileInfo{name: "prompt.md", mode: os.ModeNamedPipe}, nil
+			}
+		}
+		return originalLstat(path)
+	}
+	t.Cleanup(func() {
+		lstatPath = originalLstat
+	})
+
+	result, err := Run(context.Background(), Request{Paths: []string{workingDir}, Discover: false, Apply: true})
+	if err != nil {
+		t.Fatalf("run sanitize: %v", err)
+	}
+	if len(result.Events) != 1 || result.Events[0].Reason != "non-regular file" {
+		t.Fatalf("unexpected events: %#v", result.Events)
 	}
 }

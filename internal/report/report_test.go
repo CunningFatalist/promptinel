@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
@@ -267,6 +268,18 @@ func Test_Report_WriteBaselineText_CreateAndUpdate(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "Updated baseline .promptinel-baseline.json with 9 entries (-3 compared to previous snapshot).\n", updated.String())
+}
+
+func Test_Report_SanitizeForTerminal(t *testing.T) {
+	assert.Equal(t, "", sanitizeForTerminal(""))
+	assert.Equal(t, "hello\\nworld\\r\\t\\x1", sanitizeForTerminal("hello\nworld\r\t\x01"))
+	assert.Equal(t, string(utf8.RuneError), sanitizeForTerminal(string(utf8.RuneError)))
+}
+
+func Test_Report_IsControlRune(t *testing.T) {
+	assert.True(t, isControlRune('\x01'))
+	assert.False(t, isControlRune('a'))
+	assert.False(t, isControlRune(utf8.RuneError))
 }
 
 func Test_Report_WriteBaselineText_EscapesControlCharacters(t *testing.T) {

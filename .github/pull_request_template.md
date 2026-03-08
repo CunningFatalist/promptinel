@@ -21,6 +21,6 @@ Closes #
 - [ ] Branch name follows Conventional Commits style (for example: `feat/...`, `fix/...`).
 - [ ] Pipelines are green.
 - [ ] I ran `make fmt fix vet vuln lint test`.
-- [ ] Coverage is 85%+ or I explained why it is lower.
+- [ ] Coverage is 90%+ or I explained why it is lower.
 - [ ] I added or updated tests for behavior changes.
 - [ ] I updated documentation for behavior changes.

@@ -67,3 +67,19 @@ func Test_Rules_Context_HasReferencedSkillResources(t *testing.T) {
 		ReferencedResources: []string{"scripts/run.py"},
 	}}.HasReferencedSkillResources())
 }
+
+func Test_Rules_Context_EffectiveTrustRange_ClampsAndIgnoresInvalidSpans(t *testing.T) {
+	ctx := Context{
+		TrustLevel: config.TrustLevelTrusted,
+		TrustSpans: []TrustSpan{
+			{Start: 3, End: 3, TrustLevel: config.TrustLevelTainted},
+			{Start: 4, End: 6, TrustLevel: config.TrustLevelUntrusted},
+		},
+	}
+
+	assert.Equal(t, config.TrustLevelTrusted, ctx.EffectiveTrustRange(-5, -1))
+	assert.Equal(t, config.TrustLevelUntrusted, ctx.EffectiveTrustRange(5, 5))
+	assert.True(t, ctx.IsUntrustedAt(5))
+	assert.False(t, ctx.IsUntrustedAt(1))
+	assert.False(t, ctx.IsTaintedAt(5))
+}

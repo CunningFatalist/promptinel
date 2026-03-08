@@ -16,7 +16,7 @@ If you are new to the repository, start with the [Onboarding Guide](./docs/Onboa
 - commits should follow Conventional Commits
 - pull request titles should follow Conventional Commits
 - behavior changes and bug fixes should include tests
-- new or changed code should keep coverage at or above the project target, or explain the gap
+- new or changed code should keep coverage at or above the project target (90%), or explain the gap
 - behavior changes should update documentation in the same change
 
 ## Local Checks

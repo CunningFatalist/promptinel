@@ -42,3 +42,27 @@ func Test_Cmd_ReadConfigAndFilterFlags_ChangedStateWhenSet(t *testing.T) {
 		t.Fatalf("expected include/exclude changed flags, got %#v", options)
 	}
 }
+
+func Test_Cmd_ReadConfigAndFilterFlags_ReturnsErrorForInvalidIncludeGlob(t *testing.T) {
+	command := &cobra.Command{}
+	addConfigAndFilterFlags(command)
+
+	_ = command.Flags().Set("include", "[")
+
+	_, err := readConfigAndFilterFlags(command)
+	if err == nil {
+		t.Fatal("expected invalid include glob error")
+	}
+}
+
+func Test_Cmd_ReadConfigAndFilterFlags_ReturnsErrorForInvalidExcludeGlob(t *testing.T) {
+	command := &cobra.Command{}
+	addConfigAndFilterFlags(command)
+
+	_ = command.Flags().Set("exclude", "[")
+
+	_, err := readConfigAndFilterFlags(command)
+	if err == nil {
+		t.Fatal("expected invalid exclude glob error")
+	}
+}
