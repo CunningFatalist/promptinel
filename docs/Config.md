@@ -124,8 +124,9 @@ then the effective filters are:
 - include: `["*.txt"]`
 - exclude: `["*.yaml"]`
 
-If the user explicitly sets an empty repeated flag value sequence, Promptinel treats that as an
-intentional override and can clear the config-backed value.
+There is currently no dedicated CLI syntax for "clear the configured include/exclude list but keep
+the other side unchanged." A repeated flag replaces the corresponding config value with the values
+provided on the command line.
 
 ## Command-Specific Effective Settings
 

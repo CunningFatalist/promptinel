@@ -4,7 +4,8 @@ This document explains the implemented scan flow from CLI input to final report 
 
 ## High-Level Flow
 
-`promptinel scan` and the baseline commands share the same core scanning pipeline:
+`promptinel scan` and the baseline commands share the same core scanning pipeline up to the point
+where raw and reportable findings have been computed:
 
 1. load configuration
 2. build the rule registry
@@ -12,8 +13,6 @@ This document explains the implemented scan flow from CLI input to final report 
 4. collect target files
 5. scan files concurrently
 6. apply policy filtering
-7. optionally apply baseline suppression
-8. render output and resolve process status
 
 ```mermaid
 flowchart TD
@@ -22,9 +21,6 @@ flowchart TD
     C --> D["Collect files"]
     D --> E["Scan files"]
     E --> F["Apply warn-on filtering"]
-    F --> G["Optionally suppress by baseline"]
-    G --> H["Render output"]
-    H --> I["Resolve exit code"]
 ```
 
 ## Configuration And Rule Compilation
@@ -123,6 +119,15 @@ The shared scan pipeline splits engine output into:
 skips, which are kept separate and always informational.
 
 This same shared pipeline is used by `scan` and by `baseline create|update`.
+
+## Command-Specific Post-Processing
+
+After `internal/scan.Run` returns, commands diverge:
+
+- `promptinel scan` may apply baseline suppression, then renders text/JSON/SARIF output, then
+  resolves the final exit code
+- `promptinel baseline create|update` builds a baseline snapshot from `RawFindings`, writes the
+  snapshot file, and renders baseline summary text
 
 ## Baseline Behavior
 

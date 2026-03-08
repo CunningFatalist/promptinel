@@ -12,34 +12,22 @@ The project is intentionally:
 - CI-friendly
 - conservative about trust and capability assumptions
 
-In practice, you will spend most of your time in three areas:
+On a high level, there are three main command categories:
 
 - `cmd/` for Cobra command wiring
 - `internal/` for scan, sanitize, reporting, config, and rule logic
 - `docs/` for architecture and per-rule documentation
 
+For the current documentation map, see the [Documentation Index](./README.md).
+
 ## Tech Stack
 
-- Language: Go `1.26.1`
+- Language: Go
 - CLI framework: `github.com/spf13/cobra`
 - Config loading: `github.com/spf13/viper`
 - Test assertions: `github.com/stretchr/testify`
 - Terminal formatting: `github.com/fatih/color`
-- Dev environment: Docker Compose via [`compose.yml`](/Users/stefan/Repositories/private/promptinel/compose.yml)
-
-The main entry point is intentionally small:
-
-```go
-package main
-
-import "github.com/CunningFatalist/promptinel/cmd"
-
-func main() {
-	cmd.Execute()
-}
-```
-
-See [main.go](/Users/stefan/Repositories/private/promptinel/main.go).
+- Dev environment: Docker Compose via [`compose.yml`](../compose.yml)
 
 ## What The CLI Does
 
@@ -58,15 +46,15 @@ Command packages stay thin. The expected pattern is:
 4. render output
 5. let `util.ExitOnCommandError(...)` map failures to process exit codes
 
-Example from [`cmd/scan.go`](/Users/stefan/Repositories/private/promptinel/cmd/scan.go):
+Example from [`cmd/scan.go`](../cmd/scan.go):
 
 ```go
 var scanCmd = &cobra.Command{
-Use:   "scan [path ...]",
-Args: cobra.MinimumNArgs(1),
-Run: func (cmd *cobra.Command, args []string) {
-util.ExitOnCommandError("scan command failed", runScan(cmd, args))
-},
+	Use:   "scan [path ...]",
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		util.ExitOnCommandError("scan command failed", runScan(cmd, args))
+	},
 }
 ```
 
@@ -76,64 +64,64 @@ This project explicitly prefers `Run`, not `RunE`, for Cobra commands.
 
 ### Root
 
-- [`main.go`](/Users/stefan/Repositories/private/promptinel/main.go): CLI entry point
-- [`go.mod`](/Users/stefan/Repositories/private/promptinel/go.mod): Go module and pinned dependencies
-- [`Makefile`](/Users/stefan/Repositories/private/promptinel/Makefile): standard developer commands
-- [`compose.yml`](/Users/stefan/Repositories/private/promptinel/compose.yml): local dev containers
-- [`.promptinel.yaml`](/Users/stefan/Repositories/private/promptinel/.promptinel.yaml): repository default scanner
+- [`main.go`](../main.go): CLI entry point
+- [`go.mod`](../go.mod): Go module and pinned dependencies
+- [`Makefile`](../Makefile): standard developer commands
+- [`compose.yml`](../compose.yml): local dev containers
+- [`.promptinel.yaml`](../.promptinel.yaml): repository default scanner
   config
 
 ### Commands
 
-- [`cmd/`](/Users/stefan/Repositories/private/promptinel/cmd): Cobra command definitions, flag parsing, command tests
+- [`cmd/`](../cmd): Cobra command definitions, flag parsing, command tests
 
 Key files:
 
-- [`cmd/root.go`](/Users/stefan/Repositories/private/promptinel/cmd/root.go): root command and version handling
-- [`cmd/scan.go`](/Users/stefan/Repositories/private/promptinel/cmd/scan.go): scan command and output selection
-- [`cmd/sanitize.go`](/Users/stefan/Repositories/private/promptinel/cmd/sanitize.go): sanitize command
-- [`cmd/baseline.go`](/Users/stefan/Repositories/private/promptinel/cmd/baseline.go): baseline lifecycle
-- [`cmd/rules.go`](/Users/stefan/Repositories/private/promptinel/cmd/rules.go): built-in rule discovery and rule help
-- [`cmd/flags_shared.go`](/Users/stefan/Repositories/private/promptinel/cmd/flags_shared.go): shared `--config`,
+- [`cmd/root.go`](../cmd/root.go): root command and version handling
+- [`cmd/scan.go`](../cmd/scan.go): scan command and output selection
+- [`cmd/sanitize.go`](../cmd/sanitize.go): sanitize command
+- [`cmd/baseline.go`](../cmd/baseline.go): baseline lifecycle
+- [`cmd/rules.go`](../cmd/rules.go): built-in rule discovery and rule help
+- [`cmd/flags_shared.go`](../cmd/flags_shared.go): shared `--config`,
   `--include`, `--exclude`, `--no-config-discovery`
 
 ### Core Runtime
 
-- [`internal/config/`](/Users/stefan/Repositories/private/promptinel/internal/config): typed config model, defaults,
+- [`internal/config/`](../internal/config): typed config model, defaults,
   validation
-- [`internal/files/`](/Users/stefan/Repositories/private/promptinel/internal/files): deterministic file collection and
+- [`internal/files/`](../internal/files): deterministic file collection and
   skip handling
-- [`internal/filters/`](/Users/stefan/Repositories/private/promptinel/internal/filters): glob validation and filter
+- [`internal/filters/`](../internal/filters): glob validation and filter
   resolution
-- [`internal/scan/`](/Users/stefan/Repositories/private/promptinel/internal/scan): shared scan pipeline for `scan` and
+- [`internal/scan/`](../internal/scan): shared scan pipeline for `scan` and
   baseline commands
-- [`internal/engine/`](/Users/stefan/Repositories/private/promptinel/internal/engine): concurrent per-file scanning,
+- [`internal/engine/`](../internal/engine): concurrent per-file scanning,
   trust spans, scope overrides
-- [`internal/rules/`](/Users/stefan/Repositories/private/promptinel/internal/rules): rule contracts, compilation,
+- [`internal/rules/`](../internal/rules): rule contracts, compilation,
   evaluator
-- [`internal/rules/builtin/`](/Users/stefan/Repositories/private/promptinel/internal/rules/builtin): built-in rules
-- [`internal/report/`](/Users/stefan/Repositories/private/promptinel/internal/report): text, JSON, SARIF, baseline, and
+- [`internal/rules/builtin/`](../internal/rules/builtin): built-in rules
+- [`internal/report/`](../internal/report): text, JSON, SARIF, baseline, and
   sanitize rendering
-- [`internal/baseline/`](/Users/stefan/Repositories/private/promptinel/internal/baseline): baseline snapshot hashing,
+- [`internal/baseline/`](../internal/baseline): baseline snapshot hashing,
   filtering, atomic writes
-- [`internal/sanitize/`](/Users/stefan/Repositories/private/promptinel/internal/sanitize): safe normalization workflow
-- [`internal/exitcode/`](/Users/stefan/Repositories/private/promptinel/internal/exitcode): policy threshold to exit code
+- [`internal/sanitize/`](../internal/sanitize): safe normalization workflow
+- [`internal/exitcode/`](../internal/exitcode): policy threshold to exit code
   mapping
 
 ### Documentation
 
-- [`docs/Architecture.md`](/Users/stefan/Repositories/private/promptinel/docs/Architecture.md): package boundaries and
+- [`docs/Architecture.md`](../docs/Architecture.md): package boundaries and
   runtime model
-- [`docs/ScanPipeline.md`](/Users/stefan/Repositories/private/promptinel/docs/ScanPipeline.md): scan lifecycle
-- [`docs/Trust.md`](/Users/stefan/Repositories/private/promptinel/docs/Trust.md): trust levels and span overlay model
-- [`docs/Rules.md`](/Users/stefan/Repositories/private/promptinel/docs/Rules.md): rule phases and rule authoring
-- [`docs/rules/`](/Users/stefan/Repositories/private/promptinel/docs/rules): per-rule user-facing docs
+- [`docs/ScanPipeline.md`](../docs/ScanPipeline.md): scan lifecycle
+- [`docs/Trust.md`](../docs/Trust.md): trust levels and span overlay model
+- [`docs/Rules.md`](../docs/Rules.md): rule phases and rule authoring
+- [`docs/rules/`](../docs/rules): per-rule user-facing docs
 
 ### Tests
 
-- [`cmd/*_test.go`](/Users/stefan/Repositories/private/promptinel/cmd): command behavior only
-- [`internal/*/*_test.go`](/Users/stefan/Repositories/private/promptinel/internal): package-level logic tests
-- [`e2e/`](/Users/stefan/Repositories/private/promptinel/e2e): end-to-end tests
+- [`cmd/*_test.go`](../cmd): command behavior only
+- [`internal/*/*_test.go`](../internal): package-level logic tests
+- [`e2e/`](../e2e): end-to-end tests
 
 ## First Mental Model
 
@@ -153,8 +141,7 @@ flowchart LR
     F --> G["Resolve exit code"]
 ```
 
-The concrete shared scan flow lives in [
-`internal/scan/scan.go`](/Users/stefan/Repositories/private/promptinel/internal/scan/scan.go):
+The shared scan pipeline in [`internal/scan/scan.go`](../internal/scan/scan.go) is responsible for:
 
 1. load config
 2. build built-in rule registry
@@ -162,15 +149,19 @@ The concrete shared scan flow lives in [
 4. collect target files
 5. scan files concurrently
 6. split raw findings from reportable findings
-7. optionally apply baseline suppression
-8. render text, JSON, or SARIF
-9. resolve the final exit code
 
 That separation matters:
 
 - `scan` uses `ReportableFindings`
 - baseline creation uses `RawFindings`
 - oversized file skips are surfaced separately and remain informational
+
+`promptinel scan` then performs command-specific work in
+[`cmd/scan.go`](../cmd/scan.go):
+
+1. optionally apply baseline suppression
+2. render text, JSON, or SARIF output
+3. resolve the final exit code
 
 ## Local Setup
 
@@ -179,8 +170,8 @@ That separation matters:
 - Docker and Docker Compose
 
 The project is set up to run its toolchain inside containers.
-The Go container is defined in [`.docker/go/Dockerfile`](/Users/stefan/Repositories/private/promptinel/.docker/go/Dockerfile), and the docs/formatting
-container is defined in [`.docker/node/Dockerfile`](/Users/stefan/Repositories/private/promptinel/.docker/node/Dockerfile).
+The Go container is defined in [`.docker/go/Dockerfile`](../.docker/go/Dockerfile), and the docs/formatting
+container is defined in [`.docker/node/Dockerfile`](../.docker/node/Dockerfile).
 
 ```mermaid
 flowchart TD
@@ -197,7 +188,7 @@ flowchart TD
 make setup
 ```
 
-This starts the containers from [`compose.yml`](/Users/stefan/Repositories/private/promptinel/compose.yml):
+This starts the containers from [`compose.yml`](../compose.yml):
 
 - `promptinel_app`: Go toolchain and development tools
 - `promptinel_node`: Node/Prettier tooling profile
@@ -222,18 +213,6 @@ make shell
 
 ## Daily Development Commands
 
-The project-level instructions and [`Makefile`](/Users/stefan/Repositories/private/promptinel/Makefile) expect these
-commands:
-
-```bash
-make fmt
-make fix
-make vet
-make vuln
-make lint
-make test
-```
-
 Before opening a PR, run:
 
 ```bash
@@ -250,21 +229,27 @@ go run main.go scan .
 go run main.go rules list
 ```
 
+Get a list of all Make commands with:
+
+```bash
+make help
+```
+
 Notes:
 
 - `make test` includes Docker setup checks, core tests, and e2e tests.
-- `make fmt-docs` uses Prettier `3.5.3` via the Node tooling container.
+- `make fmt-docs` uses Prettier via the Node tooling container.
 - `make build` requires `BUILD_VERSION` and writes the binary to `build/promptinel`.
 - The repository instructions prefer `go run main.go` over `make run`.
 
 ## Configuration Basics
 
 Promptinel loads secure defaults from [
-`internal/config/config.go`](/Users/stefan/Repositories/private/promptinel/internal/config/config.go). If you do not
+`internal/config/config.go`](../internal/config/config.go). If you do not
 pass `--config`, it can auto-discover `.promptinel.yaml` from the current directory and `$HOME`.
 
 The repository contains a local config in [
-`.promptinel.yaml`](/Users/stefan/Repositories/private/promptinel/.promptinel.yaml):
+`.promptinel.yaml`](../.promptinel.yaml):
 
 ```yaml
 policy:
@@ -305,11 +290,11 @@ Rules inspect capability flags from config:
 - `has_secrets`
 
 Example from [
-`internal/rules/builtin/no_curl_pipe_shell/rule.go`](/Users/stefan/Repositories/private/promptinel/internal/rules/builtin/no_curl_pipe_shell/rule.go):
+`internal/rules/builtin/no_curl_pipe_shell/rule.go`](../internal/rules/builtin/no_curl_pipe_shell/rule.go):
 
 ```go
 if !ctx.CanAccessNetwork() || !ctx.CanExecuteShell() {
-return nil
+	return nil
 }
 ```
 
@@ -325,8 +310,8 @@ Promptinel uses:
 
 The engine overlays lower-trust spans onto a file instead of forcing an entire document into one trust bucket.
 Placeholder regions are the main trust-span source today. See [
-`internal/engine/trust.go`](/Users/stefan/Repositories/private/promptinel/internal/engine/trust.go) and [
-`docs/Trust.md`](/Users/stefan/Repositories/private/promptinel/docs/Trust.md).
+`internal/engine/trust.go`](../internal/engine/trust.go) and [
+`docs/Trust.md`](../docs/Trust.md).
 
 ### 4. Scopes Use Last-Match-Wins
 
@@ -337,7 +322,7 @@ Scope overrides are deterministic:
 - per-rule scoped overrides can change severity or disable a rule entirely
 
 This behavior is covered heavily in [
-`internal/engine/engine_test.go`](/Users/stefan/Repositories/private/promptinel/internal/engine/engine_test.go).
+`internal/engine/engine_test.go`](../internal/engine/engine_test.go).
 
 ## How Scanning Works
 
@@ -349,18 +334,18 @@ go run main.go scan prompts/
 
 the path through the code is roughly:
 
-1. [`cmd/scan.go`](/Users/stefan/Repositories/private/promptinel/cmd/scan.go) parses flags and creates a request
-2. [`internal/scan/scan.go`](/Users/stefan/Repositories/private/promptinel/internal/scan/scan.go) loads config and
+1. [`cmd/scan.go`](../cmd/scan.go) parses flags and creates a request
+2. [`internal/scan/scan.go`](../internal/scan/scan.go) loads config and
    compiles rules
-3. [`internal/files/files.go`](/Users/stefan/Repositories/private/promptinel/internal/files/files.go) collects files and
+3. [`internal/files/files.go`](../internal/files/files.go) collects files and
    skip reasons
-4. [`internal/engine/engine.go`](/Users/stefan/Repositories/private/promptinel/internal/engine/engine.go) scans files
+4. [`internal/engine/engine.go`](../internal/engine/engine.go) scans files
    concurrently
-5. [`internal/rules/rule.go`](/Users/stefan/Repositories/private/promptinel/internal/rules/rule.go) evaluates rule
+5. [`internal/rules/rule.go`](../internal/rules/rule.go) evaluates rule
    phases
-6. [`internal/report/scan_text.go`](/Users/stefan/Repositories/private/promptinel/internal/report/scan_text.go) renders
+6. [`internal/report/scan_text.go`](../internal/report/scan_text.go) renders
    findings
-7. [`internal/exitcode/exit_code.go`](/Users/stefan/Repositories/private/promptinel/internal/exitcode/exit_code.go)
+7. [`internal/exitcode/exit_code.go`](../internal/exitcode/exit_code.go)
    decides `PASS`, `WARN`, or `FAIL`
 
 ```mermaid
@@ -389,7 +374,7 @@ flowchart TD
 invisible characters.
 
 The implementation is in [
-`internal/sanitize/sanitize.go`](/Users/stefan/Repositories/private/promptinel/internal/sanitize/sanitize.go).
+`internal/sanitize/sanitize.go`](../internal/sanitize/sanitize.go).
 
 Key behavior:
 
@@ -423,7 +408,7 @@ Key implementation details:
 - entries are hashed deterministically
 - writes are atomic
 
-See [`internal/baseline/baseline.go`](/Users/stefan/Repositories/private/promptinel/internal/baseline/baseline.go).
+See [`internal/baseline/baseline.go`](../internal/baseline/baseline.go).
 
 ## Rule System Overview
 
@@ -438,7 +423,7 @@ The evaluator is phase-ordered and lazy. It only builds segments, tokens, or ana
 actually needs them.
 
 Built-in rules are registered in [
-`internal/rules/builtin/registry.go`](/Users/stefan/Repositories/private/promptinel/internal/rules/builtin/registry.go).
+`internal/rules/builtin/registry.go`](../internal/rules/builtin/registry.go).
 
 ```mermaid
 flowchart LR
@@ -457,7 +442,7 @@ If you add or change a built-in rule:
 2. add targeted tests
 3. register it in the built-in registry
 4. add or update the matching doc in `docs/rules/`
-5. update [`docs/rules/Overview.md`](/Users/stefan/Repositories/private/promptinel/docs/rules/Overview.md)
+5. update [`docs/rules/Overview.md`](../docs/rules/Overview.md)
 
 If the behavior only needs a project-specific regex, consider `custom-rules` in config before adding Go code.
 
@@ -475,25 +460,25 @@ What to know:
 - reusable logic belongs in `internal/...` and should be tested there
 - many tests assert deterministic ordering, scope precedence, and config behavior
 - there is an e2e SARIF test in [
-  `e2e/scan_sarif_e2e_test.go`](/Users/stefan/Repositories/private/promptinel/e2e/scan_sarif_e2e_test.go)
+  `e2e/scan_sarif_e2e_test.go`](../e2e/scan_sarif_e2e_test.go)
 
 Good starting points:
 
-- [`cmd/scan_test.go`](/Users/stefan/Repositories/private/promptinel/cmd/scan_test.go)
-- [`internal/engine/engine_test.go`](/Users/stefan/Repositories/private/promptinel/internal/engine/engine_test.go)
-- [`internal/scan/scan_test.go`](/Users/stefan/Repositories/private/promptinel/internal/scan/scan_test.go)
-- [`internal/report/report_test.go`](/Users/stefan/Repositories/private/promptinel/internal/report/report_test.go)
+- [`cmd/scan_test.go`](../cmd/scan_test.go)
+- [`internal/engine/engine_test.go`](../internal/engine/engine_test.go)
+- [`internal/scan/scan_test.go`](../internal/scan/scan_test.go)
+- [`internal/report/report_test.go`](../internal/report/report_test.go)
 
 Coverage expectation from the project docs: keep new or changed code at `85%+`, and explain any shortfall in the PR.
 
 ## CI And Release Notes
 
 The main CI workflow is [
-`.github/workflows/ci.yml`](/Users/stefan/Repositories/private/promptinel/.github/workflows/ci.yml).
+`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 It currently:
 
-- sets up Go `1.26.1`
+- sets up Go
 - runs `go mod tidy` and `go mod vendor`
 - runs core tests with coverage, race detection, and shuffle enabled
 - runs `golangci-lint`
@@ -509,7 +494,7 @@ There are separate workflows for e2e, SARIF, release, and PR title validation.
 
 Look in:
 
-- [`cmd/flags_shared.go`](/Users/stefan/Repositories/private/promptinel/cmd/flags_shared.go) for shared flags
+- [`cmd/flags_shared.go`](../cmd/flags_shared.go) for shared flags
 - the specific command file in `cmd/`
 
 Keep parsing in `cmd/` and behavior in `internal/...`.
@@ -519,10 +504,10 @@ Keep parsing in `cmd/` and behavior in `internal/...`.
 Look in:
 
 - [
-  `internal/rules/builtin/registry.go`](/Users/stefan/Repositories/private/promptinel/internal/rules/builtin/registry.go)
+  `internal/rules/builtin/registry.go`](../internal/rules/builtin/registry.go)
 - one existing rule package such as [
-  `internal/rules/builtin/no_curl_pipe_shell/rule.go`](/Users/stefan/Repositories/private/promptinel/internal/rules/builtin/no_curl_pipe_shell/rule.go)
-- [`docs/Rules.md`](/Users/stefan/Repositories/private/promptinel/docs/Rules.md)
+  `internal/rules/builtin/no_curl_pipe_shell/rule.go`](../internal/rules/builtin/no_curl_pipe_shell/rule.go)
+- [`docs/Rules.md`](../docs/Rules.md)
 
 Use the smallest phase that fits the problem.
 
@@ -530,9 +515,9 @@ Use the smallest phase that fits the problem.
 
 Look in:
 
-- [`internal/report/scan_text.go`](/Users/stefan/Repositories/private/promptinel/internal/report/scan_text.go)
-- [`internal/report/scan_json.go`](/Users/stefan/Repositories/private/promptinel/internal/report/scan_json.go)
-- [`internal/report/scan_sarif.go`](/Users/stefan/Repositories/private/promptinel/internal/report/scan_sarif.go)
+- [`internal/report/scan_text.go`](../internal/report/scan_text.go)
+- [`internal/report/scan_json.go`](../internal/report/scan_json.go)
+- [`internal/report/scan_sarif.go`](../internal/report/scan_sarif.go)
 
 Be careful with deterministic ordering and schema stability.
 
@@ -540,9 +525,9 @@ Be careful with deterministic ordering and schema stability.
 
 Look in:
 
-- [`internal/config/config.go`](/Users/stefan/Repositories/private/promptinel/internal/config/config.go)
-- [`internal/config/config_test.go`](/Users/stefan/Repositories/private/promptinel/internal/config/config_test.go)
-- [`internal/scan/scan_test.go`](/Users/stefan/Repositories/private/promptinel/internal/scan/scan_test.go)
+- [`internal/config/config.go`](../internal/config/config.go)
+- [`internal/config/config_test.go`](../internal/config/config_test.go)
+- [`internal/scan/scan_test.go`](../internal/scan/scan_test.go)
 
 Config changes often ripple into docs and test expectations.
 
@@ -562,14 +547,11 @@ Config changes often ripple into docs and test expectations.
 
 If you are brand new, read in this order:
 
-1. [`README.md`](/Users/stefan/Repositories/private/promptinel/README.md)
-2. [`docs/Architecture.md`](/Users/stefan/Repositories/private/promptinel/docs/Architecture.md)
-3. [`docs/ScanPipeline.md`](/Users/stefan/Repositories/private/promptinel/docs/ScanPipeline.md)
-4. [`docs/Trust.md`](/Users/stefan/Repositories/private/promptinel/docs/Trust.md)
-5. [`docs/Rules.md`](/Users/stefan/Repositories/private/promptinel/docs/Rules.md)
-6. [`cmd/scan.go`](/Users/stefan/Repositories/private/promptinel/cmd/scan.go)
-7. [`internal/scan/scan.go`](/Users/stefan/Repositories/private/promptinel/internal/scan/scan.go)
-8. [`internal/engine/engine.go`](/Users/stefan/Repositories/private/promptinel/internal/engine/engine.go)
+1. [`README.md`](../README.md)
+2. [Documentation Index](./README.md)
+3. [`cmd/scan.go`](../cmd/scan.go)
+4. [`internal/scan/scan.go`](../internal/scan/scan.go)
+5. [`internal/engine/engine.go`](../internal/engine/engine.go)
 
 ## Suggested First Changes
 

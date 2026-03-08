@@ -254,9 +254,20 @@ Code `0` can still occur when findings are filtered by `policy.warn-on` or suppr
 
 ## Configuration
 
-### Configuration File
+Promptinel now keeps the detailed scanner reference in the `docs/` directory instead of duplicating
+all of it here.
 
-Promptinel uses a `.promptinel.yaml` file for configuration. Here is an example:
+Start with:
+
+- [Documentation Index](docs/README.md)
+- [Configuration And Precedence](docs/Config.md)
+- [Severity Handling](docs/Severity.md)
+- [Trust Processing](docs/Trust.md)
+- [Rule Architecture](docs/Rules.md)
+- [Rule Documentation Overview](docs/rules/Overview.md)
+
+Promptinel uses a `.promptinel.yaml` file for policy, environment, trust, limits, filters, scopes,
+and rule configuration.
 
 ```yaml
 policy:
@@ -284,436 +295,31 @@ filters:
     - "*.yaml"
 
 scopes:
-  - path: agents/**
-    severity: high
-    rules:
-      - id: no-bidi-control-characters
-        severity: high
-
-  - path: skills/**
-    severity: high
-    rules:
-      - id: skill-has-bundled-resources
-        severity: low
-
-  - path: prompts/**
-    severity: medium
-
   - path: docs/**
     severity: low
-    rules:
-      - id: no-unsafe-templates
-        enabled: false
-      - id: no-bidi-control-characters
-        severity: medium
 
 rules:
-  - id: no-bidi-control-characters
-    severity: high
-
-  - id: no-command-chaining
-    severity: medium
-
-  - id: no-curl-pipe-shell
-    severity: high
-
-  - id: no-data-uri-payloads
-    severity: medium
-
-  - id: no-dns-exfiltration
-    severity: high
-
-  - id: no-download-execute
-    severity: medium
-
-  - id: no-gitconfig-credential-helper
-    severity: high
-
-  - id: no-hidden-directionality
-    severity: medium
-
-  - id: no-hidden-html-instructions
-    severity: medium
-
-  - id: no-insecure-http
-    severity: low
-
-  - id: no-interpreter-inline-exec
-    severity: high
-
-  - id: no-metadata-service-access
-    severity: high
-
-  - id: no-mixed-script-identifiers
-    severity: high
-
-  - id: no-multilayer-encoding
-    severity: high
-
-  - id: no-nonstandard-whitespace
-    severity: medium
-
-  - id: no-override-capability-flow
-    severity: high
-
-  - id: no-powershell-download-cradle
-    severity: high
-
-  - id: no-prompt-injection-override
-    severity: medium
-
-  - id: no-role-header-spoofing
-    severity: high
-
-  - id: no-secret-exfiltration-intent
-    severity: high
-
-  - id: no-secret-to-network-flow
-    severity: high
-
-  - id: no-sensitive-file-paths
-    severity: high
-
-  - id: no-shell-heredoc-payload
-    severity: high
-
   - id: no-shell-profile-modification
     severity: high
 
-  - id: no-ssh-config-manipulation
-    severity: high
-
-  - id: skill-has-bundled-resources
-    severity: low
-
-  - id: no-staged-download-execution
-    severity: high
-
-  - id: no-suspicious-base64
-    severity: medium
-
-  - id: no-tainted-placeholder-instructions
-    severity: high
-
-  - id: no-template-network-fetch
-    severity: medium
-
-  - id: no-transcript-injection
-    severity: high
-
-  - id: no-tunnel-and-reverse-shell
-    severity: high
-
-  - id: no-zero-width
-    enabled: true
-
-  - id: no-unsafe-templates
-    severity: medium
-
-  - id: no-url-encoded-command-payload
-    severity: high
-
-  - id: no-webhook-exfiltration
-    severity: high
-
-  - id: no-yaml-json-role-fields
-    severity: high
-
-custom-rules:
-  - id: forbidden-domain-evilcorp
-    pattern: "evilcorp\\.com"
-    severity: high
-    message: "Disallowed external domain referenced in prompt"
-
-  - id: base64-payload-detection
-    pattern: "[A-Za-z0-9+/]{40,}={0,2}"
-    severity: medium
-    message: "Suspicious base64-like payload detected"
-
-  - id: curl-or-wget-usage
-    pattern: "\\b(curl|wget)\\b"
-    severity: high
-    message: "Network download command detected in prompt"
-```
-
-If `--config` is not set, Promptinel auto-discovers `.promptinel.yaml` from the current directory and `$HOME`.
-Use `--no-config-discovery` on `scan`, `sanitize`, `baseline create`, and `baseline update` to force secure defaults
-unless you explicitly pass `--config`.
-
-### Filters
-
-Use filters to define default file selection globs in `.promptinel.yaml`:
-
-```yaml
-filters:
-  include:
-    - "*.md"
-  exclude:
-    - "*.yaml"
-```
-
-CLI flags take precedence over config values:
-
-- `--include` overrides `filters.include`
-- `--exclude` overrides `filters.exclude`
-
-### Severity Levels
-
-Severity levels are `low`, `medium`, and `high`. They apply
-whenever you can define a threshold for a rule, e.g. in the policy section below.
-
-### Policy
-
-Your policy settings define enforcement behavior.
-
-```yaml
-policy:
-  fail-on: high
-  warn-on: medium
-```
-
-`fail-on` must be greater than or equal to `warn-on`.
-
-`warn-on` acts as the minimum severity for policy findings shown in `Findings` and
-used for `WARN`/`FAIL` exit outcomes.
-
-Oversized-file skips (`scan-file-too-large`) are always printed in a separate
-`Oversized Skips` section and remain informational-only (they do not affect exit code).
-
-Baseline snapshots are built from raw findings before `warn-on` filtering.
-
-### Environment
-
-Risk depends on what the agent can do. The same prompt may be safe or critical
-depending on your environment.
-
-**Promptinel assumes maximum capability unless configured otherwise.**
-
-By default, Promptinel assumes your agent can run system commands, access your
-file system, and make outbound network requests. Promptinel also assumes your
-runtime environment has sensitive data available and that the agent could retrieve it.
-
-> [!TIP]
-> The environment setting defines in which environment the scanned prompts will be consumed.
-> It does not define Promptinel's own runtime environment.
-
-```yaml
-environment:
-  can_execute_shell: true
-  can_access_filesystem: true
-  can_access_network: true
-  has_secrets: true
-```
-
-### Trust Model
-
-The trust model defines how Promptinel treats different input sources during analysis.
-There are three levels:
-
-1. `trusted`
-   – Fully controlled by you. Base matching behavior applies.
-2. `untrusted`
-   – External but static content. Some rules use stricter matching.
-3. `tainted`
-   – Dynamically influenced input (e.g. user data). Rules match conservatively.
-
-This matters, because LLMs cannot reliably distinguish between instructions and data.
-If user- (or otherwise externally) controlled content is embedded into a prompt template,
-it may override instructions or introduce hidden behavior. Trust boundaries allow Promptinel
-to apply stricter rule behavior where needed. Promptinel enforces this as a base file trust level
-plus lower-trust overlays for derived regions such as user-input placeholders, so mixed-trust
-documents are analyzed conservatively at the specific bytes a rule inspects.
-
-```yaml
-trust:
-  local-files: trusted
-  remote-includes: untrusted
-  user-input-placeholders: tainted
-```
-
-### Limits
-
-Use limits to guard scanner resource usage.
-
-```yaml
-limits:
-  max_file_size_bytes: 5242880 # 5 MiB
-```
-
-Files above the limit are skipped and always surfaced in scan output under
-`Oversized Skips` so operators can see analysis blind spots in local runs and CI logs.
-
-### Scopes
-
-You may adjust severity and per-rule behavior based on location.
-The `path` field uses the same glob semantics as the guide above.
-
-```yaml
-scopes:
-  - path: agents/**
-    severity: high
-
-  - path: docs/**
-    severity: low
-    rules:
-      - id: no-unsafe-templates
-        enabled: false
-      - id: no-bidi-control-characters
-        severity: medium
-
-  - path: skills/**
-    severity: high
-    rules:
-      - id: skill-has-bundled-resources
-        severity: low
-```
-
-Scope precedence is deterministic:
-
-- all matching scopes are evaluated in declaration order
-- later matching scopes override earlier ones (**Last-Match-Wins**)
-- within a file: global `rules[]` defaults are resolved first, then scope `severity`, then `scopes[].rules[]` per-rule overrides
-
-`Last-Match-Wins` applies to both:
-
-- scope-level `severity`
-- per-rule overrides in `scopes[].rules[]` for the same `id` (merged field-by-field for `enabled` and `severity`)
-
-For per-rule overrides, only explicitly set fields in later scopes replace earlier values.
-Example: a later scope that only sets `severity` keeps the previous `enabled` value unchanged.
-To re-enable a previously disabled rule, set `enabled: true` explicitly in a later matching scope.
-This is useful for advisory rules such as `skill-has-bundled-resources`: if a broad
-`skills/**` scope is set to `high`, add a per-rule override to keep that rule at `low`.
-
-### Built-In Rules
-
-Use `promptinel rules list` to see all available rules. You can enable or disable rules and adjust their severity.
-
-```yaml
-rules:
-  - id: no-bidi-control-characters
-    severity: high
-
-  - id: no-command-chaining
-    severity: medium
-
-  - id: no-curl-pipe-shell
-    severity: high
-
-  - id: no-data-uri-payloads
-    severity: medium
-
-  - id: no-dns-exfiltration
-    severity: high
-
-  - id: no-download-execute
-    severity: medium
-
-  - id: no-gitconfig-credential-helper
-    severity: high
-
-  - id: no-hidden-directionality
-    severity: medium
-
-  - id: no-hidden-html-instructions
-    severity: medium
-
-  - id: no-insecure-http
-    severity: low
-
-  - id: no-interpreter-inline-exec
-    severity: high
-
-  - id: no-metadata-service-access
-    severity: high
-
-  - id: no-mixed-script-identifiers
-    severity: high
-
-  - id: no-multilayer-encoding
-    severity: high
-
-  - id: no-nonstandard-whitespace
-    severity: medium
-
-  - id: no-override-capability-flow
-    severity: high
-
-  - id: no-powershell-download-cradle
-    severity: high
-
-  - id: no-prompt-injection-override
-    severity: medium
-
-  - id: no-role-header-spoofing
-    severity: high
-
-  - id: no-secret-exfiltration-intent
-    severity: high
-
-  - id: no-secret-to-network-flow
-    severity: high
-
-  - id: no-sensitive-file-paths
-    severity: high
-
-  - id: no-shell-heredoc-payload
-    severity: high
-
-  - id: no-shell-profile-modification
-    severity: high
-
-  - id: no-ssh-config-manipulation
-    severity: high
-
-  - id: skill-has-bundled-resources
-    severity: low
-
-  - id: no-staged-download-execution
-    severity: high
-
-  - id: no-suspicious-base64
-    severity: medium
-
-  - id: no-tainted-placeholder-instructions
-    severity: high
-
-  - id: no-template-network-fetch
-    severity: medium
-
-  - id: no-transcript-injection
-    severity: high
-
-  - id: no-tunnel-and-reverse-shell
-    severity: high
-
-  - id: no-zero-width
-    enabled: true
-
-  - id: no-unsafe-templates
-    severity: medium
-
-  - id: no-url-encoded-command-payload
-    severity: high
-
-  - id: no-webhook-exfiltration
-    severity: high
-
-  - id: no-yaml-json-role-fields
-    severity: high
-```
-
-### Custom Rules
-
-Promptinel allows custom regex rules for simple constraints.
-
-```yaml
 custom-rules:
   - id: forbidden-host
     pattern: "evilcorp\\.com"
     severity: high
     message: "Disallowed external domain"
 ```
+
+If `--config` is not set, Promptinel auto-discovers `.promptinel.yaml` from the current directory
+and `$HOME`. Use `--no-config-discovery` on `scan`, `sanitize`, `baseline create`, and
+`baseline update` to force defaults unless you explicitly pass `--config`.
+
+Useful rules of thumb:
+
+- `--include` and `--exclude` replace the corresponding config filter values
+- `policy.warn-on` controls which findings become reportable
+- baseline snapshots are built from raw findings before `warn-on` filtering
+- oversized-file skips remain informational and do not affect exit codes
+- later matching scopes override earlier ones
 
 ---
 
