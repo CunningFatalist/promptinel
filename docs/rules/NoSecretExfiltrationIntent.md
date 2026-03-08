@@ -30,7 +30,8 @@ agents.
 
 Promptinel tokenizes relevant segments when both secrets and network access are in scope. It tracks
 secret-like tokens and exfiltration-like tokens, then reports a finding when the nearest pair falls
-within a configured token window that is broader for untrusted content.
+within a configured token window that is broader when the inspected range is marked untrusted or
+tainted.
 
 ## Recommendations For Handling Findings
 

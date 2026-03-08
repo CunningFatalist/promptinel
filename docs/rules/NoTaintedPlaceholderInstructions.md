@@ -11,7 +11,7 @@
 
 ## What This Rule Does
 
-This rule detects placeholder syntax in untrusted content when it appears close to override,
+This rule detects placeholder syntax in lower-trust regions when it appears close to override,
 execution, or other capability-oriented language. It is designed to catch injection boundaries
 where external data can be substituted into a dangerous instruction frame.
 
@@ -28,9 +28,9 @@ instruction language. That is a realistic and common structure for prompt inject
 
 ## How The Rule Works Technically
 
-Promptinel only evaluates this rule in untrusted contexts. It finds placeholder matches in the
-document, examines a bounded window around each placeholder, and reports a finding when the nearby
-content contains override, execution, or capability signals.
+Promptinel finds placeholder matches in the document, checks whether the placeholder span is marked
+untrusted or tainted, examines a bounded window around each such placeholder, and reports a finding
+when the nearby content contains override, execution, or capability signals.
 
 ## Recommendations For Handling Findings
 

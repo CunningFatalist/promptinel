@@ -82,11 +82,16 @@ Rules are capability-based via phase-specific interfaces:
 `rules.Context` is consumed by built-ins with:
 
 - environment-only effects (capability gating)
-- trust-only effects (stricter matching for lower trust)
+- trust-only effects (stricter matching for lower-trust regions, not just whole files)
 - combined environment + trust effects
 - scanner-derived per-document metadata for targeted advisory checks such as `SKILL.md` bundled-resource detection
 
 This keeps detection aligned to deployment capability assumptions while remaining conservative for untrusted/tainted inputs.
+
+Trust is modeled as a base document level plus lower-trust provenance spans. The current
+implementation overlays user-input placeholder regions onto otherwise trusted files so rules can
+query the effective trust of the exact range they inspect. The span model also leaves room for
+future remote-include provenance without changing rule APIs again.
 
 ### Scope Override Precedence
 

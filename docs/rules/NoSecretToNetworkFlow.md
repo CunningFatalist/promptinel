@@ -29,7 +29,8 @@ strong evidence of an attempted outbound leak rather than a weak contextual warn
 
 Promptinel performs a flow analysis over all tokenized segments when the environment can access the
 network and secrets are in scope. It tracks secret-source tokens, exfiltration action tokens, and
-outbound sink tokens, then looks for ordered triads within a bounded token window.
+outbound sink tokens, then looks for ordered triads within a bounded token window. That window is
+expanded when the source-to-sink range crosses lower-trust provenance spans.
 
 ## Recommendations For Handling Findings
 

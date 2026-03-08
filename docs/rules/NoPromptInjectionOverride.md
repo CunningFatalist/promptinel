@@ -12,8 +12,8 @@
 ## What This Rule Does
 
 This rule detects common prompt-injection phrases that attempt to override or ignore higher
-priority instructions. In untrusted contexts, it also checks an expanded set of phrases that are
-more suspicious when user-controlled content is involved.
+priority instructions. In lower-trust regions, it also checks an expanded set of phrases that are
+more suspicious when user-controlled or remotely sourced content is involved.
 
 ## Why It's Important
 
@@ -30,8 +30,8 @@ an exploit.
 ## How The Rule Works Technically
 
 Promptinel scans the full document for known override phrases and reports the first match position.
-When the context is marked untrusted, it also evaluates a broader phrase list that is intentionally
-more conservative.
+When the matched region is marked untrusted or tainted, it also evaluates a broader phrase list
+that is intentionally more conservative.
 
 ## Recommendations For Handling Findings
 

@@ -49,23 +49,22 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 		return nil
 	}
 
-	maxWindow := maxTriadTokenWindowTrusted
-	if ctx.IsUntrusted() {
-		maxWindow = maxTriadTokenWindowUntrusted
-	}
-
 	sources := make([]tokenStage, 0)
 	actions := make([]int, 0)
 	sinks := make([]int, 0)
+	tokensByIndex := make([]rules.Token, 0)
 	globalIndex := 0
 	for _, tokens := range doc.TokensBySegment {
 		for i := range tokens {
 			token := tokens[i]
 			lower := strings.ToLower(token.Value)
+			tokensByIndex = append(tokensByIndex, token)
 
 			if isSecretSignal(token, lower) {
 				sources = append(sources, tokenStage{
 					Index:    globalIndex,
+					Start:    token.Start,
+					End:      token.End,
 					Position: token.Position,
 				})
 			}
@@ -87,14 +86,19 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 
 	for _, source := range sources {
 		for _, actionIndex := range actions {
-			if actionIndex < source.Index || actionIndex-source.Index > maxWindow {
+			if actionIndex < source.Index {
 				continue
 			}
 			for _, sinkIndex := range sinks {
 				if sinkIndex < actionIndex {
 					continue
 				}
-				if sinkIndex-source.Index > maxWindow {
+
+				maxWindow := maxTriadTokenWindowTrusted
+				if ctx.IsUntrustedRange(source.Start, tokensByIndex[sinkIndex].End) {
+					maxWindow = maxTriadTokenWindowUntrusted
+				}
+				if actionIndex-source.Index > maxWindow || sinkIndex-source.Index > maxWindow {
 					continue
 				}
 				return []rules.Finding{{
@@ -110,6 +114,8 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 
 type tokenStage struct {
 	Index    int
+	Start    int
+	End      int
 	Position rules.Position
 }
 

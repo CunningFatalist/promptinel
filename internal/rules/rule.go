@@ -23,11 +23,28 @@ type Position struct {
 	Column int
 }
 
+// TrustSpanSource identifies where a lower-trust region originated.
+type TrustSpanSource string
+
+const (
+	TrustSpanSourceUserInputPlaceholder TrustSpanSource = "user-input-placeholder"
+	TrustSpanSourceRemoteInclude        TrustSpanSource = "remote-include"
+)
+
+// TrustSpan overlays a lower-trust range onto the document base trust level.
+type TrustSpan struct {
+	Start      int
+	End        int
+	TrustLevel config.TrustLevel
+	Source     TrustSpanSource
+}
+
 // Context contains immutable input for rule evaluation.
 type Context struct {
 	Path        string
 	Environment config.Environment
 	TrustLevel  config.TrustLevel
+	TrustSpans  []TrustSpan
 	Skill       *SkillContext
 }
 

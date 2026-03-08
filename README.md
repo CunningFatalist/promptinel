@@ -520,7 +520,9 @@ There are three levels:
 This matters, because LLMs cannot reliably distinguish between instructions and data.
 If user- (or otherwise externally) controlled content is embedded into a prompt template,
 it may override instructions or introduce hidden behavior. Trust boundaries allow Promptinel
-to apply stricter rule behavior where needed.
+to apply stricter rule behavior where needed. Promptinel enforces this as a base file trust level
+plus lower-trust overlays for derived regions such as user-input placeholders, so mixed-trust
+documents are analyzed conservatively at the specific bytes a rule inspects.
 
 ```yaml
 trust:

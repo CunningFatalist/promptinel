@@ -41,12 +41,12 @@ func Metadata() rules.Metadata {
 
 // CheckDocument detects untrusted placeholders placed next to override or capability signals.
 func (Rule) CheckDocument(ctx rules.Context, doc rules.DocumentView) []rules.Finding {
-	if !ctx.IsUntrusted() {
-		return nil
-	}
-
 	matches := signals.PlaceholderPattern.FindAllStringIndex(doc.Content, -1)
 	for _, match := range matches {
+		if !ctx.IsUntrustedRange(match[0], match[1]) {
+			continue
+		}
+
 		windowStart := max(0, match[0]-72)
 		windowEnd := min(len(doc.Content), match[1]+72)
 		window := strings.ToLower(doc.Content[windowStart:windowEnd])

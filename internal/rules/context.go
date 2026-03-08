@@ -30,7 +30,55 @@ func (c Context) HasSecrets() bool {
 
 // IsUntrusted reports whether the document trust level is untrusted or tainted.
 func (c Context) IsUntrusted() bool {
-	return c.TrustLevel == config.TrustLevelUntrusted || c.TrustLevel == config.TrustLevelTainted
+	return config.TrustLevelAtLeast(c.TrustLevel, config.TrustLevelUntrusted)
+}
+
+// EffectiveTrustAt returns the effective trust at a byte offset.
+func (c Context) EffectiveTrustAt(byteOffset int) config.TrustLevel {
+	return c.EffectiveTrustRange(byteOffset, byteOffset+1)
+}
+
+// EffectiveTrustRange returns the lowest-trust level across a byte range.
+func (c Context) EffectiveTrustRange(start int, end int) config.TrustLevel {
+	if start < 0 {
+		start = 0
+	}
+	if end <= start {
+		end = start + 1
+	}
+
+	effective := c.TrustLevel
+	for _, span := range c.TrustSpans {
+		if span.End <= span.Start {
+			continue
+		}
+		if span.End <= start || span.Start >= end {
+			continue
+		}
+		effective = config.MoreRestrictiveTrustLevel(effective, span.TrustLevel)
+	}
+
+	return effective
+}
+
+// IsUntrustedAt reports whether the effective trust at a byte offset is untrusted or tainted.
+func (c Context) IsUntrustedAt(byteOffset int) bool {
+	return config.TrustLevelAtLeast(c.EffectiveTrustAt(byteOffset), config.TrustLevelUntrusted)
+}
+
+// IsUntrustedRange reports whether any part of the range is untrusted or tainted.
+func (c Context) IsUntrustedRange(start int, end int) bool {
+	return config.TrustLevelAtLeast(c.EffectiveTrustRange(start, end), config.TrustLevelUntrusted)
+}
+
+// IsTaintedAt reports whether the effective trust at a byte offset is tainted.
+func (c Context) IsTaintedAt(byteOffset int) bool {
+	return c.EffectiveTrustAt(byteOffset) == config.TrustLevelTainted
+}
+
+// IsTaintedRange reports whether any part of the range is tainted.
+func (c Context) IsTaintedRange(start int, end int) bool {
+	return c.EffectiveTrustRange(start, end) == config.TrustLevelTainted
 }
 
 // HasReferencedSkillResources reports whether the current document references

@@ -1,7 +1,6 @@
 package nosecretexfiltrationintent
 
 import (
-	"math"
 	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
@@ -49,11 +48,6 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		return nil
 	}
 
-	maxDistance := maxTokenDistanceTrusted
-	if ctx.IsUntrusted() {
-		maxDistance = maxTokenDistanceUntrusted
-	}
-
 	exfilIndices := make([]int, 0)
 	secretIndices := make([]int, 0)
 
@@ -78,11 +72,8 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		return nil
 	}
 
-	best := nearestPair(exfilIndices, secretIndices)
+	best := nearestPair(ctx, tokens, exfilIndices, secretIndices)
 	if best.exfil == -1 || best.secret == -1 {
-		return nil
-	}
-	if best.distance > maxDistance {
 		return nil
 	}
 
@@ -143,12 +134,18 @@ type tokenPair struct {
 	distance int
 }
 
-func nearestPair(exfilIndices []int, secretIndices []int) tokenPair {
-	best := tokenPair{exfil: -1, secret: -1, distance: math.MaxInt}
+func nearestPair(ctx rules.Context, tokens []rules.Token, exfilIndices []int, secretIndices []int) tokenPair {
+	best := tokenPair{exfil: -1, secret: -1, distance: len(tokens) + 1}
 	for _, exfil := range exfilIndices {
 		for _, secret := range secretIndices {
 			distance := abs(exfil - secret)
-			if distance < best.distance {
+			startIndex := min(exfil, secret)
+			endIndex := max(exfil, secret)
+			maxDistance := maxTokenDistanceTrusted
+			if ctx.IsUntrustedRange(tokens[startIndex].Start, tokens[endIndex].End) {
+				maxDistance = maxTokenDistanceUntrusted
+			}
+			if distance <= maxDistance && distance < best.distance {
 				best = tokenPair{exfil: exfil, secret: secret, distance: distance}
 			}
 		}

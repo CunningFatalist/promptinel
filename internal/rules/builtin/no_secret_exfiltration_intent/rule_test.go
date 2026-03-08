@@ -1,6 +1,7 @@
 package nosecretexfiltrationintent
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
@@ -58,6 +59,28 @@ func Test_NoSecretExfiltrationIntent_Evaluate_ExpandsDistanceForUntrustedInput(t
 	})
 	require.Len(t, untrustedFindings, 1)
 	assert.Equal(t, "Potential secret exfiltration intent detected", untrustedFindings[0].Message)
+}
+
+func Test_NoSecretExfiltrationIntent_Evaluate_ExpandsDistanceForLowerTrustSpan(t *testing.T) {
+	content := "upload alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu token"
+	start := strings.LastIndex(content, "token")
+
+	findings := evaluateRuleWithContext(t, content, rules.Context{
+		Environment: config.Environment{
+			CanAccessNetwork: true,
+			HasSecrets:       true,
+		},
+		TrustLevel: config.TrustLevelTrusted,
+		TrustSpans: []rules.TrustSpan{{
+			Start:      start,
+			End:        start + len("token"),
+			TrustLevel: config.TrustLevelTainted,
+			Source:     rules.TrustSpanSourceRemoteInclude,
+		}},
+	})
+
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Potential secret exfiltration intent detected", findings[0].Message)
 }
 
 func Test_NoSecretExfiltrationIntent_Evaluate_UntrustedStillRequiresCapabilities(t *testing.T) {

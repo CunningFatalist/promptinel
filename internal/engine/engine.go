@@ -254,11 +254,13 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 
 	normalized := normalize.ForScan(string(content))
 	skillContext := deriveSkillContext(target.absolutePath, normalized.Content)
+	trustSpans := deriveTrustSpans(normalized.Content, s.config)
 
 	ruleFindings := rules.Evaluate(s.compiledRules, rules.Context{
 		Path:        target.relativePath,
 		Environment: s.environment,
 		TrustLevel:  s.trustLevel,
+		TrustSpans:  trustSpans,
 		Skill:       skillContext,
 	}, normalized.Content)
 
