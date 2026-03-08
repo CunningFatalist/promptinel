@@ -44,7 +44,7 @@ Your task is considered complete when:
 
 - `make fmt fix vet vuln lint test` passes without errors
 - Documentation is updated
-- Test coverage is above 85% for new code
+- Test coverage is above 90% for new code
 
 If you add a rule or change a rule's behavior, metadata, or severity, update the corresponding
 file in `docs/rules/`, update `docs/Rules/Overview.md`, and add a new rule doc from
