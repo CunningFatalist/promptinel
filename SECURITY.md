@@ -1,7 +1,9 @@
 # Security Policy
 
-This project does not use a separate private reporting channel.
+Please report security vulnerabilities through GitHub Private Vulnerability Reporting:
 
-Report security issues by creating a GitHub issue in this repository.
+[Report a vulnerability privately](https://github.com/CunningFatalist/promptinel/security/advisories/new)
+
+Do not open a public GitHub issue for undisclosed vulnerabilities.
 
 Include clear reproduction details, impact, and affected versions.

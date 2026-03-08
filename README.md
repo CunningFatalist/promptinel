@@ -304,5 +304,5 @@ make fmt fix vet vuln lint test
 Use [GitHub Issues](https://github.com/CunningFatalist/promptinel/issues) for bug reports,
 feature requests, and documentation improvements.
 
-Security issues are reported through the same repository issue tracker. See
-[Security Policy](./SECURITY.md).
+Report security vulnerabilities privately through GitHub Private Vulnerability
+Reporting. See [Security Policy](./SECURITY.md).
