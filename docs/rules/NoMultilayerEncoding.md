@@ -39,5 +39,5 @@ encoding example for testing or teaching, reduce it to a clearly inert form and 
 with decode or execution steps.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

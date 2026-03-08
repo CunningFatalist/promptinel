@@ -40,5 +40,5 @@ is only present in a safe example or fixture, label it clearly and keep it isola
 instructions.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

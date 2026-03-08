@@ -40,5 +40,5 @@ where needed. If the reference is part of a security example, make that purpose 
 avoid presenting it as an actionable step.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

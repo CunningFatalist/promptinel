@@ -40,5 +40,5 @@ review reliably. If the character is present for a safe reproduction case, docum
 clearly and keep the content isolated.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

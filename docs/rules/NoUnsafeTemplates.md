@@ -38,5 +38,5 @@ Restrict templates to simple data rendering wherever possible. If a template gen
 behavior, keep that behavior narrow, reviewed, and insulated from untrusted inputs.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

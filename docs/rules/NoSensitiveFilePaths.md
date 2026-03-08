@@ -39,5 +39,5 @@ case. Prefer controlled test fixtures or redacted placeholders over real credent
 file paths in prompts and examples.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

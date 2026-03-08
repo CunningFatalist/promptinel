@@ -40,5 +40,5 @@ destinations. If dynamic behavior is required, validate the input strictly and k
 surface explicit in code rather than hidden in template syntax.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

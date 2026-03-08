@@ -38,5 +38,5 @@ usage is intentionally present in a safe example, mark it clearly as instruction
 it separate from live automation or tool instructions.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

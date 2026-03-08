@@ -11,7 +11,7 @@
 
 ## What This Rule Does
 
-This rule detects Claude Skills that reference bundled local resources such as scripts, assets, or
+This rule detects agent skills that reference bundled local resources such as scripts, assets, or
 reference files outside `SKILL.md`. It reports the skill because Promptinel does not recursively
 scan or reason about those referenced resources as part of the skill document itself.
 
@@ -36,10 +36,10 @@ sample of the referenced paths in the finding message.
 ## Recommendations For Handling Findings
 
 Manually review the referenced scripts, assets, or support files before accepting the skill as
-safe. If you have reviewed the bundled Claude Skill scripts or other resources and are satisfied
+safe. If you have reviewed the bundled agent skill scripts or other resources and are satisfied
 they are safe, update the baseline and, where appropriate, exclude the accepted skill directory or
 accepted resources from future noise.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

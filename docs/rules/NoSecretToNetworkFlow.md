@@ -39,5 +39,5 @@ part of a defensive example or regression test, keep it clearly marked, reduce i
 and avoid leaving it where it could be reused as a live instruction.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

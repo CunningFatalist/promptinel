@@ -40,5 +40,5 @@ describing the pattern. Remove the DNS transfer behavior, or rewrite the example
 chain is clearly inert and not presented as an actionable instruction.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

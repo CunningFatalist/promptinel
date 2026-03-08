@@ -37,5 +37,5 @@ Decode and review the content before keeping it anywhere near executable workflo
 is only a security test or example, keep the encoded payload inert and clearly explain its purpose.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.

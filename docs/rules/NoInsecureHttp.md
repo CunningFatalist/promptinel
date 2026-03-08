@@ -39,5 +39,5 @@ HTTP URL is intentional and truly low risk, document why it is acceptable and av
 automatic download or execution behavior.
 
 After manual review, update the baseline for accepted cases so they stay quiet in future scans.
-That applies to reviewed examples, fixtures, and manually checked Claude Skill resources that you
+That applies to reviewed examples, fixtures, and manually checked agent skill resources that you
 have decided are safe.
