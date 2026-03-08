@@ -1,6 +1,6 @@
 # Documentation Index
 
-Use this directory when the main readme file is no longer enough, 
+Use this directory when the main readme file is no longer enough,
 and you need the reasoning behind current behavior.
 
 ## Where To Start

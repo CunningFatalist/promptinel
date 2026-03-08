@@ -93,7 +93,7 @@ If you are adding or changing a rule, read [Rule Architecture](./Rules.md) and t
 
 ## Trust, Capabilities, And Severity
 
-Three concepts come up repeatedly in the codebase. They are separate on purpose. 
+Three concepts come up repeatedly in the codebase. They are separate on purpose.
 It makes the scanner easier to reason about and less surprising to configure.
 
 ### Trust

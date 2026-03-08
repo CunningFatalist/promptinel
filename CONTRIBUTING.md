@@ -27,6 +27,24 @@ Run the same checks used by CI before opening a pull request:
 make fmt fix vet vuln lint test
 ```
 
+To enable the repository-managed pre-commit hook for this clone, run:
+
+```bash
+make enable-git-hooks
+```
+
+The hook runs:
+
+```bash
+make pre-commit
+```
+
+To disable the repository-managed hooks again for this clone, run:
+
+```bash
+make disable-git-hooks
+```
+
 ## Conventional Commits Examples
 
 - `feat(scan): add json summary output`

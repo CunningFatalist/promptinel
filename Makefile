@@ -75,6 +75,17 @@ vet: ## Vet the code
 fix: ## Apply go fixes
 	docker compose exec promptinel_app go fix ./...
 
+.PHONY: pre-commit
+pre-commit: fmt fix vet vuln lint test ## Run the full local pre-commit quality gate
+
+.PHONY: enable-git-hooks
+enable-git-hooks: ## Configure Git to use repository-managed hooks
+	git config core.hooksPath .githooks
+
+.PHONY: disable-git-hooks
+disable-git-hooks: ## Disable repository-managed hooks for this clone
+	git config --unset core.hooksPath || true
+
 .PHONY: tidy
 tidy: ## Tidy the go modules
 	docker compose exec promptinel_app go mod tidy
