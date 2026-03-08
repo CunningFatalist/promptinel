@@ -2,6 +2,17 @@
 
 This document describes the implemented architecture of Promptinel and the near-term roadmap.
 
+## Related Documents
+
+The architecture overview is intentionally short. Use these companion documents for the parts that
+carry the most policy and implementation detail:
+
+- [Scan Pipeline](./ScanPipeline.md)
+- [Configuration And Precedence](./Config.md)
+- [Trust Processing](./Trust.md)
+- [Severity Handling](./Severity.md)
+- [Rule Architecture](./Rules.md)
+
 ## Architecture Doc Changelog
 
 - 2026-02-28: Split content into `Current State` and `Planned Roadmap`; documented machine-readable `scan` outputs (`json`, `sarif`) and deterministic ordering guarantees; removed outdated "future" claims that are now implemented.

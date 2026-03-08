@@ -875,6 +875,10 @@ The logo was created with ChatGPT and refined with Nano Banana.
 
 ## Contributing to Promptinel
 
+If you are new to the repository, start with the [Onboarding Guide](docs/Onboarding.md).
+
+See [Contributing](CONTRIBUTING.md) for the contribution workflow and required local checks.
+
 ### General Conventions
 
 This project follows [Conventional Commits](https://www.conventionalcommits.org) for commit messages and

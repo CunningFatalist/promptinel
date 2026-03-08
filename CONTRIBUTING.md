@@ -1,5 +1,7 @@
 # Contributing
 
+If you are new to the repository, read the [Onboarding Guide](docs/Onboarding.md) first.
+
 ## Workflow
 
 1. Fork the repository.
