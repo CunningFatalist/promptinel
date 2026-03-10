@@ -15,6 +15,7 @@ If you are new to the project:
 
 - [Architecture](./Architecture.md): package boundaries and the main runtime model
 - [Design](./Design.md): product intent, tradeoffs, and non-goals
+- [Library API](./Library.md): how to use Promptinel as an in-memory Go library
 - [Configuration And Precedence](./Config.md): config loading, overrides, and scope behavior
 - [Scan Pipeline](./ScanPipeline.md): how scan and baseline processing flow through the system
 - [Severity Handling](./Severity.md): where severity comes from and how it affects output

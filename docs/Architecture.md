@@ -17,8 +17,11 @@ The architecture is shaped by a few consistent constraints:
 ```mermaid
 flowchart TD
     A["CLI command in cmd/"] --> B["Build internal request"]
+    G["Library call in pkg/promptinel"] --> H["Build scanner and in-memory request"]
     B --> C["Load config and resolve options"]
+    H --> I["Validate config and compile rules"]
     C --> D["Collect files and evaluate rules"]
+    I --> J["Evaluate in-memory content"]
     D --> E["Render report"]
     E --> F["Resolve exit code"]
 ```
@@ -27,6 +30,9 @@ flowchart TD
 
 `cmd`
 Defines the CLI surface, parses flags, and calls internal behavior.
+
+`pkg/promptinel`
+Defines the stable public Go API for in-memory scanning and library consumers.
 
 `internal/config`
 Defines the typed configuration model, defaults, and validation.
@@ -38,8 +44,8 @@ Resolve which files are scanned and how include and exclude globs behave.
 Coordinates the shared scan workflow used by `scan` and the baseline commands.
 
 `internal/engine`
-Runs per-file analysis, applies trust and scope behavior, and preserves deterministic
-ordering.
+Runs per-file and in-memory analysis, applies trust and scope behavior, and preserves
+deterministic ordering.
 
 `internal/rules`
 Defines rule contracts, compilation, and evaluation phases.
@@ -63,12 +69,18 @@ Translates policy outcomes into process exit codes.
 Commands should parse input, build requests, call internal code, and render results. They
 should not contain rule logic or core scan behavior.
 
+The public library package follows the same principle. It should stay small, explicit, and
+focused on stable API shape rather than detection internals.
+
 ### Shared Scan Pipeline
 
 `scan` and baseline commands share most of the same execution path. That keeps file
 selection, rule evaluation, and finding generation consistent across local use and CI
 adoption flows. Baseline snapshots still use raw findings before policy `warn-on`
 filtering.
+
+The public library reuses the same rule compilation and engine evaluation path for
+in-memory scans, but skips CLI-specific output and exit-code handling.
 
 ### Deterministic Output
 

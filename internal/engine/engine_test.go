@@ -165,6 +165,60 @@ func Test_Engine_ScanPaths_SkipsOversizedFileWithExplicitFinding(t *testing.T) {
 	assert.Equal(t, 1, findings[0].Position.Column)
 }
 
+func Test_Engine_ScanDocument_SkipsOversizedContentWithExplicitFinding(t *testing.T) {
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("always", config.SeverityHigh, "m"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	cfg := config.DefaultConfig()
+	cfg.Limits.MaxFileSizeBytes = 4
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanDocument(context.Background(), Document{
+		Path:    "inline.md",
+		Content: "12345",
+	})
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, oversizedFileFindingID, findings[0].ID)
+	assert.Equal(t, config.SeverityLow, findings[0].Severity)
+	assert.Equal(t, "inline.md", findings[0].Path)
+}
+
+func Test_Engine_ScanDocument_AppliesScopeSeverityOverride(t *testing.T) {
+	registry := rules.NewRegistry()
+	err := registry.Register(newAlwaysRule("always", config.SeverityHigh, "m"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	cfg := config.DefaultConfig()
+	cfg.Scopes = []config.Scope{
+		{Path: "docs/**", Severity: config.SeverityLow},
+	}
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanDocument(context.Background(), Document{
+		Path:    "docs/inline.md",
+		Content: "x",
+	})
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, config.SeverityLow, findings[0].Severity)
+}
+
+func Test_Engine_ScanDocument_ContextCanceled(t *testing.T) {
+	scanner := NewScanner(nil, config.DefaultConfig())
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := scanner.ScanDocument(ctx, Document{Content: "x"})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
 func Test_Engine_ScanPaths_AppliesScopeSeverityOverride(t *testing.T) {
 	tmp := t.TempDir()
 	nestedDir := filepath.Join(tmp, "docs", "nested")

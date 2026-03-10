@@ -31,6 +31,13 @@ type Scanner struct {
 // FileFinding links a finding with its source file.
 type FileFinding = finding.FileFinding
 
+// Document is an in-memory scan target.
+type Document struct {
+	Path         string
+	AbsolutePath string
+	Content      string
+}
+
 // IsOversizedFileSkipFinding reports whether a finding indicates a file was skipped due to size.
 func IsOversizedFileSkipFinding(fileFinding FileFinding) bool {
 	return finding.IsOversizedFileSkip(fileFinding)
@@ -111,6 +118,15 @@ func (s *Scanner) ScanPaths(ctx context.Context, paths []string, includePatterns
 
 	findings = append(findings, scannedFindings...)
 	return findings, nil
+}
+
+// ScanDocument scans in-memory content and returns raw findings.
+func (s *Scanner) ScanDocument(ctx context.Context, doc Document) ([]FileFinding, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return s.evaluateContent(doc.Path, doc.AbsolutePath, doc.Content, nil), nil
 }
 
 type scanTarget struct {
@@ -252,19 +268,35 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 		return nil, err
 	}
 
-	normalized := normalize.ForScan(string(content))
-	skillContext := deriveSkillContext(target.absolutePath, normalized.Content)
+	return s.evaluateContent(target.relativePath, target.absolutePath, string(content), scopeRoots), nil
+}
+
+func (s *Scanner) evaluateContent(path string, absolutePath string, content string, scopeRoots []string) []FileFinding {
+	if int64(len(content)) > s.maxFileSize {
+		return []FileFinding{{
+			Path: path,
+			Finding: rules.Finding{
+				ID:       oversizedFileFindingID,
+				Severity: config.SeverityLow,
+				Message:  fmt.Sprintf("File skipped: size %d bytes exceeds limits.max_file_size_bytes (%d)", len(content), s.maxFileSize),
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		}}
+	}
+
+	normalized := normalize.ForScan(content)
+	skillContext := deriveSkillContext(absolutePath, normalized.Content)
 	trustSpans := deriveTrustSpans(normalized.Content, s.config)
 
 	ruleFindings := rules.Evaluate(s.compiledRules, rules.Context{
-		Path:        target.relativePath,
+		Path:        path,
 		Environment: s.environment,
 		TrustLevel:  s.trustLevel,
 		TrustSpans:  trustSpans,
 		Skill:       skillContext,
 	}, normalized.Content)
 
-	scope := s.scopeForFile(target.relativePath, target.absolutePath, scopeRoots)
+	scope := s.scopeForFile(path, absolutePath, scopeRoots)
 	findings := make([]FileFinding, 0, len(ruleFindings))
 	for _, ruleFinding := range ruleFindings {
 		scopedRuleOverride, hasScopedRuleOverride := getScopeRuleOverride(scope, ruleFinding.ID)
@@ -281,12 +313,12 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 			}
 		}
 		findings = append(findings, FileFinding{
-			Path:    target.relativePath,
+			Path:    path,
 			Finding: ruleFinding,
 		})
 	}
 
-	return findings, nil
+	return findings
 }
 
 func (s *Scanner) scopeForPath(path string) *config.Scope {

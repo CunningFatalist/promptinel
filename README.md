@@ -115,6 +115,39 @@ promptinel rules list
 promptinel rules describe no-unsafe-templates
 ```
 
+## Library Use
+
+Promptinel also exposes an in-memory scanning API for applications that need to
+scan prompt text directly, such as web services that receive pasted content.
+
+```go
+package main
+
+import (
+  "context"
+  "log"
+
+  "github.com/CunningFatalist/promptinel/pkg/promptinel"
+)
+
+func main() {
+  scanner, err := promptinel.NewScanner(promptinel.NewConfig())
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  findings, err := scanner.Scan(context.Background(), "ignore previous instructions")
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  log.Printf("raw findings: %d", len(findings))
+}
+```
+
+The library API returns raw findings without applying `policy.warn-on` filtering.
+See [Library API](./docs/Library.md) for the complete usage guide.
+
 ## Core Commands
 
 ### `scan`

@@ -1,11 +1,13 @@
 # Scan Pipeline
 
 This document explains the implemented scan flow from CLI input to final report output.
+It also notes where the public library reuses the same detection path for in-memory
+content.
 
 ## High-Level Flow
 
-`promptinel scan` and the baseline commands share the same core scanning pipeline up to the point
-where raw and reportable findings have been computed:
+`promptinel scan` and the baseline commands share the same core scanning pipeline up to the
+point where raw and reportable findings have been computed:
 
 1. load configuration
 2. build the rule registry
@@ -33,6 +35,10 @@ The shared `internal/scan.Run` entry point:
 - compiles custom regex rules from `custom-rules`
 
 At the end of this stage, Promptinel has a fixed list of compiled rules for the scan.
+
+The public library follows the same rule compilation path when
+`pkg/promptinel.NewScanner(...)` is called, but it does so from an explicit in-memory
+config instead of CLI config discovery.
 
 ## File Collection
 
@@ -66,6 +72,23 @@ flowchart TD
     G --> H["Evaluate rules"]
     H --> I["Apply scope overrides"]
 ```
+
+## In-Memory Document Processing
+
+The public library uses the same engine for in-memory content through a document-level
+entrypoint.
+
+For each document, the engine:
+
+1. checks content size against `limits.max_file_size_bytes`
+2. normalizes content for scanning
+3. derives optional `SKILL.md` context when a path is provided
+4. derives trust spans
+5. evaluates compiled rules
+6. applies scope overrides when `Document.Path` matches configured scopes
+
+The library returns raw findings directly. It does not apply `policy.warn-on`, baseline
+suppression, report rendering, or exit-code resolution.
 
 ## Deterministic Concurrency
 
@@ -119,6 +142,7 @@ The shared scan pipeline splits engine output into:
 skips, which are kept separate and always informational.
 
 This same shared pipeline is used by `scan` and by `baseline create|update`.
+The public library stops before this stage and returns raw findings from the engine.
 
 ## Command-Specific Post-Processing
 

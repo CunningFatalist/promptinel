@@ -19,16 +19,21 @@ If you are new to the repository, read the [README](../README.md) first, then us
 
 ## The Mental Model
 
-The easiest way to understand Promptinel is as a pipeline:
+The easiest way to understand Promptinel is as a pipeline with two entrypoints:
+the CLI and the public Go library.
 
 ```mermaid
 flowchart LR
-    A["CLI command"] --> B["Load config"]
+    A["CLI command or library call"] --> B["Load config or build config"]
     B --> C["Select files"]
     C --> D["Evaluate rules"]
     D --> E["Render output"]
     E --> F["Resolve exit code"]
 ```
+
+For file-based CLI scans, every stage in that flow applies.
+For in-memory library scans, the flow skips file collection and report rendering,
+and returns raw findings directly to the caller.
 
 Most implementation details fit somewhere in that flow.
 
@@ -37,25 +42,27 @@ Most implementation details fit somewhere in that flow.
 The repository has a small set of durable areas:
 
 - `cmd/` contains the CLI surface and flag handling
+- `pkg/` contains stable public library entrypoints for external consumers
 - `internal/` contains the real behavior
 - `docs/` explains user-facing and contributor-facing concepts
 - `e2e/` contains end-to-end coverage for major workflows
 
 Within `internal/`, the most important idea is separation of responsibilities. Configuration,
 file collection, scanning, rules, reporting, and exit-code handling are kept distinct so the
-CLI can stay thin and the core behavior can be tested directly.
+CLI and public library can stay thin and the core behavior can be tested directly.
 
 ## How To Approach A Change
 
 When you make changes, start by placing the work in the right layer:
 
 - CLI wording, flags, and command wiring belong in `cmd/`
+- public reusable API shape belongs in `pkg/`
 - reusable behavior belongs in `internal/`
 - rule logic belongs in the rule system, not in command handlers
 - user-visible behavior changes should update documentation alongside tests
 
-As a rule of thumb, `cmd/` should translate user input into internal requests and render the
-result. Business logic should live elsewhere.
+As a rule of thumb, `cmd/` and `pkg/` should translate user input into internal requests.
+Business logic should live elsewhere.
 
 ## The Main Workflows
 
@@ -64,12 +71,16 @@ result. Business logic should live elsewhere.
 `scan` is the central workflow. It loads configuration, resolves effective rules, collects
 files, evaluates findings, renders output, and maps the result to a process exit code.
 
+The public library exposes the same detection engine for in-memory content. It returns raw
+findings directly instead of applying CLI output or exit-code behavior.
+
 If you are changing scan behavior, also look at:
 
 - [Scan Pipeline](./ScanPipeline.md)
 - [Configuration And Precedence](./Config.md)
 - [Severity Handling](./Severity.md)
 - [Trust Processing](./Trust.md)
+- [Library API](./Library.md)
 
 ### Sanitize
 
@@ -118,6 +129,7 @@ Not every document matters for every change. Use the docs by task:
 - [README](../README.md) for first use and quick orientation
 - [Documentation Index](./README.md) for the full map
 - [Architecture](./Architecture.md) for package boundaries
+- [Library API](./Library.md) for the public Go API
 - [Scan Pipeline](./ScanPipeline.md) for scan behavior
 - [Configuration And Precedence](./Config.md) for config resolution
 - [Trust Processing](./Trust.md) for trust behavior
@@ -140,6 +152,12 @@ If you have a compatible Go toolchain locally, you can also exercise the CLI dir
 go run main.go --help
 go run main.go scan .
 go run main.go rules list
+```
+
+For the public library API, start with:
+
+```bash
+go test ./pkg/promptinel
 ```
 
 For repository-level task discovery:
