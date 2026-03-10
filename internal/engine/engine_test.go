@@ -282,6 +282,39 @@ func Test_Engine_ScanPaths_AppliesScopeSeverityOverride_WhenWorkingDirectoryDiff
 	assert.Equal(t, config.SeverityLow, findings[0].Severity)
 }
 
+func Test_Engine_ScanPaths_AppliesScopeSeverityOverride_ForSingleFilePathOutsideWorkingDirectory(t *testing.T) {
+	base := t.TempDir()
+	scanRoot := filepath.Join(base, "repo")
+	require.NoError(t, os.MkdirAll(filepath.Join(scanRoot, "docs", "nested"), 0o755))
+
+	file := filepath.Join(scanRoot, "docs", "nested", "file.md")
+	require.NoError(t, os.WriteFile(file, []byte("x"), 0o644))
+
+	previousWD, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(base))
+	t.Cleanup(func() {
+		_ = os.Chdir(previousWD)
+	})
+
+	registry := rules.NewRegistry()
+	err = registry.Register(newAlwaysRule("always", config.SeverityHigh, "m"))
+	require.NoError(t, err)
+	compiled, err := registry.Compile(nil)
+	require.NoError(t, err)
+
+	cfg := config.DefaultConfig()
+	cfg.Scopes = []config.Scope{
+		{Path: "docs/**", Severity: config.SeverityLow},
+	}
+
+	scanner := NewScanner(compiled, cfg)
+	findings, err := scanner.ScanPaths(context.Background(), []string{file}, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+	assert.Equal(t, config.SeverityLow, findings[0].Severity)
+}
+
 func Test_Engine_ScanPaths_AppliesScopedRuleDisable(t *testing.T) {
 	tmp := t.TempDir()
 	file := filepath.Join(tmp, "docs", "file.md")

@@ -329,15 +329,7 @@ func (s *Scanner) scopeForPath(path string) *config.Scope {
 }
 
 func (s *Scanner) scopeForFile(relativePath string, absolutePath string, roots []string) *config.Scope {
-	if scope := s.scopeForPath(relativePath); scope != nil {
-		return scope
-	}
-
-	for _, root := range roots {
-		candidate, ok := relativeToRoot(root, absolutePath)
-		if !ok {
-			continue
-		}
+	for _, candidate := range scopePathCandidates(relativePath, absolutePath, roots) {
 		if scope := s.scopeForPath(candidate); scope != nil {
 			return scope
 		}
@@ -389,4 +381,59 @@ func relativeToRoot(root string, absolutePath string) (string, bool) {
 		return "", false
 	}
 	return rel, true
+}
+
+func scopePathCandidates(relativePath string, absolutePath string, roots []string) []string {
+	candidates := make([]string, 0, len(roots)+4)
+	seen := make(map[string]struct{}, len(roots)+4)
+
+	appendCandidate := func(candidate string) {
+		candidate = filepath.Clean(candidate)
+		if candidate == "" {
+			return
+		}
+		if _, exists := seen[candidate]; exists {
+			return
+		}
+		seen[candidate] = struct{}{}
+		candidates = append(candidates, candidate)
+	}
+
+	appendCandidate(relativePath)
+
+	for _, root := range roots {
+		candidate, ok := relativeToRoot(root, absolutePath)
+		if !ok {
+			continue
+		}
+		appendCandidate(candidate)
+	}
+
+	for _, candidate := range pathSuffixCandidates(absolutePath) {
+		appendCandidate(candidate)
+	}
+
+	return candidates
+}
+
+func pathSuffixCandidates(path string) []string {
+	cleanPath := filepath.Clean(path)
+	volume := filepath.VolumeName(cleanPath)
+	trimmedPath := strings.TrimPrefix(cleanPath, volume)
+	trimmedPath = strings.TrimLeft(trimmedPath, string(filepath.Separator))
+	if trimmedPath == "" {
+		return nil
+	}
+
+	segments := strings.Split(trimmedPath, string(filepath.Separator))
+	if len(segments) == 0 {
+		return nil
+	}
+
+	candidates := make([]string, 0, len(segments))
+	for start := len(segments) - 1; start >= 0; start-- {
+		candidates = append(candidates, filepath.Join(segments[start:]...))
+	}
+
+	return candidates
 }
