@@ -126,7 +126,7 @@ func (s *Scanner) ScanDocument(ctx context.Context, doc Document) ([]FileFinding
 		return nil, err
 	}
 
-	return s.evaluateContent(doc.Path, doc.AbsolutePath, doc.Content, nil), nil
+	return s.evaluateContent(doc.Path, doc.Path, doc.AbsolutePath, doc.Content, nil, false), nil
 }
 
 type scanTarget struct {
@@ -268,10 +268,10 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 		return nil, err
 	}
 
-	return s.evaluateContent(target.relativePath, target.absolutePath, string(content), scopeRoots), nil
+	return s.evaluateContent(target.relativePath, target.relativePath, target.absolutePath, string(content), scopeRoots, true), nil
 }
 
-func (s *Scanner) evaluateContent(path string, absolutePath string, content string, scopeRoots []string) []FileFinding {
+func (s *Scanner) evaluateContent(path string, scopePath string, absolutePath string, content string, scopeRoots []string, allowAbsoluteScopeFallback bool) []FileFinding {
 	if int64(len(content)) > s.maxFileSize {
 		return []FileFinding{{
 			Path: path,
@@ -296,7 +296,7 @@ func (s *Scanner) evaluateContent(path string, absolutePath string, content stri
 		Skill:       skillContext,
 	}, normalized.Content)
 
-	scope := s.scopeForFile(path, absolutePath, scopeRoots)
+	scope := s.scopeForFile(scopePath, absolutePath, scopeRoots, allowAbsoluteScopeFallback)
 	findings := make([]FileFinding, 0, len(ruleFindings))
 	for _, ruleFinding := range ruleFindings {
 		scopedRuleOverride, hasScopedRuleOverride := getScopeRuleOverride(scope, ruleFinding.ID)
@@ -328,8 +328,8 @@ func (s *Scanner) scopeForPath(path string) *config.Scope {
 	return s.config.GetScopeForPath(path)
 }
 
-func (s *Scanner) scopeForFile(relativePath string, absolutePath string, roots []string) *config.Scope {
-	for _, candidate := range scopePathCandidates(relativePath, absolutePath, roots) {
+func (s *Scanner) scopeForFile(relativePath string, absolutePath string, roots []string, allowAbsoluteFallback bool) *config.Scope {
+	for _, candidate := range scopePathCandidates(relativePath, absolutePath, roots, allowAbsoluteFallback) {
 		if scope := s.scopeForPath(candidate); scope != nil {
 			return scope
 		}
@@ -383,7 +383,7 @@ func relativeToRoot(root string, absolutePath string) (string, bool) {
 	return rel, true
 }
 
-func scopePathCandidates(relativePath string, absolutePath string, roots []string) []string {
+func scopePathCandidates(relativePath string, absolutePath string, roots []string, allowAbsoluteFallback bool) []string {
 	candidates := make([]string, 0, len(roots)+4)
 	seen := make(map[string]struct{}, len(roots)+4)
 
@@ -409,8 +409,10 @@ func scopePathCandidates(relativePath string, absolutePath string, roots []strin
 		appendCandidate(candidate)
 	}
 
-	for _, candidate := range pathSuffixCandidates(absolutePath) {
-		appendCandidate(candidate)
+	if allowAbsoluteFallback {
+		for _, candidate := range pathSuffixCandidates(absolutePath) {
+			appendCandidate(candidate)
+		}
 	}
 
 	return candidates

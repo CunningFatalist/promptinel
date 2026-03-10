@@ -17,7 +17,7 @@ type Scanner struct {
 
 // NewConfig returns a configuration with Promptinel's secure defaults.
 func NewConfig() *Config {
-	return newConfigFromInternal(engineConfigDefaults())
+	return newConfigFromInternal(libraryConfigDefaults())
 }
 
 // NewScanner creates a scanner with built-in rules compiled from the provided config.
@@ -25,7 +25,7 @@ func NewConfig() *Config {
 func NewScanner(cfg *Config) (*Scanner, error) {
 	effectiveConfig := toInternalConfig(cfg)
 	if effectiveConfig == nil {
-		effectiveConfig = engineConfigDefaults()
+		effectiveConfig = libraryConfigDefaults()
 	}
 	if err := effectiveConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("validate config: %w", err)
@@ -98,4 +98,10 @@ func mapFindings(src []engine.FileFinding) []Finding {
 
 func engineConfigDefaults() *internalconfig.Config {
 	return internalconfig.DefaultConfig()
+}
+
+func libraryConfigDefaults() *internalconfig.Config {
+	cfg := engineConfigDefaults()
+	cfg.Trust.LocalFiles = internalconfig.TrustLevelUntrusted
+	return cfg
 }

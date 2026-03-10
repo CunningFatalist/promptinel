@@ -48,7 +48,8 @@ func main() {
 
 ## API
 
-`promptinel.NewConfig()` returns a config with Promptinel's secure defaults.
+`promptinel.NewConfig()` returns library defaults for in-memory scanning. By
+default, in-memory documents are treated as untrusted input.
 
 `promptinel.NewScanner(cfg)` validates the config, compiles built-in rules and
 custom rules, and returns a reusable scanner.
@@ -61,7 +62,7 @@ with optional metadata. Set `Document.Path` when you want path-based scopes to
 apply. `Document.Path` must be relative, for example `docs/prompt.md`. Set
 `Document.AbsolutePath` when engine features need the real on-disk location,
 such as skill-resource resolution for `SKILL.md`. `Document.AbsolutePath` must
-be absolute.
+be absolute. `Document.AbsolutePath` does not enable scope matching by itself.
 
 ## Raw Findings
 
@@ -109,6 +110,10 @@ If you do not need scopes, use `Scan` instead.
 
 The library does not auto-discover config files. Create a config explicitly and
 modify it in code before building the scanner.
+
+Library defaults are tuned for pasted or submitted prompt text. If your
+application scans trusted repository content in memory, set
+`cfg.Trust.LocalFiles = promptinel.TrustLevelTrusted` explicitly.
 
 ```go
 cfg := promptinel.NewConfig()

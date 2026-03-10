@@ -146,6 +146,7 @@ func main() {
 ```
 
 The library API returns raw findings without applying `policy.warn-on` filtering.
+Its default config treats in-memory content as untrusted input.
 See [Library API](./docs/Library.md) for the complete usage guide.
 
 ## Core Commands
