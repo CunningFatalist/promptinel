@@ -142,6 +142,7 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 		Environment:      result.Config.Environment,
 		BaselineFiltered: baselineFiltered,
 		PolicyOutcome:    code,
+		RuleDocs:         result.RuleDocs,
 	}
 
 	var writeErr error

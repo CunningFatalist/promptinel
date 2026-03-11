@@ -10,6 +10,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
 	"github.com/CunningFatalist/promptinel/internal/finding"
+	"github.com/CunningFatalist/promptinel/internal/ruledocs"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,7 @@ func Test_Report_WriteScanJSON_UsesStableSchemaAndOrdering(t *testing.T) {
 	require.Len(t, payload.Findings, 2)
 	assert.Equal(t, "a.md", payload.Findings[0].Path)
 	assert.Equal(t, "rule-a", payload.Findings[0].RuleID)
+	assert.Equal(t, ruledocs.URL("RuleA.md"), payload.Findings[0].DocsURL)
 	assert.Equal(t, []int{1, 2}, payload.Findings[0].Lines)
 	assert.Equal(t, "z.md", payload.Findings[1].Path)
 	require.Len(t, payload.OversizedSkip, 1)
@@ -106,7 +108,9 @@ func Test_Report_WriteScanSARIF_UsesStableSchemaAndFindings(t *testing.T) {
 
 	require.Len(t, run.Tool.Driver.Rules, 3)
 	assert.Equal(t, "rule-a", run.Tool.Driver.Rules[0].ID)
+	assert.Equal(t, ruledocs.URL("RuleA.md"), run.Tool.Driver.Rules[0].HelpURI)
 	assert.Equal(t, "rule-z", run.Tool.Driver.Rules[1].ID)
+	assert.Equal(t, ruledocs.URL("RuleZ.md"), run.Tool.Driver.Rules[1].HelpURI)
 	assert.Equal(t, "scan-file-too-large", run.Tool.Driver.Rules[2].ID)
 
 	require.Len(t, run.Invocations, 1)
@@ -204,15 +208,18 @@ func Test_Report_RegisterSARIFDescriptor_UsesMostSevereLevel(t *testing.T) {
 		id:       "rule-a",
 		message:  "message",
 		severity: config.SeverityLow,
+		docsURL:  ruledocs.URL("RuleA.md"),
 	})
 	registerSARIFDescriptor(descriptors, groupedFinding{
 		id:       "rule-a",
 		message:  "message",
 		severity: config.SeverityHigh,
+		docsURL:  ruledocs.URL("RuleA.md"),
 	})
 
 	require.Len(t, descriptors, 1)
 	assert.Equal(t, "error", descriptors["rule-a"].DefaultConfiguration.Level)
+	assert.Equal(t, ruledocs.URL("RuleA.md"), descriptors["rule-a"].HelpURI)
 }
 
 func Test_Report_BuildSARIFLocationsAndLevelHelpers(t *testing.T) {
@@ -279,6 +286,10 @@ func scanMachineSummaryForTest() ScanSummary {
 		},
 		BaselineFiltered: 1,
 		PolicyOutcome:    exitcode.CodeWarn,
+		RuleDocs: map[string]string{
+			"rule-a": ruledocs.URL("RuleA.md"),
+			"rule-z": ruledocs.URL("RuleZ.md"),
+		},
 	}
 }
 

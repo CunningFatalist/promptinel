@@ -30,6 +30,7 @@ type scanJSONFinding struct {
 	RuleID   string          `json:"rule_id"`
 	Severity config.Severity `json:"severity"`
 	Message  string          `json:"message"`
+	DocsURL  string          `json:"docs_url,omitempty"`
 	Lines    []int           `json:"lines,omitempty"`
 }
 
@@ -42,8 +43,8 @@ type scanJSONSummary struct {
 
 // WriteScanJSON writes a deterministic JSON report for scan findings.
 func WriteScanJSON(w io.Writer, summary ScanSummary) error {
-	groupedFindings := orderedGroupedFindings(summary.Findings)
-	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped)
+	groupedFindings := orderedGroupedFindings(summary.Findings, summary.RuleDocs)
+	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped, summary.RuleDocs)
 
 	report := scanJSONReport{
 		SchemaVersion: scanJSONSchemaVersion,
@@ -72,6 +73,7 @@ func WriteScanJSON(w io.Writer, summary ScanSummary) error {
 			RuleID:   finding.id,
 			Severity: finding.severity,
 			Message:  finding.message,
+			DocsURL:  finding.docsURL,
 			Lines:    cloneIntSlice(finding.lines),
 		})
 	}
@@ -82,6 +84,7 @@ func WriteScanJSON(w io.Writer, summary ScanSummary) error {
 			RuleID:   skipped.id,
 			Severity: skipped.severity,
 			Message:  skipped.message,
+			DocsURL:  skipped.docsURL,
 			Lines:    cloneIntSlice(skipped.lines),
 		})
 	}

@@ -35,12 +35,13 @@ func main() {
 	}
 
 	for _, finding := range findings {
-		fmt.Printf("%s %s:%d:%d %s\n",
+		fmt.Printf("%s %s:%d:%d %s (%s)\n",
 			finding.Severity,
 			finding.Path,
 			finding.Position.Line,
 			finding.Position.Column,
 			finding.Message,
+			finding.DocsURL,
 		)
 	}
 }
@@ -68,6 +69,9 @@ be absolute. `Document.AbsolutePath` does not enable scope matching by itself.
 
 The library API returns raw findings only. It does not apply
 `policy.warn-on` filtering and it does not resolve CLI exit codes.
+
+Each finding also includes `DocsURL` when Promptinel has documentation for the
+matched rule.
 
 This is intentional. The caller decides how to handle findings, including:
 

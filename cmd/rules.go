@@ -6,7 +6,6 @@ import (
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rulecatalog"
-	"github.com/CunningFatalist/promptinel/internal/ruledocs"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 	"github.com/CunningFatalist/promptinel/internal/util"
@@ -73,7 +72,7 @@ func runRulesListWithOptions(options rulesListOptions) error {
 		}
 		if options.ShowDocs && meta.DocsFile != "" {
 			indent := len(fmt.Sprintf("[ %s ] ", severityLabel))
-			fmt.Printf("%s%s\n", strings.Repeat(" ", indent), ruledocs.URL(meta.DocsFile))
+			fmt.Printf("%s%s\n", strings.Repeat(" ", indent), rulecatalog.DocsURL(meta))
 		}
 	}
 	return nil
@@ -104,7 +103,7 @@ func runRulesDescribe(_ *cobra.Command, args []string) error {
 	fmt.Printf("[ %s ] %s\n", addColorToLabel("summary         "), meta.Summary)
 	fmt.Printf("[ %s ] %s\n", addColorToLabel("description     "), meta.Description)
 	if meta.DocsFile != "" {
-		fmt.Printf("[ %s ] %s\n", addColorToLabel("docs            "), ruledocs.URL(meta.DocsFile))
+		fmt.Printf("[ %s ] %s\n", addColorToLabel("docs            "), rulecatalog.DocsURL(meta))
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/CunningFatalist/promptinel/internal/ruledocs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,6 +30,7 @@ func Test_Promptinel_Scan_ReturnsRawFindingsBelowWarnThreshold(t *testing.T) {
 	assert.Equal(t, "match-danger", findings[0].ID)
 	assert.Equal(t, SeverityLow, findings[0].Severity)
 	assert.Equal(t, "danger detected", findings[0].Message)
+	assert.Equal(t, ruledocs.URL(ruledocs.CustomDocFile), findings[0].DocsURL)
 }
 
 func Test_Promptinel_ScanDocument_AppliesPathScopes(t *testing.T) {
@@ -99,6 +101,7 @@ func Test_Promptinel_ScanDocument_ReturnsOversizedSkipFinding(t *testing.T) {
 	assert.Equal(t, OversizedFileSkipID, findings[0].ID)
 	assert.Equal(t, SeverityLow, findings[0].Severity)
 	assert.Equal(t, "inline.md", findings[0].Path)
+	assert.Empty(t, findings[0].DocsURL)
 }
 
 func Test_Promptinel_ScanDocument_UsesAbsolutePathForSkillContext(t *testing.T) {
@@ -130,6 +133,7 @@ Use [runner](scripts/run.py) to execute the workflow.
 	assert.Equal(t, "skills/demo/SKILL.md", findings[0].Path)
 	assert.Equal(t, "skill-has-bundled-resources", findings[0].ID)
 	assert.Contains(t, findings[0].Message, "scripts/run.py")
+	assert.NotEmpty(t, findings[0].DocsURL)
 }
 
 func Test_Promptinel_NewScanner_RejectsInvalidConfig(t *testing.T) {

@@ -42,6 +42,7 @@ type sarifReportingDescriptor struct {
 	ID                   string                      `json:"id"`
 	Name                 string                      `json:"name"`
 	ShortDescription     sarifMessage                `json:"shortDescription"`
+	HelpURI              string                      `json:"helpUri,omitempty"`
 	DefaultConfiguration sarifReportingConfiguration `json:"defaultConfiguration"`
 }
 
@@ -99,8 +100,8 @@ type sarifRegion struct {
 
 // WriteScanSARIF writes a deterministic SARIF 2.1.0 report for scan findings.
 func WriteScanSARIF(w io.Writer, summary ScanSummary) error {
-	groupedFindings := orderedGroupedFindings(summary.Findings)
-	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped)
+	groupedFindings := orderedGroupedFindings(summary.Findings, summary.RuleDocs)
+	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped, summary.RuleDocs)
 
 	descriptorsByID := make(map[string]sarifReportingDescriptor, len(groupedFindings)+len(groupedOversizedSkipped))
 	results := make([]sarifResult, 0, len(groupedFindings)+len(groupedOversizedSkipped))
@@ -166,6 +167,7 @@ func registerSARIFDescriptor(descriptorsByID map[string]sarifReportingDescriptor
 			ID:               grouped.id,
 			Name:             grouped.id,
 			ShortDescription: sarifMessage{Text: grouped.message},
+			HelpURI:          grouped.docsURL,
 			DefaultConfiguration: sarifReportingConfiguration{
 				Level: level,
 			},

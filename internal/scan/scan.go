@@ -8,6 +8,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/engine"
 	"github.com/CunningFatalist/promptinel/internal/filters"
 	"github.com/CunningFatalist/promptinel/internal/finding"
+	"github.com/CunningFatalist/promptinel/internal/rulecatalog"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 )
 
@@ -39,6 +40,7 @@ type Result struct {
 	// they exceeded limits.max_file_size_bytes. These are always surfaced in scan output
 	// and remain informational (they do not affect policy exit code).
 	OversizedSkippedFindings []finding.FileFinding
+	RuleDocs                 map[string]string
 	Config                   *config.Config
 }
 
@@ -77,6 +79,7 @@ func Run(ctx context.Context, req Request) (Result, error) {
 		ReportableFindings:       reportableFindings,
 		RawFindings:              rawFindings,
 		OversizedSkippedFindings: oversizedSkippedFindings,
+		RuleDocs:                 rulecatalog.DocsURLIndex(registry, cfg.CustomRules),
 		Config:                   cfg,
 	}, nil
 }

@@ -7,12 +7,14 @@ import (
 
 	internalconfig "github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/engine"
+	"github.com/CunningFatalist/promptinel/internal/rulecatalog"
 	"github.com/CunningFatalist/promptinel/internal/rules/builtin"
 )
 
 // Scanner scans in-memory prompt content and returns raw findings.
 type Scanner struct {
-	engine *engine.Scanner
+	engine   *engine.Scanner
+	ruleDocs map[string]string
 }
 
 // NewConfig returns a configuration with Promptinel's secure defaults.
@@ -42,7 +44,8 @@ func NewScanner(cfg *Config) (*Scanner, error) {
 	}
 
 	return &Scanner{
-		engine: engine.NewScanner(compiledRules, effectiveConfig),
+		engine:   engine.NewScanner(compiledRules, effectiveConfig),
+		ruleDocs: rulecatalog.DocsURLIndex(registry, effectiveConfig.CustomRules),
 	}, nil
 }
 
@@ -75,10 +78,10 @@ func (s *Scanner) ScanDocument(ctx context.Context, doc Document) ([]Finding, er
 		return nil, fmt.Errorf("scan document: %w", err)
 	}
 
-	return mapFindings(findings), nil
+	return mapFindings(findings, s.ruleDocs), nil
 }
 
-func mapFindings(src []engine.FileFinding) []Finding {
+func mapFindings(src []engine.FileFinding, ruleDocs map[string]string) []Finding {
 	dst := make([]Finding, 0, len(src))
 	for _, item := range src {
 		dst = append(dst, Finding{
@@ -90,6 +93,7 @@ func mapFindings(src []engine.FileFinding) []Finding {
 				Line:   item.Position.Line,
 				Column: item.Position.Column,
 			},
+			DocsURL: ruleDocs[item.ID],
 		})
 	}
 

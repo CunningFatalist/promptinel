@@ -9,6 +9,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/exitcode"
 	"github.com/CunningFatalist/promptinel/internal/finding"
+	"github.com/CunningFatalist/promptinel/internal/ruledocs"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/CunningFatalist/promptinel/internal/sanitize"
 	"github.com/stretchr/testify/assert"
@@ -61,6 +62,10 @@ func Test_Report_WriteScanText_GroupsFindingsByFileAndIncludesSummary(t *testing
 		},
 		BaselineFiltered: 1,
 		PolicyOutcome:    exitcode.CodeFail,
+		RuleDocs: map[string]string{
+			"rule-a": ruledocs.URL("RuleA.md"),
+			"rule-b": ruledocs.URL("RuleB.md"),
+		},
 	})
 	require.NoError(t, err)
 
@@ -69,7 +74,9 @@ func Test_Report_WriteScanText_GroupsFindingsByFileAndIncludesSummary(t *testing
 	assert.Contains(t, rendered, "File: a.md")
 	assert.Contains(t, rendered, "File: b.md")
 	assert.Contains(t, rendered, "lines 2 [high] rule-a: message a")
+	assert.Contains(t, rendered, "docs: "+ruledocs.URL("RuleA.md"))
 	assert.Contains(t, rendered, "lines 1 [low] rule-b: message b")
+	assert.Contains(t, rendered, "docs: "+ruledocs.URL("RuleB.md"))
 	assert.Contains(t, rendered, "- findings: 2")
 	assert.Contains(t, rendered, "- oversized_skips: 0")
 	assert.Contains(t, rendered, "- filtered_by_baseline: 1")
@@ -121,6 +128,7 @@ func Test_Report_WriteScanText_DeduplicatesRulePerFileAndShowsAllLines(t *testin
 	err := WriteScanText(&output, ScanSummary{
 		Findings:      findings,
 		Environment:   config.Environment{},
+		RuleDocs:      map[string]string{"rule-a": ruledocs.URL("RuleA.md")},
 		PolicyOutcome: exitcode.CodeWarn,
 	})
 	require.NoError(t, err)
@@ -128,6 +136,7 @@ func Test_Report_WriteScanText_DeduplicatesRulePerFileAndShowsAllLines(t *testin
 	rendered := output.String()
 	assert.Contains(t, rendered, "File: dup.md")
 	assert.Contains(t, rendered, "lines 1, 4, 5, and 18 [medium] rule-a: duplicate")
+	assert.Contains(t, rendered, "docs: "+ruledocs.URL("RuleA.md"))
 	assert.Contains(t, rendered, "- findings: 1")
 	assert.Contains(t, rendered, "- oversized_skips: 0")
 	assert.Contains(t, rendered, "- policy: WARN")

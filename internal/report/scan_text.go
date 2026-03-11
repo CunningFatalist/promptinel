@@ -19,12 +19,13 @@ type ScanSummary struct {
 	Environment      config.Environment
 	BaselineFiltered int
 	PolicyOutcome    exitcode.Code
+	RuleDocs         map[string]string
 }
 
 // WriteScanText writes a deterministic text report for scan findings.
 func WriteScanText(w io.Writer, summary ScanSummary) error {
-	groupedFindings := orderedGroupedFindings(summary.Findings)
-	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped)
+	groupedFindings := orderedGroupedFindings(summary.Findings, summary.RuleDocs)
+	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped, summary.RuleDocs)
 
 	if _, err := fmt.Fprintln(w, "Capabilities:"); err != nil {
 		return err
@@ -67,6 +68,11 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 			); err != nil {
 				return err
 			}
+			if finding.docsURL != "" {
+				if _, err := fmt.Fprintf(w, "   docs: %s\n", sanitizeForTerminal(finding.docsURL)); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -89,6 +95,11 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 				sanitizeForTerminal(skipped.message),
 			); err != nil {
 				return err
+			}
+			if skipped.docsURL != "" {
+				if _, err := fmt.Fprintf(w, "   docs: %s\n", sanitizeForTerminal(skipped.docsURL)); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -114,8 +125,8 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 	return nil
 }
 
-func orderedGroupedFindings(findings []finding.FileFinding) []groupedFinding {
-	grouped := groupFindings(findings)
+func orderedGroupedFindings(findings []finding.FileFinding, ruleDocs map[string]string) []groupedFinding {
+	grouped := groupFindings(findings, ruleDocs)
 	sort.SliceStable(grouped, func(i, j int) bool {
 		if grouped[i].path != grouped[j].path {
 			return grouped[i].path < grouped[j].path
@@ -137,9 +148,10 @@ type groupedFinding struct {
 	severity config.Severity
 	message  string
 	lines    []int
+	docsURL  string
 }
 
-func groupFindings(findings []finding.FileFinding) []groupedFinding {
+func groupFindings(findings []finding.FileFinding, ruleDocs map[string]string) []groupedFinding {
 	groupedByKey := make(map[string]*groupedFinding, len(findings))
 	order := make([]string, 0, len(findings))
 
@@ -153,6 +165,7 @@ func groupFindings(findings []finding.FileFinding) []groupedFinding {
 				severity: finding.Severity,
 				message:  finding.Message,
 				lines:    make([]int, 0, 1),
+				docsURL:  ruleDocs[finding.ID],
 			}
 			groupedByKey[key] = grouped
 			order = append(order, key)

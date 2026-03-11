@@ -125,6 +125,7 @@ type Finding struct {
 	Severity Severity
 	Message  string
 	Position Position
+	DocsURL  string
 }
 
 // Document is an in-memory scan target.
