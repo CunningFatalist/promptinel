@@ -1,7 +1,5 @@
 # No Interpreter Inline Exec
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                           |
 | ---------------- | --------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-interpreter-inline-exec`                                                                                    |

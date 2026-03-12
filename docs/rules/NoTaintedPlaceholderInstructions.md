@@ -1,7 +1,5 @@
 # No Tainted Placeholder Instructions
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-tainted-placeholder-instructions`                                                                                                                 |

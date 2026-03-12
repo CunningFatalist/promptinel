@@ -1,7 +1,5 @@
 # No Git Config Credential Helper Rewrites
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                         |
 | ---------------- | ------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-gitconfig-credential-helper`                                                                              |

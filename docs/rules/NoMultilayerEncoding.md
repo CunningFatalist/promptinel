@@ -1,7 +1,5 @@
 # No Multilayer Encoding
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Rule ID          | `no-multilayer-encoding`                                                                                                       |

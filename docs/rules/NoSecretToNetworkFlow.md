@@ -1,7 +1,5 @@
 # No Secret To Network Flow
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                           |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-secret-to-network-flow`                                                                                                     |

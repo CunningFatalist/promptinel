@@ -1,7 +1,5 @@
 # No Prompt Override Instructions
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                      |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-prompt-injection-override`                                                                                             |

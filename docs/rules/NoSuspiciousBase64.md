@@ -1,7 +1,5 @@
 # No Suspicious Base64 Payload
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-suspicious-base64`                                                                      |

@@ -1,7 +1,5 @@
 # No Transcript Injection
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-transcript-injection`                                                                                                                   |

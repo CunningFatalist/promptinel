@@ -1,7 +1,5 @@
 # No Data URI Payloads
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                    |
 | ---------------- | ---------------------------------------------------------------------------------------- |
 | Rule ID          | `no-data-uri-payloads`                                                                   |

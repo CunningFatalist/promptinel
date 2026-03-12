@@ -1,7 +1,5 @@
 # No Shell Heredoc Payload
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                            |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-shell-heredoc-payload`                                                                                                       |

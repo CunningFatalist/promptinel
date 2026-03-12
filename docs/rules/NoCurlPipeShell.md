@@ -1,7 +1,5 @@
 # No Curl/Wget Pipe To Shell
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                |
 | ---------------- | ---------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-curl-pipe-shell`                                                                                 |

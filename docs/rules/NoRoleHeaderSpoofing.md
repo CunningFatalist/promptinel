@@ -1,7 +1,5 @@
 # No Role Header Spoofing
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                    |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Rule ID          | `no-role-header-spoofing`                                                                                                |

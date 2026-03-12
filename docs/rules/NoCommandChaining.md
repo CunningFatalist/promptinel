@@ -1,7 +1,5 @@
 # No Command Chaining
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                            |                                                        |
 | ---------------- | ------------------------------------------------ | ------------------------------------------------------ |
 | Rule ID          | `no-command-chaining`                            |                                                        |

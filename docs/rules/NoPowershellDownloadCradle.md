@@ -1,7 +1,5 @@
 # No PowerShell Download Cradle
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-powershell-download-cradle`                                                                                                                       |

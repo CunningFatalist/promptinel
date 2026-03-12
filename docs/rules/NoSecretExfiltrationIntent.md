@@ -1,7 +1,5 @@
 # No Secret Exfiltration Intent
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                    |
 | ---------------- | -------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-secret-exfiltration-intent`                                                                          |

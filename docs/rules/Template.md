@@ -1,7 +1,5 @@
 # Rule Name
 
-[Back to overview](./Overview.md)
-
 Use a StudlyCase filename that matches the rule name, for example `NoCurlPipeShell.md`.
 
 | Field            | Value                                                        |

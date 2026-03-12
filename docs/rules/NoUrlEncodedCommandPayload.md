@@ -1,7 +1,5 @@
 # No URL Encoded Command Payload
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                          |
 | ---------------- | -------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-url-encoded-command-payload`                                                                               |

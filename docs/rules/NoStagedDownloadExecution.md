@@ -1,7 +1,5 @@
 # No Staged Download Execution
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-staged-download-execution`                                                                                         |

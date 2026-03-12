@@ -1,7 +1,5 @@
 # No Unsafe Templates
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-unsafe-templates`                                                                                                |

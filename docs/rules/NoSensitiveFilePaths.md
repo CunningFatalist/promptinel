@@ -1,7 +1,5 @@
 # No Sensitive File Paths
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                   |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-sensitive-file-paths`                                                                                               |

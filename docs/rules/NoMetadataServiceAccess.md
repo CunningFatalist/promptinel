@@ -1,7 +1,5 @@
 # No Metadata Service Access
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                          |
 | ---------------- | -------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-metadata-service-access`                                                                                   |

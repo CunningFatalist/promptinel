@@ -1,7 +1,5 @@
 # No Zero Width Characters
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                              |
 | ---------------- | ---------------------------------------------------------------------------------- |
 | Rule ID          | `no-zero-width`                                                                    |

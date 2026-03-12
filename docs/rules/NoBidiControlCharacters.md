@@ -1,7 +1,5 @@
 # No Bidi Control Characters
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                               |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-bidi-control-characters`                                                                        |

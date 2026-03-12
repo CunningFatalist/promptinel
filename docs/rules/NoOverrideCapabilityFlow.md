@@ -1,7 +1,5 @@
 # No Override Capability Flow
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                           |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-override-capability-flow`                                                                                                   |

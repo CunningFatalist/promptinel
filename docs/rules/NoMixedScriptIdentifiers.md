@@ -1,7 +1,5 @@
 # No Mixed Script Identifiers
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Rule ID          | `no-mixed-script-identifiers`                                                                                                  |

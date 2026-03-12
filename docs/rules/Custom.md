@@ -1,7 +1,5 @@
 # Custom Rules
 
-[Back to overview](./Overview.md)
-
 Promptinel custom rules are configured in your Promptinel config file rather than compiled into the
 built-in rule registry. Today they are regex-based rules defined under `custom-rules`.
 

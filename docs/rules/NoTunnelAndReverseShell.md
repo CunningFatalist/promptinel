@@ -1,7 +1,5 @@
 # No Tunnel And Reverse Shell
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                             |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-tunnel-and-reverse-shell`                                                                                     |

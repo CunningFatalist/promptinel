@@ -1,7 +1,5 @@
 # No Shell Profile Modification
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                                |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Rule ID          | `no-shell-profile-modification`                                                                                                      |

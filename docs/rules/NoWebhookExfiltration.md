@@ -1,7 +1,5 @@
 # No Webhook Exfiltration
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Rule ID          | `no-webhook-exfiltration`                                                                                                      |

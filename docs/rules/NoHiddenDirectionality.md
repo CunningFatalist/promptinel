@@ -1,7 +1,5 @@
 # No Hidden Directionality
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                            |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-hidden-directionality`                                                                                                       |

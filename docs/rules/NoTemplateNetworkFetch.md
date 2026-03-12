@@ -1,7 +1,5 @@
 # No Template Network Fetch
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                              |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-template-network-fetch`                                                                                                        |

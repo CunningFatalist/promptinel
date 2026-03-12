@@ -1,7 +1,5 @@
 # No DNS Exfiltration
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                    |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Rule ID          | `no-dns-exfiltration`                                                                                                    |

@@ -1,7 +1,5 @@
 # No SSH Config Manipulation
 
-[Back to overview](./Overview.md)
-
 | Field            | Value                                                                                                                 |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Rule ID          | `no-ssh-config-manipulation`                                                                                          |
