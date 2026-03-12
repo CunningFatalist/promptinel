@@ -30,6 +30,15 @@ prompt content early and make review practical.
 Promptinel was designed as an additional security layer.
 It does not replace other security measures.
 
+## Demo
+
+There is a small web service that runs Promptinel via a Go API.
+Check out [promptiscan.vercel.app](https://promptiscan.vercel.app/) and try scanning
+some prompts. For example, our "malicious" E2E test prompts are good candidates for testing:
+
+- [https://github.com/CunningFatalist/promptinel/blob/main/e2e/testdata/cases/a-unsafe.md](e2e/testdata/cases/a-unsafe.md)
+- [https://github.com/CunningFatalist/promptinel/blob/main/e2e/testdata/cases/b-unsafe.md](e2e/testdata/cases/b-unsafe.md)
+
 ## Installation
 
 ### Go Install
