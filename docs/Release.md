@@ -29,5 +29,5 @@ Main-branch runs perform a snapshot-style verification so packaging problems are
 Tagged releases perform the real publication flow and publish artifacts through the repository
 token available in GitHub Actions.
 
-The build embeds the resolved version into `cmd.Version` so the CLI can report the version it
-was built with.
+The build embeds the resolved version into `internal/version.BuildVersion` so
+the CLI and library package can both report the version they were built with.

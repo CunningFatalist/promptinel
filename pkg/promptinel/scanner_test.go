@@ -289,3 +289,10 @@ func Test_Promptinel_ScanDocument_ReturnsContextError(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
+
+func Test_Promptinel_Version_ReturnsDisplayVersion(t *testing.T) {
+	version := Version()
+	if version == "" {
+		t.Fatal("expected non-empty version")
+	}
+}

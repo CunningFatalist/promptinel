@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	scanSARIFSchemaVersion = "1.0.0"
+	scanSARIFSchemaVersion = "1.1.0"
 	sarifVersion           = "2.1.0"
 	sarifSchemaURI         = "https://json.schemastore.org/sarif-2.1.0.json"
 )

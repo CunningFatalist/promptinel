@@ -104,7 +104,7 @@ build: tidy vendor ## Build the application inside the container
 		echo "Error: BUILD_VERSION is not set. Please run 'export BUILD_VERSION=x.x.x && make build'"; \
 		exit 1; \
 	fi
-	docker compose exec promptinel_app go build -buildvcs=false -ldflags="-X 'github.com/CunningFatalist/promptinel/cmd.Version=$(BUILD_VERSION)'" -o build/promptinel main.go
+	docker compose exec promptinel_app go build -buildvcs=false -ldflags="-X 'github.com/CunningFatalist/promptinel/internal/version.BuildVersion=$(BUILD_VERSION)'" -o build/promptinel main.go
 
 .PHONY: clean
 clean: ## Clean up generated files

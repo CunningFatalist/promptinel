@@ -24,6 +24,8 @@ import (
 )
 
 func main() {
+	fmt.Println("Promptinel", promptinel.Version())
+
 	scanner, err := promptinel.NewScanner(promptinel.NewConfig())
 	if err != nil {
 		log.Fatal(err)
@@ -51,6 +53,10 @@ func main() {
 
 `promptinel.NewConfig()` returns library defaults for in-memory scanning. By
 default, in-memory documents are treated as untrusted input.
+
+`promptinel.Version()` returns the resolved Promptinel version for the current
+build. When Promptinel is linked as a dependency, it resolves the version from
+module metadata when available.
 
 `promptinel.NewScanner(cfg)` validates the config, compiles built-in rules and
 custom rules, and returns a reusable scanner.

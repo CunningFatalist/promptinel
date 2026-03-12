@@ -147,6 +147,8 @@ func main() {
 
 The library API returns raw findings without applying `policy.warn-on` filtering.
 Its default config treats in-memory content as untrusted input.
+It also exposes `promptinel.Version()` for callers that need to report the
+Promptinel version in use.
 See [Library API](./docs/Library.md) for the complete usage guide.
 
 ## Core Commands

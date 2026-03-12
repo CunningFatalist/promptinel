@@ -7,7 +7,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 )
 
-const scanJSONSchemaVersion = "1.0.0"
+const scanJSONSchemaVersion = "1.1.0"
 
 type scanJSONReport struct {
 	SchemaVersion string               `json:"schema_version"`

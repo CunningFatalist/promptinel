@@ -175,7 +175,7 @@ func Test_Cmd_RunScanWithOptions_WritesJSONOutput(t *testing.T) {
 	if err := json.Unmarshal([]byte(output), &payload); err != nil {
 		t.Fatalf("expected json output, got error: %v\noutput:\n%s", err, output)
 	}
-	if payload["schema_version"] != "1.0.0" {
+	if payload["schema_version"] != "1.1.0" {
 		t.Fatalf("unexpected schema version: %#v", payload["schema_version"])
 	}
 }

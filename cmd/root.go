@@ -2,17 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"runtime/debug"
-	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/util"
+	internalversion "github.com/CunningFatalist/promptinel/internal/version"
 	"github.com/spf13/cobra"
 )
-
-const DevelopmentVersion = "development"
-
-// Version is the current version of the application, set at build time.
-var Version = DevelopmentVersion
 
 type rootOptions struct {
 	showVersion bool
@@ -64,26 +58,5 @@ func init() {
 }
 
 func displayVersion() string {
-	version := effectiveVersion()
-	if version == DevelopmentVersion {
-		return version
-	}
-	if strings.HasPrefix(version, "v") {
-		return version
-	}
-	return "v" + version
-}
-
-func effectiveVersion() string {
-	if Version != DevelopmentVersion {
-		return Version
-	}
-	buildInfo, ok := debug.ReadBuildInfo()
-	if !ok {
-		return DevelopmentVersion
-	}
-	if buildInfo.Main.Version == "" || buildInfo.Main.Version == "(devel)" {
-		return DevelopmentVersion
-	}
-	return buildInfo.Main.Version
+	return internalversion.Display()
 }

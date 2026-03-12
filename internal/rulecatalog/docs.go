@@ -4,6 +4,7 @@ import (
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/ruledocs"
 	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/scanfinding"
 )
 
 // DocsURL returns the documentation URL for rule metadata when available.
@@ -30,9 +31,21 @@ func DocsURLIndex(registry *rules.Registry, customRules []config.CustomRule) map
 	customDocsURL := ruledocs.URL(ruledocs.CustomDocFile)
 	if customDocsURL != "" {
 		for _, rule := range customRules {
+			if isInternalDiagnosticRuleID(rule.ID) {
+				continue
+			}
 			index[rule.ID] = customDocsURL
 		}
 	}
 
 	return index
+}
+
+func isInternalDiagnosticRuleID(id string) bool {
+	switch id {
+	case scanfinding.OversizedFileSkipID, scanfinding.UnreadableFileSkipID:
+		return true
+	default:
+		return false
+	}
 }

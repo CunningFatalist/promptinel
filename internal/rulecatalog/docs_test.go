@@ -64,3 +64,25 @@ func Test_RuleCatalog_DocsURLIndex(t *testing.T) {
 	assert.Equal(t, ruledocs.URL(ruledocs.CustomDocFile), index["custom-blocked-domain"])
 	assert.NotContains(t, index, "no-docs")
 }
+
+func Test_RuleCatalog_DocsURLIndex_ExcludesInternalDiagnosticIDs(t *testing.T) {
+	t.Parallel()
+
+	index := DocsURLIndex(nil, []config.CustomRule{
+		{
+			ID:       "scan-file-too-large",
+			Pattern:  "oversized",
+			Severity: config.SeverityLow,
+			Message:  "oversized",
+		},
+		{
+			ID:       "scan-file-unreadable",
+			Pattern:  "unreadable",
+			Severity: config.SeverityLow,
+			Message:  "unreadable",
+		},
+	})
+
+	assert.NotContains(t, index, "scan-file-too-large")
+	assert.NotContains(t, index, "scan-file-unreadable")
+}

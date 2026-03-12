@@ -1,12 +1,15 @@
 package finding
 
-import "github.com/CunningFatalist/promptinel/internal/rules"
+import (
+	"github.com/CunningFatalist/promptinel/internal/rules"
+	"github.com/CunningFatalist/promptinel/internal/scanfinding"
+)
 
 const (
 	// OversizedFileSkipID identifies findings for files skipped due to size limits.
-	OversizedFileSkipID = "scan-file-too-large"
+	OversizedFileSkipID = scanfinding.OversizedFileSkipID
 	// UnreadableFileSkipID identifies findings for files skipped due to read/metadata errors.
-	UnreadableFileSkipID = "scan-file-unreadable"
+	UnreadableFileSkipID = scanfinding.UnreadableFileSkipID
 )
 
 // FileFinding links a finding to its source file path.

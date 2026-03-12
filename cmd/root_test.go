@@ -6,16 +6,17 @@ import (
 	"strings"
 	"testing"
 
+	internalversion "github.com/CunningFatalist/promptinel/internal/version"
 	"github.com/spf13/cobra"
 )
 
 func Test_Cmd_RootCommand_PrintsDevelopmentVersion(t *testing.T) {
-	previousVersion := Version
+	previousVersion := internalversion.BuildVersion
 	t.Cleanup(func() {
-		Version = previousVersion
+		internalversion.BuildVersion = previousVersion
 	})
 
-	Version = "development"
+	internalversion.BuildVersion = internalversion.Development
 	output := captureStdout(t, func() {
 		rootCmd.Run(rootCmd, nil)
 	})
@@ -41,13 +42,13 @@ func Test_Cmd_RootCommand_PrintsDevelopmentVersion(t *testing.T) {
 }
 
 func Test_Cmd_RootCommand_PrintsReleaseVersion(t *testing.T) {
-	previousVersion := Version
+	previousVersion := internalversion.BuildVersion
 	t.Cleanup(func() {
-		Version = previousVersion
+		internalversion.BuildVersion = previousVersion
 		_ = rootCmd.Flags().Set("version", "false")
 	})
 
-	Version = "1.2.3"
+	internalversion.BuildVersion = "1.2.3"
 	if err := rootCmd.Flags().Set("version", "true"); err != nil {
 		t.Fatalf("set version flag: %v", err)
 	}
@@ -62,13 +63,13 @@ func Test_Cmd_RootCommand_PrintsReleaseVersion(t *testing.T) {
 }
 
 func Test_Cmd_RootCommand_PrintsReleaseVersionWithVPrefix(t *testing.T) {
-	previousVersion := Version
+	previousVersion := internalversion.BuildVersion
 	t.Cleanup(func() {
-		Version = previousVersion
+		internalversion.BuildVersion = previousVersion
 		_ = rootCmd.Flags().Set("version", "false")
 	})
 
-	Version = "v1.2.3"
+	internalversion.BuildVersion = "v1.2.3"
 	if err := rootCmd.Flags().Set("version", "true"); err != nil {
 		t.Fatalf("set version flag: %v", err)
 	}
@@ -83,14 +84,14 @@ func Test_Cmd_RootCommand_PrintsReleaseVersionWithVPrefix(t *testing.T) {
 }
 
 func Test_Cmd_Execute_PrintsVersion(t *testing.T) {
-	previousVersion := Version
+	previousVersion := internalversion.BuildVersion
 	t.Cleanup(func() {
-		Version = previousVersion
+		internalversion.BuildVersion = previousVersion
 		rootCmd.SetArgs(nil)
 		_ = rootCmd.Flags().Set("version", "false")
 	})
 
-	Version = "1.2.3"
+	internalversion.BuildVersion = "1.2.3"
 	rootCmd.SetArgs([]string{"--version"})
 
 	output := captureStdout(t, func() {
@@ -131,19 +132,19 @@ func Test_Cmd_DisplayVersion(t *testing.T) {
 		version  string
 		expected string
 	}{
-		{name: "development", version: DevelopmentVersion, expected: DevelopmentVersion},
+		{name: "development", version: internalversion.Development, expected: internalversion.Development},
 		{name: "release", version: "1.2.3", expected: "v1.2.3"},
 		{name: "already prefixed", version: "v1.2.3", expected: "v1.2.3"},
 	}
 
-	previousVersion := Version
+	previousVersion := internalversion.BuildVersion
 	t.Cleanup(func() {
-		Version = previousVersion
+		internalversion.BuildVersion = previousVersion
 	})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			Version = tt.version
+			internalversion.BuildVersion = tt.version
 			if actual := displayVersion(); actual != tt.expected {
 				t.Fatalf("expected %q, got %q", tt.expected, actual)
 			}

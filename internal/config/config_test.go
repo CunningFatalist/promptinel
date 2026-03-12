@@ -663,6 +663,17 @@ func Test_Config_Validate_DuplicateCustomRuleID(t *testing.T) {
 	assert.Contains(t, err.Error(), "duplicate custom-rule id")
 }
 
+func Test_Config_Validate_ReservedCustomRuleID(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.CustomRules = []CustomRule{
+		{ID: "scan-file-too-large", Pattern: "first", Severity: SeverityLow},
+	}
+
+	err := cfg.Validate()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "uses reserved id")
+}
+
 func Test_Config_GetRuleByID(t *testing.T) {
 	cfg := DefaultConfig()
 	enabled := true

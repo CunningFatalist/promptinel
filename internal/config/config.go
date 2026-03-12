@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/pathmatch"
+	"github.com/CunningFatalist/promptinel/internal/scanfinding"
 	"github.com/spf13/viper"
 )
 
@@ -373,6 +374,9 @@ func (c *Config) Validate() error {
 		if rule.ID == "" {
 			return fmt.Errorf("custom-rule[%d] has empty id", i)
 		}
+		if isReservedFindingID(rule.ID) {
+			return fmt.Errorf("custom-rule[%d] uses reserved id %q", i, rule.ID)
+		}
 		if rule.Pattern == "" {
 			return fmt.Errorf("custom-rule[%d] has empty pattern", i)
 		}
@@ -410,6 +414,15 @@ func validateUniqueCustomRuleIDs(customRules []CustomRule) error {
 		seenRuleIDs[customRule.ID] = i
 	}
 	return nil
+}
+
+func isReservedFindingID(id string) bool {
+	switch id {
+	case scanfinding.OversizedFileSkipID, scanfinding.UnreadableFileSkipID:
+		return true
+	default:
+		return false
+	}
 }
 
 // ValidateScopedRuleIDs validates that scoped rule overrides reference known rule IDs.
