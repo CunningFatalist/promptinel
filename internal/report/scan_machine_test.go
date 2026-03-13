@@ -36,8 +36,11 @@ func Test_Report_WriteScanJSON_UsesStableSchemaAndOrdering(t *testing.T) {
 	assert.Equal(t, "z.md", payload.Findings[1].Path)
 	require.Len(t, payload.OversizedSkip, 1)
 	assert.Equal(t, "big.md", payload.OversizedSkip[0].Path)
+	require.Len(t, payload.UnreadableSkip, 1)
+	assert.Equal(t, "blocked.md", payload.UnreadableSkip[0].Path)
 	assert.Equal(t, 2, payload.Summary.Findings)
 	assert.Equal(t, 1, payload.Summary.OversizedSkips)
+	assert.Equal(t, 1, payload.Summary.UnreadableSkips)
 	assert.Equal(t, 1, payload.Summary.FilteredBaseline)
 	assert.Equal(t, "WARN", payload.Summary.Policy)
 }
@@ -71,8 +74,10 @@ func Test_Report_WriteScanJSON_ParsesSummaryParityWithTextMode(t *testing.T) {
 
 	assert.Contains(t, textOutput.String(), " - findings: 2")
 	assert.Contains(t, textOutput.String(), " - oversized_skips: 1")
+	assert.Contains(t, textOutput.String(), " - unreadable_skips: 1")
 	assert.Equal(t, 2, payload.Summary.Findings)
 	assert.Equal(t, 1, payload.Summary.OversizedSkips)
+	assert.Equal(t, 1, payload.Summary.UnreadableSkips)
 }
 
 func Test_Report_WriteScanJSON_ReturnsErrorWhenWriterFails(t *testing.T) {
@@ -95,7 +100,7 @@ func Test_Report_WriteScanSARIF_UsesStableSchemaAndFindings(t *testing.T) {
 	require.Len(t, payload.Runs, 1)
 
 	run := payload.Runs[0]
-	require.Len(t, run.Results, 3)
+	require.Len(t, run.Results, 4)
 	assert.Equal(t, "rule-a", run.Results[0].RuleID)
 	require.Len(t, run.Results[0].Locations, 2)
 	assert.Equal(t, "a.md", run.Results[0].Locations[0].PhysicalLocation.ArtifactLocation.URI)
@@ -105,18 +110,22 @@ func Test_Report_WriteScanSARIF_UsesStableSchemaAndFindings(t *testing.T) {
 	assert.Equal(t, "scan-file-too-large", run.Results[2].RuleID)
 	assert.Equal(t, "oversized_skip", run.Results[2].Properties.Category)
 	assert.Equal(t, "note", run.Results[2].Level)
+	assert.Equal(t, "scan-file-unreadable", run.Results[3].RuleID)
+	assert.Equal(t, "unreadable_skip", run.Results[3].Properties.Category)
 
-	require.Len(t, run.Tool.Driver.Rules, 3)
+	require.Len(t, run.Tool.Driver.Rules, 4)
 	assert.Equal(t, "rule-a", run.Tool.Driver.Rules[0].ID)
 	assert.Equal(t, ruledocs.URL("RuleA.md"), run.Tool.Driver.Rules[0].HelpURI)
 	assert.Equal(t, "rule-z", run.Tool.Driver.Rules[1].ID)
 	assert.Equal(t, ruledocs.URL("RuleZ.md"), run.Tool.Driver.Rules[1].HelpURI)
 	assert.Equal(t, "scan-file-too-large", run.Tool.Driver.Rules[2].ID)
+	assert.Equal(t, "scan-file-unreadable", run.Tool.Driver.Rules[3].ID)
 
 	require.Len(t, run.Invocations, 1)
 	assert.Equal(t, scanSARIFSchemaVersion, run.Invocations[0].Properties.PromptinelSchemaVersion)
 	assert.Equal(t, 2, run.Invocations[0].Properties.Findings)
 	assert.Equal(t, 1, run.Invocations[0].Properties.OversizedSkips)
+	assert.Equal(t, 1, run.Invocations[0].Properties.UnreadableSkips)
 	assert.Equal(t, "WARN", run.Invocations[0].Properties.Policy)
 }
 
@@ -274,6 +283,17 @@ func scanMachineSummaryForTest() ScanSummary {
 					ID:       finding.OversizedFileSkipID,
 					Severity: config.SeverityLow,
 					Message:  "File skipped: size 99 bytes exceeds limits.max_file_size_bytes (10)",
+					Position: rules.Position{Line: 1, Column: 1},
+				},
+			},
+		},
+		UnreadableSkipped: []finding.FileFinding{
+			{
+				Path: "blocked.md",
+				Finding: rules.Finding{
+					ID:       finding.UnreadableFileSkipID,
+					Severity: config.SeverityLow,
+					Message:  "File skipped: symbolic links are not scanned",
 					Position: rules.Position{Line: 1, Column: 1},
 				},
 			},

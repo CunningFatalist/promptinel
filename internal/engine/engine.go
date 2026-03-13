@@ -2,7 +2,9 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -227,18 +229,28 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 		return nil, err
 	}
 
-	fileInfo, err := os.Stat(target.absolutePath)
+	file, fileInfo, err := files.OpenRegularFile(target.absolutePath)
 	if err != nil {
+		message := fmt.Sprintf("File skipped: metadata read failed (%v)", err)
+		switch {
+		case errors.Is(err, files.ErrSymlink):
+			message = "File skipped: symbolic links are not scanned"
+		case errors.Is(err, files.ErrNonRegular):
+			message = "File skipped: non-regular file"
+		}
 		return []FileFinding{{
 			Path: target.relativePath,
 			Finding: rules.Finding{
 				ID:       unreadableFileFindingID,
 				Severity: config.SeverityLow,
-				Message:  fmt.Sprintf("File skipped: metadata read failed (%v)", err),
+				Message:  message,
 				Position: rules.Position{Line: 1, Column: 1},
 			},
 		}}, nil
 	}
+	defer func() {
+		_ = file.Close()
+	}()
 	if fileInfo.Size() > s.maxFileSize {
 		return []FileFinding{{
 			Path: target.relativePath,
@@ -251,7 +263,7 @@ func (s *Scanner) scanSingleTarget(ctx context.Context, target scanTarget, scope
 		}}, nil
 	}
 
-	content, err := os.ReadFile(target.absolutePath)
+	content, err := io.ReadAll(file)
 	if err != nil {
 		return []FileFinding{{
 			Path: target.relativePath,

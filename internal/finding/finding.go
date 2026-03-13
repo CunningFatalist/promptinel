@@ -22,3 +22,8 @@ type FileFinding struct {
 func IsOversizedFileSkip(f FileFinding) bool {
 	return f.ID == OversizedFileSkipID
 }
+
+// IsUnreadableFileSkip reports whether finding indicates a read or metadata skip.
+func IsUnreadableFileSkip(f FileFinding) bool {
+	return f.ID == UnreadableFileSkipID
+}

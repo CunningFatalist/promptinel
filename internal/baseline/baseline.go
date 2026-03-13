@@ -19,7 +19,9 @@ const (
 	// DefaultFileName is the default baseline snapshot file path.
 	DefaultFileName = ".promptinel-baseline.json"
 	// SnapshotVersion is the current baseline file format version.
-	SnapshotVersion = 1
+	SnapshotVersion = 2
+	// LegacySnapshotVersion is the previous baseline file format version.
+	LegacySnapshotVersion = 1
 )
 
 var writeFileAtomically = safefile.WriteFileAtomically
@@ -39,6 +41,7 @@ type Entry struct {
 	Message  string          `json:"message"`
 	Line     int             `json:"line"`
 	Column   int             `json:"column"`
+	Count    int             `json:"count,omitempty"`
 }
 
 // BuildSnapshot converts findings into a deterministic baseline snapshot.
@@ -46,15 +49,26 @@ func BuildSnapshot(findings []finding.FileFinding) Snapshot {
 	entriesByHash := make(map[string]Entry, len(findings))
 	for _, finding := range findings {
 		hash := HashFinding(finding)
-		entriesByHash[hash] = Entry{
-			Hash:     hash,
-			Path:     finding.Path,
-			RuleID:   finding.ID,
-			Severity: finding.Severity,
-			Message:  finding.Message,
-			Line:     finding.Position.Line,
-			Column:   finding.Position.Column,
+		entry, exists := entriesByHash[hash]
+		if !exists {
+			entriesByHash[hash] = Entry{
+				Hash:     hash,
+				Path:     finding.Path,
+				RuleID:   finding.ID,
+				Severity: finding.Severity,
+				Message:  finding.Message,
+				Line:     finding.Position.Line,
+				Column:   finding.Position.Column,
+				Count:    1,
+			}
+			continue
 		}
+		entry.Count++
+		if entry.Line == 0 || positionComesBefore(finding.Position.Line, finding.Position.Column, entry.Line, entry.Column) {
+			entry.Line = finding.Position.Line
+			entry.Column = finding.Position.Column
+		}
+		entriesByHash[hash] = entry
 	}
 
 	entries := make([]Entry, 0, len(entriesByHash))
@@ -79,8 +93,20 @@ func HashFinding(finding finding.FileFinding) string {
 		finding.ID,
 		finding.Severity.String(),
 		finding.Message,
-		fmt.Sprintf("%d", finding.Position.Line),
-		fmt.Sprintf("%d", finding.Position.Column),
+	}, "\n")
+
+	sum := sha256.Sum256([]byte(payload))
+	return hex.EncodeToString(sum[:])
+}
+
+func legacyHashFinding(f finding.FileFinding) string {
+	payload := strings.Join([]string{
+		f.Path,
+		f.ID,
+		f.Severity.String(),
+		f.Message,
+		fmt.Sprintf("%d", f.Position.Line),
+		fmt.Sprintf("%d", f.Position.Column),
 	}, "\n")
 
 	sum := sha256.Sum256([]byte(payload))
@@ -93,14 +119,37 @@ func FilterFindings(findings []finding.FileFinding, snapshot Snapshot) []finding
 		return findings
 	}
 
-	accepted := make(map[string]struct{}, len(snapshot.Entries))
+	if snapshot.Version == LegacySnapshotVersion {
+		accepted := make(map[string]struct{}, len(snapshot.Entries))
+		for _, entry := range snapshot.Entries {
+			accepted[entry.Hash] = struct{}{}
+		}
+
+		filtered := make([]finding.FileFinding, 0, len(findings))
+		for _, finding := range findings {
+			if _, ok := accepted[legacyHashFinding(finding)]; ok {
+				continue
+			}
+			filtered = append(filtered, finding)
+		}
+
+		return filtered
+	}
+
+	acceptedCounts := make(map[string]int, len(snapshot.Entries))
 	for _, entry := range snapshot.Entries {
-		accepted[entry.Hash] = struct{}{}
+		count := entry.Count
+		if count <= 0 {
+			count = 1
+		}
+		acceptedCounts[entry.Hash] += count
 	}
 
 	filtered := make([]finding.FileFinding, 0, len(findings))
 	for _, finding := range findings {
-		if _, ok := accepted[HashFinding(finding)]; ok {
+		hash := HashFinding(finding)
+		if acceptedCounts[hash] > 0 {
+			acceptedCounts[hash]--
 			continue
 		}
 		filtered = append(filtered, finding)
@@ -121,8 +170,18 @@ func Read(path string) (Snapshot, error) {
 		return Snapshot{}, fmt.Errorf("parse baseline file %q: %w", path, err)
 	}
 
-	if snapshot.Version != SnapshotVersion {
-		return Snapshot{}, fmt.Errorf("unsupported baseline version %d (expected %d)", snapshot.Version, SnapshotVersion)
+	if snapshot.Version != LegacySnapshotVersion && snapshot.Version != SnapshotVersion {
+		return Snapshot{}, fmt.Errorf(
+			"unsupported baseline version %d (expected %d or %d)",
+			snapshot.Version,
+			LegacySnapshotVersion,
+			SnapshotVersion,
+		)
+	}
+	for i := range snapshot.Entries {
+		if snapshot.Entries[i].Count <= 0 {
+			snapshot.Entries[i].Count = 1
+		}
 	}
 
 	sort.SliceStable(snapshot.Entries, func(i, j int) bool {
@@ -160,4 +219,17 @@ func Write(path string, snapshot Snapshot) error {
 	}
 
 	return nil
+}
+
+func positionComesBefore(line int, column int, currentLine int, currentColumn int) bool {
+	if line <= 0 {
+		return false
+	}
+	if currentLine <= 0 {
+		return true
+	}
+	if line != currentLine {
+		return line < currentLine
+	}
+	return column < currentColumn
 }

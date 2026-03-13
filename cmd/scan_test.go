@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -236,6 +237,40 @@ func Test_Cmd_RunScanWithOptions_ReportsOversizedSkipsAtDefaultWarnOn(t *testing
 	}
 	if !strings.Contains(output, "- policy: PASS") {
 		t.Fatalf("expected oversized skip to remain informational, got output:\n%s", output)
+	}
+}
+
+func Test_Cmd_RunScanWithOptions_ReportsUnreadableSkipsAtDefaultWarnOn(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	linkPath := filepath.Join(workingDir, "blocked.md")
+	if err := os.Symlink(filepath.Join(workingDir, "missing.md"), linkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	output := captureStdout(t, func() {
+		err := runScanWithOptions(context.Background(), []string{linkPath}, scanOptions{
+			noConfigDiscovery: true,
+		})
+		if err != nil {
+			t.Fatalf("run scan with options: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "Unreadable Skips:") {
+		t.Fatalf("expected unreadable skip section, got output:\n%s", output)
+	}
+	if !strings.Contains(output, "scan-file-unreadable") {
+		t.Fatalf("expected unreadable skip finding ID in output, got output:\n%s", output)
+	}
+	if !strings.Contains(output, "- unreadable_skips: 1") {
+		t.Fatalf("expected unreadable skip summary, got output:\n%s", output)
+	}
+	if !strings.Contains(output, "- policy: PASS") {
+		t.Fatalf("expected unreadable skip to remain informational, got output:\n%s", output)
 	}
 }
 

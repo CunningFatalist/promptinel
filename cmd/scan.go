@@ -137,12 +137,13 @@ func runScanWithOptions(ctx context.Context, args []string, options scanOptions)
 
 	code := exitcode.Resolve(result.Config.Policy, findings)
 	summary := report.ScanSummary{
-		Findings:         findings,
-		OversizedSkipped: result.OversizedSkippedFindings,
-		Environment:      result.Config.Environment,
-		BaselineFiltered: baselineFiltered,
-		PolicyOutcome:    code,
-		RuleDocs:         result.RuleDocs,
+		Findings:          findings,
+		OversizedSkipped:  result.OversizedSkippedFindings,
+		UnreadableSkipped: result.UnreadableSkippedFindings,
+		Environment:       result.Config.Environment,
+		BaselineFiltered:  baselineFiltered,
+		PolicyOutcome:     code,
+		RuleDocs:          result.RuleDocs,
 	}
 
 	var writeErr error

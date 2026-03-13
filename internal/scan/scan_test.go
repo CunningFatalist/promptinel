@@ -167,6 +167,9 @@ func Test_Scan_Run_ReturnsRawAndReportableFindingsSeparately(t *testing.T) {
 	if len(result.Findings) != 0 {
 		t.Fatalf("expected compatibility findings to match reportable findings, got %#v", result.Findings)
 	}
+	if len(result.UnreadableSkippedFindings) != 1 {
+		t.Fatalf("expected one unreadable skip finding, got %#v", result.UnreadableSkippedFindings)
+	}
 }
 
 func Test_Scan_Run_OversizedSkipsRemainInformationalAndVisible(t *testing.T) {
@@ -199,6 +202,9 @@ func Test_Scan_Run_OversizedSkipsRemainInformationalAndVisible(t *testing.T) {
 	}
 	if len(result.OversizedSkippedFindings) != 1 {
 		t.Fatalf("expected one oversized skip finding, got %#v", result.OversizedSkippedFindings)
+	}
+	if len(result.UnreadableSkippedFindings) != 0 {
+		t.Fatalf("expected no unreadable skip findings, got %#v", result.UnreadableSkippedFindings)
 	}
 }
 

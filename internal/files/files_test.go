@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func Test_Files_Collect_DeduplicatesOverlappingInputs(t *testing.T) {
@@ -227,6 +228,74 @@ func Test_Files_CollectTargets_CollectsAndFiltersInOneStep(t *testing.T) {
 	}
 	if len(skipped) != 0 {
 		t.Fatalf("unexpected skipped targets: %#v", skipped)
+	}
+}
+
+func Test_Files_OpenRegularFile_ReadsRegularFile(t *testing.T) {
+	workingDir := t.TempDir()
+	target := filepath.Join(workingDir, "file.md")
+	if err := os.WriteFile(target, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write target file: %v", err)
+	}
+
+	file, info, err := OpenRegularFile(target)
+	if err != nil {
+		t.Fatalf("open regular file: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = file.Close()
+	})
+
+	if !info.Mode().IsRegular() {
+		t.Fatalf("expected regular file mode, got %v", info.Mode())
+	}
+}
+
+func Test_Files_OpenRegularFile_RejectsSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink behavior is environment-dependent on windows")
+	}
+
+	workingDir := t.TempDir()
+	target := filepath.Join(workingDir, "target.md")
+	if err := os.WriteFile(target, []byte("test"), 0o644); err != nil {
+		t.Fatalf("write target file: %v", err)
+	}
+	link := filepath.Join(workingDir, "link.md")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	_, _, err := OpenRegularFile(link)
+	if !errors.Is(err, ErrSymlink) {
+		t.Fatalf("expected symlink error, got %v", err)
+	}
+}
+
+func Test_Files_OpenRegularFile_RejectsNonRegularFileWithoutBlocking(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("named pipes are not supported in this test on windows")
+	}
+
+	workingDir := t.TempDir()
+	pipePath := filepath.Join(workingDir, "test.fifo")
+	if err := syscall.Mkfifo(pipePath, 0o600); err != nil {
+		t.Fatalf("create fifo: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := OpenRegularFile(pipePath)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if !errors.Is(err, ErrNonRegular) {
+			t.Fatalf("expected non-regular error, got %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("expected non-regular open to return without blocking")
 	}
 }
 

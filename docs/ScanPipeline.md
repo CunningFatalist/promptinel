@@ -44,8 +44,9 @@ config instead of CLI config discovery.
 
 The engine collects target files from the requested paths using include and exclude globs.
 
-Unreadable paths discovered during collection are converted into low-severity findings rather than
-hard scan failures. That keeps output deterministic and makes skips visible to the user.
+Unreadable paths discovered during collection are converted into informational skip diagnostics
+rather than hard scan failures. That keeps output deterministic and makes partial scans visible to
+the user.
 
 ## Per-File Processing
 
@@ -137,9 +138,10 @@ The shared scan pipeline splits engine output into:
 - `RawFindings`
 - `ReportableFindings`
 - `OversizedSkippedFindings`
+- `UnreadableSkippedFindings`
 
 `ReportableFindings` includes only findings at or above `policy.warn-on`, except oversized-file
-skips, which are kept separate and always informational.
+skips and unreadable-file skips, which are kept separate and always informational.
 
 This same shared pipeline is used by `scan` and by `baseline create|update`.
 The public library stops before this stage and returns raw findings from the engine.
@@ -160,6 +162,10 @@ Baseline commands use `RawFindings` to build or update the baseline snapshot.
 `promptinel scan --baseline ...` applies the baseline only after the `warn-on` filter has already
 produced reportable findings. Accepted findings are removed before text, JSON, or SARIF output is
 written and before the final exit code is resolved.
+
+Baseline snapshots written with the current format fingerprint findings by stable rule/message
+identity and count repeated occurrences. That lets accepted findings stay suppressed across routine
+line movement while still distinguishing repeated matches.
 
 ## Exit Codes
 

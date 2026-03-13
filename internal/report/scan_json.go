@@ -10,12 +10,13 @@ import (
 const scanJSONSchemaVersion = "1.1.0"
 
 type scanJSONReport struct {
-	SchemaVersion string               `json:"schema_version"`
-	Format        string               `json:"format"`
-	Capabilities  scanJSONCapabilities `json:"capabilities"`
-	Findings      []scanJSONFinding    `json:"findings"`
-	OversizedSkip []scanJSONFinding    `json:"oversized_skips"`
-	Summary       scanJSONSummary      `json:"summary"`
+	SchemaVersion  string               `json:"schema_version"`
+	Format         string               `json:"format"`
+	Capabilities   scanJSONCapabilities `json:"capabilities"`
+	Findings       []scanJSONFinding    `json:"findings"`
+	OversizedSkip  []scanJSONFinding    `json:"oversized_skips"`
+	UnreadableSkip []scanJSONFinding    `json:"unreadable_skips"`
+	Summary        scanJSONSummary      `json:"summary"`
 }
 
 type scanJSONCapabilities struct {
@@ -37,6 +38,7 @@ type scanJSONFinding struct {
 type scanJSONSummary struct {
 	Findings         int    `json:"findings"`
 	OversizedSkips   int    `json:"oversized_skips"`
+	UnreadableSkips  int    `json:"unreadable_skips"`
 	FilteredBaseline int    `json:"filtered_by_baseline,omitempty"`
 	Policy           string `json:"policy"`
 }
@@ -45,6 +47,7 @@ type scanJSONSummary struct {
 func WriteScanJSON(w io.Writer, summary ScanSummary) error {
 	groupedFindings := orderedGroupedFindings(summary.Findings, summary.RuleDocs)
 	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped, summary.RuleDocs)
+	groupedUnreadableSkipped := orderedGroupedFindings(summary.UnreadableSkipped, summary.RuleDocs)
 
 	report := scanJSONReport{
 		SchemaVersion: scanJSONSchemaVersion,
@@ -55,12 +58,14 @@ func WriteScanJSON(w io.Writer, summary ScanSummary) error {
 			CanAccessNetwork:    summary.Environment.CanAccessNetwork,
 			HasSecrets:          summary.Environment.HasSecrets,
 		},
-		Findings:      make([]scanJSONFinding, 0, len(groupedFindings)),
-		OversizedSkip: make([]scanJSONFinding, 0, len(groupedOversizedSkipped)),
+		Findings:       make([]scanJSONFinding, 0, len(groupedFindings)),
+		OversizedSkip:  make([]scanJSONFinding, 0, len(groupedOversizedSkipped)),
+		UnreadableSkip: make([]scanJSONFinding, 0, len(groupedUnreadableSkipped)),
 		Summary: scanJSONSummary{
-			Findings:       len(groupedFindings),
-			OversizedSkips: len(groupedOversizedSkipped),
-			Policy:         outcomeLabel(summary.PolicyOutcome),
+			Findings:        len(groupedFindings),
+			OversizedSkips:  len(groupedOversizedSkipped),
+			UnreadableSkips: len(groupedUnreadableSkipped),
+			Policy:          outcomeLabel(summary.PolicyOutcome),
 		},
 	}
 	if summary.BaselineFiltered > 0 {
@@ -80,6 +85,16 @@ func WriteScanJSON(w io.Writer, summary ScanSummary) error {
 
 	for _, skipped := range groupedOversizedSkipped {
 		report.OversizedSkip = append(report.OversizedSkip, scanJSONFinding{
+			Path:     skipped.path,
+			RuleID:   skipped.id,
+			Severity: skipped.severity,
+			Message:  skipped.message,
+			DocsURL:  skipped.docsURL,
+			Lines:    cloneIntSlice(skipped.lines),
+		})
+	}
+	for _, skipped := range groupedUnreadableSkipped {
+		report.UnreadableSkip = append(report.UnreadableSkip, scanJSONFinding{
 			Path:     skipped.path,
 			RuleID:   skipped.id,
 			Severity: skipped.severity,

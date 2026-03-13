@@ -52,6 +52,8 @@ func Test_Baseline_BuildSnapshot_DeduplicatesAndSortsDeterministically(t *testin
 	assert.Equal(t, SnapshotVersion, snapshot.Version)
 	require.Len(t, snapshot.Entries, 2)
 	assert.LessOrEqual(t, snapshot.Entries[0].Hash, snapshot.Entries[1].Hash)
+	require.Contains(t, []int{1, 2}, snapshot.Entries[0].Count)
+	require.Contains(t, []int{1, 2}, snapshot.Entries[1].Count)
 }
 
 func Test_Baseline_FilterFindings_RemovesAcceptedEntries(t *testing.T) {
@@ -80,6 +82,63 @@ func Test_Baseline_FilterFindings_RemovesAcceptedEntries(t *testing.T) {
 	require.Len(t, filtered, 1)
 	assert.Equal(t, newFinding.Path, filtered[0].Path)
 	assert.Equal(t, newFinding.ID, filtered[0].ID)
+}
+
+func Test_Baseline_FilterFindings_MatchesAcrossPositionChanges(t *testing.T) {
+	accepted := finding.FileFinding{
+		Path: "a.md",
+		Finding: rules.Finding{
+			ID:       "rule-a",
+			Severity: config.SeverityHigh,
+			Message:  "accepted",
+			Position: rules.Position{Line: 1, Column: 1},
+		},
+	}
+	shifted := accepted
+	shifted.Position = rules.Position{Line: 9, Column: 3}
+
+	snapshot := BuildSnapshot([]finding.FileFinding{accepted})
+	filtered := FilterFindings([]finding.FileFinding{shifted}, snapshot)
+
+	require.Empty(t, filtered)
+}
+
+func Test_Baseline_FilterFindings_TracksRepeatedMatchesByCount(t *testing.T) {
+	accepted := []finding.FileFinding{
+		{
+			Path: "a.md",
+			Finding: rules.Finding{
+				ID:       "rule-a",
+				Severity: config.SeverityHigh,
+				Message:  "accepted",
+				Position: rules.Position{Line: 1, Column: 1},
+			},
+		},
+		{
+			Path: "a.md",
+			Finding: rules.Finding{
+				ID:       "rule-a",
+				Severity: config.SeverityHigh,
+				Message:  "accepted",
+				Position: rules.Position{Line: 2, Column: 1},
+			},
+		},
+	}
+	candidate := append(append([]finding.FileFinding(nil), accepted...), finding.FileFinding{
+		Path: "a.md",
+		Finding: rules.Finding{
+			ID:       "rule-a",
+			Severity: config.SeverityHigh,
+			Message:  "accepted",
+			Position: rules.Position{Line: 3, Column: 1},
+		},
+	})
+
+	snapshot := BuildSnapshot(accepted)
+	filtered := FilterFindings(candidate, snapshot)
+
+	require.Len(t, filtered, 1)
+	assert.Equal(t, 3, filtered[0].Position.Line)
 }
 
 func Test_Baseline_FilterFindings_ReturnsInputWhenSnapshotEmpty(t *testing.T) {
@@ -112,6 +171,7 @@ func Test_Baseline_ReadWrite_RoundTrip(t *testing.T) {
 				Message:  "msg",
 				Line:     4,
 				Column:   2,
+				Count:    1,
 			},
 		},
 	}
@@ -138,6 +198,7 @@ func Test_Baseline_Write_OverwritesExistingFile(t *testing.T) {
 				Message:  "original",
 				Line:     1,
 				Column:   1,
+				Count:    1,
 			},
 		},
 	}
@@ -154,6 +215,7 @@ func Test_Baseline_Write_OverwritesExistingFile(t *testing.T) {
 				Message:  "replacement",
 				Line:     7,
 				Column:   3,
+				Count:    1,
 			},
 		},
 	}
@@ -228,9 +290,37 @@ func Test_Baseline_HashFinding_ChangesWhenFindingChanges(t *testing.T) {
 		},
 	}
 	changed := base
-	changed.Position.Column = 9
+	changed.Message = "changed"
 
 	assert.NotEqual(t, HashFinding(base), HashFinding(changed))
+}
+
+func Test_Baseline_HashFinding_IgnoresPositionChanges(t *testing.T) {
+	base := finding.FileFinding{
+		Path: "a.md",
+		Finding: rules.Finding{
+			ID:       "rule-a",
+			Severity: config.SeverityHigh,
+			Message:  "msg",
+			Position: rules.Position{Line: 10, Column: 8},
+		},
+	}
+	changed := base
+	changed.Position = rules.Position{Line: 11, Column: 1}
+
+	assert.Equal(t, HashFinding(base), HashFinding(changed))
+}
+
+func Test_Baseline_Read_AcceptsLegacyVersion(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "baseline.json")
+	content := `{"version":1,"entries":[{"hash":"legacy","path":"a.md","rule_id":"rule-a","severity":"high","message":"m","line":1,"column":1}]}`
+	require.NoError(t, os.WriteFile(file, []byte(content), 0o644))
+
+	snapshot, err := Read(file)
+	require.NoError(t, err)
+	assert.Equal(t, LegacySnapshotVersion, snapshot.Version)
+	require.Len(t, snapshot.Entries, 1)
+	assert.Equal(t, 1, snapshot.Entries[0].Count)
 }
 
 func Test_Baseline_Write_CreatesParentDirectoryAndNormalizesVersion(t *testing.T) {

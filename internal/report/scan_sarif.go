@@ -60,6 +60,7 @@ type sarifInvocationProperties struct {
 	Policy                  string `json:"policy"`
 	Findings                int    `json:"findings"`
 	OversizedSkips          int    `json:"oversized_skips"`
+	UnreadableSkips         int    `json:"unreadable_skips"`
 	FilteredByBaseline      int    `json:"filtered_by_baseline,omitempty"`
 }
 
@@ -102,9 +103,10 @@ type sarifRegion struct {
 func WriteScanSARIF(w io.Writer, summary ScanSummary) error {
 	groupedFindings := orderedGroupedFindings(summary.Findings, summary.RuleDocs)
 	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped, summary.RuleDocs)
+	groupedUnreadableSkipped := orderedGroupedFindings(summary.UnreadableSkipped, summary.RuleDocs)
 
-	descriptorsByID := make(map[string]sarifReportingDescriptor, len(groupedFindings)+len(groupedOversizedSkipped))
-	results := make([]sarifResult, 0, len(groupedFindings)+len(groupedOversizedSkipped))
+	descriptorsByID := make(map[string]sarifReportingDescriptor, len(groupedFindings)+len(groupedOversizedSkipped)+len(groupedUnreadableSkipped))
+	results := make([]sarifResult, 0, len(groupedFindings)+len(groupedOversizedSkipped)+len(groupedUnreadableSkipped))
 	addResult := func(grouped groupedFinding, category string) {
 		registerSARIFDescriptor(descriptorsByID, grouped)
 		results = append(results, buildSARIFResult(grouped, category))
@@ -115,6 +117,9 @@ func WriteScanSARIF(w io.Writer, summary ScanSummary) error {
 	}
 	for _, grouped := range groupedOversizedSkipped {
 		addResult(grouped, "oversized_skip")
+	}
+	for _, grouped := range groupedUnreadableSkipped {
+		addResult(grouped, "unreadable_skip")
 	}
 
 	descriptorIDs := make([]string, 0, len(descriptorsByID))
@@ -147,6 +152,7 @@ func WriteScanSARIF(w io.Writer, summary ScanSummary) error {
 					Policy:                  outcomeLabel(summary.PolicyOutcome),
 					Findings:                len(groupedFindings),
 					OversizedSkips:          len(groupedOversizedSkipped),
+					UnreadableSkips:         len(groupedUnreadableSkipped),
 					FilteredByBaseline:      summary.BaselineFiltered,
 				},
 			}},

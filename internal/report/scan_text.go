@@ -14,18 +14,20 @@ import (
 
 // ScanSummary contains rendered scan outcome data.
 type ScanSummary struct {
-	Findings         []finding.FileFinding
-	OversizedSkipped []finding.FileFinding
-	Environment      config.Environment
-	BaselineFiltered int
-	PolicyOutcome    exitcode.Code
-	RuleDocs         map[string]string
+	Findings          []finding.FileFinding
+	OversizedSkipped  []finding.FileFinding
+	UnreadableSkipped []finding.FileFinding
+	Environment       config.Environment
+	BaselineFiltered  int
+	PolicyOutcome     exitcode.Code
+	RuleDocs          map[string]string
 }
 
 // WriteScanText writes a deterministic text report for scan findings.
 func WriteScanText(w io.Writer, summary ScanSummary) error {
 	groupedFindings := orderedGroupedFindings(summary.Findings, summary.RuleDocs)
 	groupedOversizedSkipped := orderedGroupedFindings(summary.OversizedSkipped, summary.RuleDocs)
+	groupedUnreadableSkipped := orderedGroupedFindings(summary.UnreadableSkipped, summary.RuleDocs)
 
 	if _, err := fmt.Fprintln(w, "Capabilities:"); err != nil {
 		return err
@@ -104,6 +106,34 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 		}
 	}
 
+	if len(groupedUnreadableSkipped) == 0 {
+		if _, err := fmt.Fprintln(w, "\nUnreadable Skips: none"); err != nil {
+			return err
+		}
+	} else {
+		if _, err := fmt.Fprintln(w, "\nUnreadable Skips:"); err != nil {
+			return err
+		}
+
+		for _, skipped := range groupedUnreadableSkipped {
+			if _, err := fmt.Fprintf(
+				w,
+				" - %s [%s] %s: %s\n",
+				sanitizeForTerminal(skipped.path),
+				skipped.severity,
+				sanitizeForTerminal(skipped.id),
+				sanitizeForTerminal(skipped.message),
+			); err != nil {
+				return err
+			}
+			if skipped.docsURL != "" {
+				if _, err := fmt.Fprintf(w, "   docs: %s\n", sanitizeForTerminal(skipped.docsURL)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
 	if _, err := fmt.Fprintln(w, "\nSummary:"); err != nil {
 		return err
 	}
@@ -111,6 +141,9 @@ func WriteScanText(w io.Writer, summary ScanSummary) error {
 		return err
 	}
 	if _, err := fmt.Fprintf(w, " - oversized_skips: %d\n", len(groupedOversizedSkipped)); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, " - unreadable_skips: %d\n", len(groupedUnreadableSkipped)); err != nil {
 		return err
 	}
 	if summary.BaselineFiltered > 0 {
@@ -156,7 +189,12 @@ func groupFindings(findings []finding.FileFinding, ruleDocs map[string]string) [
 	order := make([]string, 0, len(findings))
 
 	for _, finding := range findings {
-		key := finding.Path + "\n" + finding.ID
+		key := strings.Join([]string{
+			finding.Path,
+			finding.ID,
+			finding.Severity.String(),
+			finding.Message,
+		}, "\n")
 		grouped, exists := groupedByKey[key]
 		if !exists {
 			grouped = &groupedFinding{

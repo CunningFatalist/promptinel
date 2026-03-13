@@ -80,7 +80,8 @@ The shared scan workflow produces three relevant sets of findings:
 Important details:
 
 - oversized-file skips are always informational and do not participate in normal severity filtering
-- unreadable-file skips are `low` severity findings and therefore follow normal policy filtering
+- unreadable-file skips are always surfaced as informational skip diagnostics and do not participate
+  in normal severity filtering
 
 ## How Severity Affects Baselines
 
@@ -90,7 +91,9 @@ That means accepted low-severity findings can still be tracked in the baseline f
 current `warn-on` threshold would hide them from normal scan output.
 
 When `promptinel scan --baseline ...` is used, baseline suppression happens after the normal
-`warn-on` filter and before the final report and exit code are computed.
+`warn-on` filter and before the final report and exit code are computed. Current baseline snapshots
+match findings by stable identity and occurrence count, so routine line movement does not
+immediately re-open accepted findings.
 
 ## How Severity Affects Exit Codes
 

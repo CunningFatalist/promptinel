@@ -40,8 +40,12 @@ type Result struct {
 	// they exceeded limits.max_file_size_bytes. These are always surfaced in scan output
 	// and remain informational (they do not affect policy exit code).
 	OversizedSkippedFindings []finding.FileFinding
-	RuleDocs                 map[string]string
-	Config                   *config.Config
+	// UnreadableSkippedFindings contains diagnostics for files skipped because
+	// they could not be safely opened or read. These are always surfaced in scan output
+	// and remain informational (they do not affect policy exit code).
+	UnreadableSkippedFindings []finding.FileFinding
+	RuleDocs                  map[string]string
+	Config                    *config.Config
 }
 
 // Run executes the shared scan workflow used by scan and baseline commands.
@@ -73,21 +77,23 @@ func Run(ctx context.Context, req Request) (Result, error) {
 	}
 	reportableFindings := filterFindingsByMinimumSeverity(rawFindings, cfg.Policy.WarnOn)
 	oversizedSkippedFindings := filterOversizedSkippedFindings(rawFindings)
+	unreadableSkippedFindings := filterUnreadableSkippedFindings(rawFindings)
 
 	return Result{
-		Findings:                 reportableFindings,
-		ReportableFindings:       reportableFindings,
-		RawFindings:              rawFindings,
-		OversizedSkippedFindings: oversizedSkippedFindings,
-		RuleDocs:                 rulecatalog.DocsURLIndex(registry, cfg.CustomRules),
-		Config:                   cfg,
+		Findings:                  reportableFindings,
+		ReportableFindings:        reportableFindings,
+		RawFindings:               rawFindings,
+		OversizedSkippedFindings:  oversizedSkippedFindings,
+		UnreadableSkippedFindings: unreadableSkippedFindings,
+		RuleDocs:                  rulecatalog.DocsURLIndex(registry, cfg.CustomRules),
+		Config:                    cfg,
 	}, nil
 }
 
 func filterFindingsByMinimumSeverity(findings []finding.FileFinding, minSeverity config.Severity) []finding.FileFinding {
 	filtered := make([]finding.FileFinding, 0, len(findings))
 	for _, item := range findings {
-		if finding.IsOversizedFileSkip(item) {
+		if finding.IsOversizedFileSkip(item) || finding.IsUnreadableFileSkip(item) {
 			continue
 		}
 		if config.SeverityAtLeast(item.Severity, minSeverity) {
@@ -101,6 +107,16 @@ func filterOversizedSkippedFindings(findings []finding.FileFinding) []finding.Fi
 	filtered := make([]finding.FileFinding, 0, len(findings))
 	for _, item := range findings {
 		if finding.IsOversizedFileSkip(item) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func filterUnreadableSkippedFindings(findings []finding.FileFinding) []finding.FileFinding {
+	filtered := make([]finding.FileFinding, 0, len(findings))
+	for _, item := range findings {
+		if finding.IsUnreadableFileSkip(item) {
 			filtered = append(filtered, item)
 		}
 	}
