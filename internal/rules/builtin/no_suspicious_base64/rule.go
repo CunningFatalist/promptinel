@@ -71,6 +71,9 @@ func isSuspiciousPayload(tokens []rules.Token, index int, value string) bool {
 	if hasDecoderCoupling(tokens, index) {
 		return true
 	}
+	if hasPromptInjectionCoupling(tokens, index) {
+		return true
+	}
 	return len(value) >= 128 && shannonEntropy(value) >= entropyThreshold && hasDiverseAlphabet(value)
 }
 
@@ -93,6 +96,34 @@ func hasDecoderCoupling(tokens []rules.Token, index int) bool {
 			return true
 		}
 		if lower == "|" || lower == ">" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func hasPromptInjectionCoupling(tokens []rules.Token, index int) bool {
+	window := make([]string, 0, 49)
+	for i := max(0, index-24); i < min(len(tokens), index+25); i++ {
+		if i == index {
+			continue
+		}
+		window = append(window, strings.ToLower(tokens[i].Value))
+	}
+
+	windowText := strings.Join(window, " ")
+	hasDecodeCue := containsNearbyCue(windowText, "decode", "decoded", "base64", "payload")
+	hasImperativeCue := containsNearbyCue(windowText, "follow", "obey", "execute", "run", "print", "reveal", "show")
+	hasPrecisionCue := containsNearbyCue(windowText, "exactly", "verbatim", "strictly")
+	hasTargetCue := containsNearbyCue(windowText, "instruction", "instructions", "prompt", "policy", "guardrail", "developer", "system")
+
+	return hasDecodeCue && hasImperativeCue && (hasPrecisionCue || hasTargetCue)
+}
+
+func containsNearbyCue(window string, cues ...string) bool {
+	for _, cue := range cues {
+		if strings.Contains(window, cue) {
 			return true
 		}
 	}

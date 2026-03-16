@@ -10,7 +10,8 @@
 ## What This Rule Does
 
 This rule detects long base64-like payloads that look suspicious in context. It is aimed at opaque
-encoded blobs that may be staging hidden data rather than short, harmless tokens.
+encoded blobs that may be staging hidden data rather than short, harmless tokens, including prompts
+that ask a model to decode and follow the hidden content.
 
 ## Why It's Important
 
@@ -25,8 +26,10 @@ data. The rule still matters because long opaque payloads are a common concealme
 ## How The Rule Works Technically
 
 Promptinel looks for tokens classified as base64, applies a minimum length threshold, and then runs
-additional suspiciousness checks based on payload characteristics and surrounding context. Only
-payloads that clear those heuristics produce findings.
+additional suspiciousness checks based on payload characteristics and surrounding context. Those
+heuristics include decoder coupling, high-entropy opaque blobs, suspicious prefixes, and
+decode-plus-instruction staging language such as requests to decode a payload and follow it
+exactly. Only payloads that clear those heuristics produce findings.
 
 ## Recommendations For Handling Findings
 
