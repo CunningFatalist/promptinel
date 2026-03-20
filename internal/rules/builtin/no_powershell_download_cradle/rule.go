@@ -105,9 +105,6 @@ func hasPowerShellDownloadAndExecAhead(tokens []rules.Token, start int) bool {
 		if _, ok := signals.PowerShellExecSignals[lower]; ok {
 			hasExec = true
 		}
-		if token.Value == ";" {
-			break
-		}
 	}
 	return hasDownload && hasExec
 }

@@ -127,6 +127,9 @@ func analyzeSegment(segment rules.Segment, tokens []rules.Token) segmentEvidence
 			index = firstMatchIndex(lower, signals.EncodedPayloadOperators)
 			if index >= 0 {
 				evidence.hasURLEncodedLayer = true
+				if firstMatchIndex(lower, signals.EncodedPayloadExecutionSignals) >= 0 {
+					evidence.hasURLEncodedPayload = true
+				}
 				evidence.urlEncodedPosition = helpers.AdvancePositionByByteOffset(segment.Position, segment.Content, index)
 			}
 		}

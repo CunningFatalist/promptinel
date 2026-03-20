@@ -71,7 +71,7 @@ func shouldFlagDataURI(mimeType string, payload string) bool {
 		return false
 	}
 	if containsExact(mimeType, signals.DataURIRiskyMIMEs) {
-		return len(payload) >= 32
+		return len(payload) >= 24
 	}
 	return len(payload) >= 128
 }

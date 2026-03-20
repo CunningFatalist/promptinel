@@ -3,6 +3,7 @@ package nononstandardwhitespace
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
 	"github.com/CunningFatalist/promptinel/internal/rules"
@@ -29,6 +30,11 @@ var actionableSnippets = []string{
 	"| bash",
 	"powershell",
 	"invoke-webrequest",
+	"upload ",
+	"send ",
+	"execute ",
+	"tool call",
+	"function call",
 	"tool_call",
 	"function_call",
 	"chmod ",
@@ -86,11 +92,20 @@ func (Rule) CheckDocument(_ rules.Context, doc rules.DocumentView) []rules.Findi
 func windowContainsActionableSignal(content string, offset int) bool {
 	start := max(0, offset-contextWindow)
 	end := min(len(content), offset+contextWindow)
-	window := content[start:end]
+	window := normalizeWhitespace(content[start:end])
 	for _, snippet := range actionableSnippets {
 		if strings.Contains(window, snippet) {
 			return true
 		}
 	}
 	return false
+}
+
+func normalizeWhitespace(value string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return ' '
+		}
+		return unicode.ToLower(r)
+	}, value)
 }

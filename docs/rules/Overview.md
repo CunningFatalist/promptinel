@@ -9,6 +9,11 @@ own page with the same structure:
 - implementation notes
 - recommendations for triaging and handling findings
 
+The built-in catalog is also covered by a shared prompt corpus under
+`internal/rules/builtin/prompt_corpus*.go`. That suite is intended to pressure-test rule coverage,
+false negatives, and likely false positives with prompt-shaped fixtures in addition to the smaller
+per-rule unit tests.
+
 Use [`../rules/Template.md`](../rules/Template.md) when adding documentation for a new rule or
 refreshing an existing one.
 

@@ -79,6 +79,8 @@ var EncodedPayloadSignals = mergeUniqueSlices(
 	"%20sh",
 	"%2fbin%2fsh",
 	"%2fbin%2fbash",
+	"%20%2fbin%2fsh",
+	"%20%2fbin%2fbash",
 	"%24%28curl",
 	"%24%28wget",
 )
@@ -112,7 +114,10 @@ var SuspiciousCommentSignals = mergeUniqueSlices(
 	"powershell",
 	"base64",
 	"exfiltrate",
+	"send",
 	"upload",
+	"webhook",
+	"requestbin",
 	"token",
 	"password",
 )

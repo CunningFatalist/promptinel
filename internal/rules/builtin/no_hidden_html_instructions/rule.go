@@ -125,12 +125,12 @@ func findSuspiciousHiddenContainer(content string) []rules.Finding {
 func findSuspiciousTemplateContainer(content string, pattern *regexp.Regexp) []rules.Finding {
 	matches := pattern.FindAllStringSubmatchIndex(content, -1)
 	for _, match := range matches {
-		if len(match) < 6 {
+		if len(match) < 4 {
 			continue
 		}
 
-		bodyStart := match[4]
-		bodyEnd := match[5]
+		bodyStart := match[2]
+		bodyEnd := match[3]
 		body := strings.ToLower(content[bodyStart:bodyEnd])
 		if signalIndex := firstSuspiciousSignal(body); signalIndex >= 0 {
 			return []rules.Finding{{

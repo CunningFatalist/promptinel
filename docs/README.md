@@ -28,3 +28,5 @@ If you are new to the project:
 - [Rule Documentation Overview](./rules/Overview.md): built-in rule catalog
 - [Custom Rules](./rules/Custom.md): how config-defined regex rules fit into the model
 - [`docs/rules/`](./rules/): per-rule documentation for built-in rules
+- [Rule Architecture](./Rules.md): where rule phases, authoring guidance, and the shared prompt
+  corpus workflow are documented

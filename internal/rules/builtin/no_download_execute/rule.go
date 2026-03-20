@@ -49,8 +49,10 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 	hasURL := false
 	hasDownload := false
 	executionToken := -1
+	joined := make([]string, 0, len(tokens))
 
 	for i, token := range tokens {
+		joined = append(joined, token.Value)
 		if token.Type == lexer.TokenURL {
 			hasURL = true
 		}
@@ -82,6 +84,10 @@ func (Rule) CheckTokens(ctx rules.Context, _ rules.Segment, tokens []rules.Token
 		if lower == "downloadstring" || lower == "downloadfile" {
 			hasDownload = true
 		}
+	}
+	if !hasURL {
+		window := strings.ToLower(strings.Join(joined, ""))
+		hasURL = strings.Contains(window, "http://") || strings.Contains(window, "https://")
 	}
 
 	if !hasDownload || !hasURL || executionToken == -1 {

@@ -118,13 +118,27 @@ func LooksIdentifierLikeValue(value string) bool {
 	if strings.Contains(trimmed, ".") && !strings.HasSuffix(trimmed, ".") {
 		return true
 	}
+	if strings.ContainsAny(trimmed, "_-") {
+		return true
+	}
 	if strings.HasPrefix(trimmed, "~") || strings.HasPrefix(trimmed, ".") {
 		return true
 	}
+	hasLower := false
+	hasUpper := false
 	for _, r := range trimmed {
 		if unicode.IsDigit(r) {
 			return true
 		}
+		if unicode.IsLower(r) {
+			hasLower = true
+		}
+		if unicode.IsUpper(r) {
+			hasUpper = true
+		}
+	}
+	if hasLower && hasUpper {
+		return true
 	}
 	return false
 }

@@ -50,7 +50,7 @@ func (Rule) CheckTokens(_ rules.Context, _ rules.Segment, tokens []rules.Token) 
 		if token.Type != lexer.TokenBase64 {
 			continue
 		}
-		if len(token.Value) < minimumPayloadLen {
+		if len(token.Value) < minimumPayloadLen && !hasSuspiciousPrefix(token.Value) {
 			continue
 		}
 		if !isSuspiciousPayload(tokens, i, token.Value) {

@@ -95,10 +95,42 @@ func detectChainingTokens(tokens []rules.Token) []rules.Finding {
 		}
 
 		if i+1 >= len(tokens) {
+			if token.Value == "&&" {
+				if isChainedCommand(tokens, i, i+1) {
+					return []rules.Finding{{
+						Message:  "Shell command chaining operator detected",
+						Position: token.Position,
+					}}
+				}
+			}
+			if token.Value == "||" {
+				if isChainedCommand(tokens, i, i+1) {
+					return []rules.Finding{{
+						Message:  "Shell command chaining operator detected",
+						Position: token.Position,
+					}}
+				}
+			}
 			continue
+		}
+		if token.Value == "&&" {
+			if isChainedCommand(tokens, i, i+1) {
+				return []rules.Finding{{
+					Message:  "Shell command chaining operator detected",
+					Position: token.Position,
+				}}
+			}
 		}
 		if token.Value == "&" && tokens[i+1].Value == "&" {
 			if isChainedCommand(tokens, i, i+2) {
+				return []rules.Finding{{
+					Message:  "Shell command chaining operator detected",
+					Position: token.Position,
+				}}
+			}
+		}
+		if token.Value == "||" {
+			if isChainedCommand(tokens, i, i+1) {
 				return []rules.Finding{{
 					Message:  "Shell command chaining operator detected",
 					Position: token.Position,
@@ -188,9 +220,21 @@ func firstChainingTokenOffset(tokens []rules.Token) (int, bool) {
 			return token.Start, true
 		}
 		if i+1 >= len(tokens) {
+			if token.Value == "&&" && isChainedCommand(tokens, i, i+1) {
+				return token.Start, true
+			}
+			if token.Value == "||" && isChainedCommand(tokens, i, i+1) {
+				return token.Start, true
+			}
 			continue
 		}
+		if token.Value == "&&" && isChainedCommand(tokens, i, i+1) {
+			return token.Start, true
+		}
 		if token.Value == "&" && tokens[i+1].Value == "&" && isChainedCommand(tokens, i, i+2) {
+			return token.Start, true
+		}
+		if token.Value == "||" && isChainedCommand(tokens, i, i+1) {
 			return token.Start, true
 		}
 		if token.Value == "|" && tokens[i+1].Value == "|" && isChainedCommand(tokens, i, i+2) {
@@ -225,7 +269,10 @@ func isChainedCommand(tokens []rules.Token, operatorStart int, afterStart int) b
 		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
 			continue
 		}
-		if token.Type == lexer.TokenShellCommand {
+		if token.Value == ";" || token.Value == "|" {
+			break
+		}
+		if isCommandToken(token) {
 			hasShellBefore = true
 			break
 		}
@@ -239,8 +286,37 @@ func isChainedCommand(tokens []rules.Token, operatorStart int, afterStart int) b
 		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
 			continue
 		}
-		return token.Type == lexer.TokenShellCommand || token.Type == lexer.TokenWord || token.Type == lexer.TokenPath
+		if token.Value == ";" || token.Value == "|" {
+			return false
+		}
+		if isCommandToken(token) {
+			return true
+		}
 	}
 
 	return false
+}
+
+func isCommandToken(token rules.Token) bool {
+	if token.Type == lexer.TokenShellCommand {
+		return true
+	}
+	if token.Type != lexer.TokenWord && token.Type != lexer.TokenPath {
+		return false
+	}
+
+	lower := strings.ToLower(token.Value)
+	if _, ok := signals.DownloadCommands[lower]; ok {
+		return true
+	}
+	if _, ok := signals.ExecutionCommands[lower]; ok {
+		return true
+	}
+	if _, ok := signals.ShellInterpreters[lower]; ok {
+		return true
+	}
+	if _, ok := signals.DNSSinkCommands[lower]; ok {
+		return true
+	}
+	return lower == "git" || lower == "ssh" || lower == "scp" || lower == "rsync"
 }

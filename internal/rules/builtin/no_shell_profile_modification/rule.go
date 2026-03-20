@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/CunningFatalist/promptinel/internal/config"
+	"github.com/CunningFatalist/promptinel/internal/lexer"
 	"github.com/CunningFatalist/promptinel/internal/rules"
 	"github.com/CunningFatalist/promptinel/internal/rules/signals"
 )
@@ -45,6 +46,13 @@ func Metadata() rules.Metadata {
 func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Finding {
 	if !ctx.CanAccessFilesystem() {
 		return nil
+	}
+
+	if index := rawWriteProfileIndex(strings.ToLower(doc.Document.Content)); index >= 0 {
+		return []rules.Finding{{
+			Message:  "Shell profile modification attempt detected",
+			Position: rules.PositionFromByteOffset(doc.Document.Content, index),
+		}}
 	}
 
 	writeIndices := make([]int, 0)
@@ -106,5 +114,46 @@ func containsAnySnippet(value string, snippets []string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+func rawWriteProfileIndex(content string) int {
+	for _, path := range signals.ShellProfilePathSnippets {
+		pathIndex := strings.Index(content, path)
+		if pathIndex == -1 {
+			trimmed := strings.TrimPrefix(path, ".")
+			if trimmed != path {
+				pathIndex = strings.Index(content, trimmed)
+			}
+		}
+		if pathIndex == -1 {
+			continue
+		}
+
+		start := max(0, pathIndex-maxWriteToPathDistance*8)
+		window := content[start:pathIndex]
+		if hasRawWriteIntent(window) {
+			return pathIndex
+		}
+	}
+	return -1
+}
+
+func hasRawWriteIntent(window string) bool {
+	tokens := lexer.Classify(lexer.Lex(window))
+	for _, token := range tokens {
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
+			continue
+		}
+
+		lower := strings.ToLower(token.Value)
+		if _, ok := signals.SensitiveWriteIntentSignals[lower]; ok {
+			return true
+		}
+		if token.Value == ">" {
+			return true
+		}
+	}
+
 	return false
 }

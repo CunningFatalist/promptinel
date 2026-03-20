@@ -60,7 +60,7 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 			lower := strings.ToLower(token.Value)
 			tokensByIndex = append(tokensByIndex, token)
 
-			if isSecretSignal(token, lower) {
+			if isSecretSignal(tokens, i, token, lower) {
 				sources = append(sources, tokenStage{
 					Index:    globalIndex,
 					Start:    token.Start,
@@ -164,7 +164,7 @@ func isSecretPathSignal(lower string) bool {
 	return containsAnySnippet(lower, signals.SensitivePathSnippets)
 }
 
-func isSecretSignal(token rules.Token, lower string) bool {
+func isSecretSignal(tokens []rules.Token, index int, token rules.Token, lower string) bool {
 	for _, signal := range signals.SecretSignals {
 		if strings.Contains(lower, signal) {
 			return true
@@ -177,5 +177,32 @@ func isSecretSignal(token rules.Token, lower string) bool {
 	if token.Type == lexer.TokenWord && (lower == "api" || lower == "access" || lower == "secret" || lower == "token") {
 		return true
 	}
+	if token.Type == lexer.TokenWord {
+		next := nextWordToken(tokens, index+1)
+		if next != nil {
+			nextLower := strings.ToLower(next.Value)
+			return (lower == "api" && nextLower == "key") ||
+				(lower == "access" && nextLower == "key") ||
+				(lower == "secret" && nextLower == "key") ||
+				(lower == "client" && nextLower == "secret") ||
+				(lower == "private" && nextLower == "key") ||
+				(lower == "session" && nextLower == "token") ||
+				(lower == "bearer" && nextLower == "token")
+		}
+	}
 	return isSecretPathSignal(lower)
+}
+
+func nextWordToken(tokens []rules.Token, start int) *rules.Token {
+	for i := start; i < len(tokens); i++ {
+		token := tokens[i]
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline || token.Type == lexer.TokenSymbol {
+			continue
+		}
+		if token.Type == lexer.TokenWord {
+			return &tokens[i]
+		}
+		return nil
+	}
+	return nil
 }

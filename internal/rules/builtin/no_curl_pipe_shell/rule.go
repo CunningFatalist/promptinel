@@ -102,7 +102,7 @@ func hasPipeToInterpreter(tokens []rules.Token, start int) bool {
 		return false
 	}
 
-	next := nextSignificantToken(tokens, pipeIndex+1)
+	next := nextInterpreterCandidate(tokens, pipeIndex+1)
 	if next == nil {
 		return false
 	}
@@ -116,7 +116,7 @@ func hasPipeToPowerShellExec(tokens []rules.Token, start int) bool {
 		return false
 	}
 
-	next := nextSignificantToken(tokens, pipeIndex+1)
+	next := nextInterpreterCandidate(tokens, pipeIndex+1)
 	if next == nil {
 		return false
 	}
@@ -194,4 +194,62 @@ func nextSignificantToken(tokens []rules.Token, start int) *rules.Token {
 		return &tokens[i]
 	}
 	return nil
+}
+
+func nextInterpreterCandidate(tokens []rules.Token, start int) *rules.Token {
+	for i := start; i < len(tokens); i++ {
+		token := tokens[i]
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
+			continue
+		}
+
+		lower := strings.ToLower(token.Value)
+		if lower == "sudo" || lower == "env" {
+			continue
+		}
+		if next, ok := envAssignmentEnd(tokens, i); ok {
+			i = next - 1
+			continue
+		}
+
+		return &tokens[i]
+	}
+	return nil
+}
+
+func envAssignmentEnd(tokens []rules.Token, start int) (int, bool) {
+	if tokens[start].Type != lexer.TokenWord {
+		return 0, false
+	}
+
+	equalsIndex := nextSignificantTokenIndex(tokens, start+1)
+	if equalsIndex == -1 || tokens[equalsIndex].Value != "=" {
+		return 0, false
+	}
+
+	end := equalsIndex + 1
+	for end < len(tokens) {
+		token := tokens[end]
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
+			return end, true
+		}
+		if token.Value == ";" || token.Value == "|" {
+			return end, true
+		}
+		end++
+	}
+
+	return end, true
+}
+
+func nextSignificantTokenIndex(tokens []rules.Token, start int) int {
+	for i := start; i < len(tokens); i++ {
+		token := tokens[i]
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline {
+			continue
+		}
+		return i
+	}
+
+	return -1
 }

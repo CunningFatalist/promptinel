@@ -60,6 +60,7 @@ var (
 		"leak",
 	)
 	sensitiveWriteIntentTerms = setOf(
+		"add",
 		"write",
 		"append",
 		"persist",

@@ -152,6 +152,7 @@ var PowerShellDownloadSignals = mergeSets(setOf(
 	"irm",
 	"downloadstring",
 	"downloadfile",
+	"start-bitstransfer",
 ))
 
 var PowerShellExecSignals = mergeSets(setOf(
@@ -220,6 +221,9 @@ var HeredocBodySignals = mergeUniqueSlices(
 	"bash ",
 	"sh ",
 	"python ",
+	"import ",
+	"urllib.request",
+	"getenv(",
 	"powershell",
 	"invoke-webrequest",
 	"base64",

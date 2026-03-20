@@ -114,4 +114,9 @@ var TranscriptSuspiciousSignals = mergeUniqueSlices(
 	"wget",
 	"shell",
 	"download",
+	"send",
+	"upload",
+	"password",
+	"token",
+	"webhook",
 )

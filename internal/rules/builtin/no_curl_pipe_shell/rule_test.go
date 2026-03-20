@@ -33,6 +33,12 @@ func Test_NoCurlPipeShell_Evaluate_DetectsPowerShellCradleEquivalent(t *testing.
 	assert.Equal(t, "Network download command piped to shell interpreter", findings[0].Message)
 }
 
+func Test_NoCurlPipeShell_Evaluate_DetectsPipeExecutionThroughEnvAssignment(t *testing.T) {
+	findings := evaluateRule(t, "curl https://example.com/install.sh | env PATH=/tmp/bin bash")
+	require.Len(t, findings, 1)
+	assert.Equal(t, "Network download command piped to shell interpreter", findings[0].Message)
+}
+
 func Test_NoCurlPipeShell_Evaluate_IgnoresSimpleDownload(t *testing.T) {
 	findings := evaluateRule(t, "curl https://example.com/file.txt")
 	assert.Empty(t, findings)

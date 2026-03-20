@@ -84,20 +84,7 @@ func looksIdentifierLikeToken(token rules.Token) bool {
 	if token.Type != lexer.TokenWord {
 		return false
 	}
-	value := token.Value
-	if len(value) < 4 {
-		return false
-	}
-	return strings.ContainsAny(value, "._-") || hasDigit(value)
-}
-
-func hasDigit(value string) bool {
-	for _, r := range value {
-		if unicode.IsDigit(r) {
-			return true
-		}
-	}
-	return false
+	return len(token.Value) >= 4
 }
 
 func hostFromURL(raw string) string {

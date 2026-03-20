@@ -66,6 +66,9 @@ func containsUnsafeSignal(tokens []rules.Token) bool {
 		if _, ok := signals.UnsafeTemplateSinks[lower]; !ok && !isUnsafeQualifiedWord(lower) {
 			continue
 		}
+		if isUnsafeQualifiedWord(lower) && strings.HasSuffix(lower, ".token") {
+			return true
+		}
 
 		if hasDynamicTemplateOperand(tokens, i) {
 			return true

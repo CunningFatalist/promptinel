@@ -169,6 +169,33 @@ New built-in rules should have targeted tests that cover:
 - trust-aware behavior when applicable
 - environment-aware behavior when applicable
 
+Promptinel also keeps a built-in prompt corpus in:
+
+- `internal/rules/builtin/prompt_corpus_test.go`
+- `internal/rules/builtin/prompt_corpus_suites_test.go`
+
+That corpus is a cross-rule regression suite rather than a replacement for focused unit tests. It
+uses prompt-shaped fixtures to exercise the built-in catalog with:
+
+- cases the rule should catch
+- edge cases near the current heuristic boundaries
+- likely false positives that should stay quiet
+
+Each built-in rule should keep 10 to 20 prompt cases in that corpus. Those prompts should:
+
+- use 1 to 3 paragraphs so they resemble real prompt content
+- cover both obvious matches and evasive variants
+- include representative benign prose for false-positive pressure
+- use trust-aware or capability-aware contexts when the rule depends on them
+
+When a built-in rule changes materially, update both:
+
+1. the rule package's focused tests
+2. the shared prompt corpus for the affected rule
+
+That combination helps keep individual heuristics understandable while still protecting against
+cross-rule regressions and accidental blind spots.
+
 If the rule changes the built-in catalog, its documentation must ship in the same change so
 `rules list`, `rules describe`, and the docs stay aligned.
 

@@ -28,6 +28,12 @@ func Test_NoShellProfileModification_Evaluate_IgnoresProfileReferenceWithoutWrit
 	assert.Empty(t, findings)
 }
 
+func Test_NoShellProfileModification_Evaluate_IgnoresAppendixProse(t *testing.T) {
+	content := "In the appendix, explain what ~/.bashrc controls during shell startup."
+	findings := evaluateRule(t, content)
+	assert.Empty(t, findings)
+}
+
 func Test_NoShellProfileModification_Evaluate_IgnoresWhenFilesystemUnavailable(t *testing.T) {
 	content := "echo 'export MAL=1' >> ~/.zshrc"
 	findings := evaluateRuleWithContext(t, content, rules.Context{

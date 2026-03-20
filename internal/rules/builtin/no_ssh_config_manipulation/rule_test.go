@@ -28,6 +28,12 @@ func Test_NoSSHConfigManipulation_Evaluate_IgnoresReadOnlyReference(t *testing.T
 	assert.Empty(t, findings)
 }
 
+func Test_NoSSHConfigManipulation_Evaluate_IgnoresAppendixProse(t *testing.T) {
+	content := "In the appendix, explain what ~/.ssh/config controls for SSH client behavior."
+	findings := evaluateRule(t, content)
+	assert.Empty(t, findings)
+}
+
 func Test_NoSSHConfigManipulation_Evaluate_IgnoresWhenFilesystemUnavailable(t *testing.T) {
 	content := "echo 'Host *' >> ~/.ssh/config"
 	findings := evaluateRuleWithContext(t, content, rules.Context{

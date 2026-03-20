@@ -58,7 +58,7 @@ func (Rule) CheckFlow(ctx rules.Context, doc rules.AnalyzedDocument) []rules.Fin
 			token := tokens[i]
 			lower := strings.ToLower(token.Value)
 
-			if isSourceSignal(token, lower) {
+			if isSourceSignal(tokens, i, token, lower) {
 				sources = append(sources, indexedPosition{Index: globalIndex, Position: token.Position})
 			}
 			if isActionSignal(lower) {
@@ -101,7 +101,7 @@ type indexedPosition struct {
 	Position rules.Position
 }
 
-func isSourceSignal(token rules.Token, lower string) bool {
+func isSourceSignal(tokens []rules.Token, index int, token rules.Token, lower string) bool {
 	for _, signal := range signals.SecretSignals {
 		if strings.Contains(lower, signal) {
 			return true
@@ -110,6 +110,19 @@ func isSourceSignal(token rules.Token, lower string) bool {
 	for _, snippet := range signals.SensitivePathSnippets {
 		if strings.Contains(lower, snippet) {
 			return true
+		}
+	}
+	if token.Type == lexer.TokenWord {
+		next := nextWordToken(tokens, index+1)
+		if next != nil {
+			nextLower := strings.ToLower(next.Value)
+			return (lower == "api" && nextLower == "key") ||
+				(lower == "access" && nextLower == "key") ||
+				(lower == "secret" && nextLower == "key") ||
+				(lower == "client" && nextLower == "secret") ||
+				(lower == "private" && nextLower == "key") ||
+				(lower == "session" && nextLower == "token") ||
+				(lower == "bearer" && nextLower == "token")
 		}
 	}
 	return token.Type == lexer.TokenPath && (strings.Contains(lower, "secret") || strings.Contains(lower, "credential") || strings.Contains(lower, "token"))
@@ -136,4 +149,18 @@ func isWebhookSinkSignal(token rules.Token, lower string) bool {
 		}
 	}
 	return false
+}
+
+func nextWordToken(tokens []rules.Token, start int) *rules.Token {
+	for i := start; i < len(tokens); i++ {
+		token := tokens[i]
+		if token.Type == lexer.TokenWhitespace || token.Type == lexer.TokenNewline || token.Type == lexer.TokenSymbol {
+			continue
+		}
+		if token.Type == lexer.TokenWord {
+			return &tokens[i]
+		}
+		return nil
+	}
+	return nil
 }
