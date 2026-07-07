@@ -25,11 +25,11 @@ test-prepare: tidy vendor ## Prepare dependencies for tests
 
 .PHONY: test-core
 test-core: test-prepare ## Run tests except e2e
-	docker compose exec promptinel_app sh -ec 'pkgs=$$(go list ./... | grep -v "/e2e$$"); test -n "$$pkgs"; go test $$pkgs -buildvcs=false --cover --short --race --shuffle=on --parallel=3'
+	docker compose exec -T promptinel_app sh -ec 'pkgs=$$(go list ./... | grep -v "/e2e$$"); test -n "$$pkgs"; go test $$pkgs -buildvcs=false --cover --short --race --shuffle=on --parallel=3'
 
 .PHONY: test-e2e
 test-e2e: test-prepare ## Run e2e tests only
-	docker compose exec promptinel_app go test ./e2e -buildvcs=false --race --shuffle=on --parallel=3
+	docker compose exec -T promptinel_app go test ./e2e -buildvcs=false --race --shuffle=on --parallel=3
 
 .PHONY: test-docker
 test-docker: ## Test the docker setup
@@ -37,15 +37,15 @@ test-docker: ## Test the docker setup
 
 .PHONY: coverage
 coverage: ## Generate test coverage report
-	docker compose exec promptinel_app sh -ec 'pkgs=$$(go list ./... | grep -v "/e2e$$"); test -n "$$pkgs"; go test $$pkgs -buildvcs=false -coverprofile=coverage.out'
-	docker compose exec promptinel_app go tool cover -html=coverage.out -o coverage.html
+	docker compose exec -T promptinel_app sh -ec 'pkgs=$$(go list ./... | grep -v "/e2e$$"); test -n "$$pkgs"; go test $$pkgs -buildvcs=false -coverprofile=coverage.out'
+	docker compose exec -T promptinel_app go tool cover -html=coverage.out -o coverage.html
 
 .PHONY: lint
 lint: tidy vendor ## Run linters
 	if command -v golangci-lint >/dev/null 2>&1; then \
 		golangci-lint run; \
 	else \
-		docker compose exec promptinel_app golangci-lint run; \
+		docker compose exec -T promptinel_app golangci-lint run; \
 	fi
 
 .PHONY: vuln
@@ -53,7 +53,7 @@ vuln: tidy vendor ## Run dependency vulnerability scan
 	if command -v govulncheck >/dev/null 2>&1; then \
 		govulncheck ./...; \
 	else \
-		docker compose exec promptinel_app govulncheck ./...; \
+		docker compose exec -T promptinel_app govulncheck ./...; \
 	fi
 
 .PHONY: fmt
@@ -61,7 +61,7 @@ fmt: fmt-code fmt-docs ## Format code and documentation
 
 .PHONY: fmt-code
 fmt-code: ## Format the Go code
-	docker compose exec promptinel_app go fmt ./...
+	docker compose exec -T promptinel_app go fmt ./...
 
 .PHONY: fmt-docs
 fmt-docs: ## Format Markdown documentation with Prettier
@@ -69,11 +69,11 @@ fmt-docs: ## Format Markdown documentation with Prettier
 
 .PHONY: vet
 vet: ## Vet the code
-	docker compose exec promptinel_app go vet ./...
+	docker compose exec -T promptinel_app go vet ./...
 
 .PHONY: fix
 fix: ## Apply go fixes
-	docker compose exec promptinel_app go fix ./...
+	docker compose exec -T promptinel_app go fix ./...
 
 .PHONY: pre-commit
 pre-commit: fmt fix vet vuln lint test ## Run the full local pre-commit quality gate
@@ -88,11 +88,11 @@ disable-git-hooks: ## Disable repository-managed hooks for this clone
 
 .PHONY: tidy
 tidy: ## Tidy the go modules
-	docker compose exec promptinel_app go mod tidy
+	docker compose exec -T promptinel_app go mod tidy
 
 .PHONY: vendor
 vendor: ## Vendor the go modules
-	docker compose exec promptinel_app go mod vendor
+	docker compose exec -T promptinel_app go mod vendor
 
 .PHONY: logs
 logs: ## Follow the application logs
@@ -104,7 +104,7 @@ build: tidy vendor ## Build the application inside the container
 		echo "Error: BUILD_VERSION is not set. Please run 'export BUILD_VERSION=x.x.x && make build'"; \
 		exit 1; \
 	fi
-	docker compose exec promptinel_app go build -buildvcs=false -ldflags="-X 'github.com/CunningFatalist/promptinel/internal/version.BuildVersion=$(BUILD_VERSION)'" -o build/promptinel main.go
+	docker compose exec -T promptinel_app go build -buildvcs=false -ldflags="-X 'github.com/CunningFatalist/promptinel/internal/version.BuildVersion=$(BUILD_VERSION)'" -o build/promptinel main.go
 
 .PHONY: clean
 clean: ## Clean up generated files

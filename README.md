@@ -62,7 +62,7 @@ This example also uses `@latest` for demonstration. Again, it is recommended to 
 docker run --rm \
   -v "$PWD:/work" \
   -w /work \
-  golang:1.26.1 \
+  golang:1.26.4 \
   sh -lc 'set -eu; GOBIN=/tmp/bin /usr/local/go/bin/go install github.com/CunningFatalist/promptinel@latest && /tmp/bin/promptinel scan .'
 ```
 
