@@ -15,6 +15,9 @@ It statically analyzes prompts before an LLM or agent executes them and flags in
 that could trigger unintended external actions such as data exfiltration, tool misuse,
 credential access, or environment manipulation. Promptinel treats prompts as executable artifacts.
 
+> [!CAUTION]
+> Now that [SkillSpector](https://github.com/nvidia/skillspector) is available, you probably don't need Promptinel anymore.
+
 ## Why Use It
 
 Promptinel is built for teams that review prompts the same way they review code:
